@@ -1,6 +1,4 @@
 import OpenAI from "openai";
-import { zodTextFormat } from "openai/helpers/zod";
-import z from "zod";
 import { getPlayerDeck, getPlayersBySide, getRedChoiceOptions } from "./rules";
 import type {
   AdjudicationRequest,
