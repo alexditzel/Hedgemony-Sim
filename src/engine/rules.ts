@@ -16,7 +16,6 @@ import {
   type RtBColumn,
 } from "./tables";
 import {
-  PlayerIdSchema,
   type AdjudicationRequest,
   type Base,
   type Card,
@@ -48,12 +47,7 @@ import {
 } from "./types";
 
 export const READINESS_LEVELS: ReadinessLevel[] = [50, 60, 70, 80, 90, 100];
-const DEFAULT_RED_SEQUENCE: PlayerId[] = [
-  PlayerIdSchema.parse("RU"),
-  PlayerIdSchema.parse("PRC"),
-  PlayerIdSchema.parse("DPRK"),
-  PlayerIdSchema.parse("IR"),
-];
+const DEFAULT_RED_SEQUENCE: PlayerId[] = ["RU", "PRC", "DPRK", "IR"];
 
 export interface ReadinessBillRow {
   location: "CONUS" | "OCONUS";
@@ -598,14 +592,14 @@ export function beginBlueReadinessBill(state: GameState): {
   }
   const draft = cloneState(state);
   draft.phase = "BlueReadinessBill";
-  draft.active_player_id = PlayerIdSchema.parse("US");
+  draft.active_player_id = "US";
   appendLog(
     draft,
     "Blue phase begins with the U.S. readiness bill.",
     ["DETERMINISTIC"],
     "public",
     {
-      player_id: PlayerIdSchema.parse("US"),
+      player_id: "US",
     },
   );
   return { state: draft, issues };
@@ -728,7 +722,7 @@ export function setUsForceReadiness(
     `${forceId} readiness set to ${readinessLevel}%.`,
     ["DETERMINISTIC"],
     "public",
-    { player_id: PlayerIdSchema.parse("US") },
+    { player_id: "US" },
   );
   return { state: draft, issues };
 }
@@ -800,7 +794,7 @@ export function payUsReadinessBill(state: GameState): {
       issue.message,
       ["15.1 Readiness Sustainment Cost"],
       tableIssuePayload(issue),
-      PlayerIdSchema.parse("US"),
+      "US",
     );
   }
   if (
@@ -813,7 +807,7 @@ export function payUsReadinessBill(state: GameState): {
   }
   const spendIssue = spendResources(
     draft,
-    PlayerIdSchema.parse("US"),
+    "US",
     bill.total,
     "readiness sustainment",
   );
@@ -823,14 +817,14 @@ export function payUsReadinessBill(state: GameState): {
   }
   draft.readiness_paid_turns.push(draft.turn);
   draft.phase = "BlueInvestmentsAndActions";
-  draft.active_player_id = PlayerIdSchema.parse("US");
+  draft.active_player_id = "US";
   draft.blue_subphase = "Investments";
   appendLog(
     draft,
     `U.S. readiness bill paid: ${bill.total} RP.`,
     ["DETERMINISTIC"],
     "public",
-    { player_id: PlayerIdSchema.parse("US") },
+    { player_id: "US" },
   );
   return { state: draft, bill, issues };
 }
@@ -996,9 +990,12 @@ function validateCardFrequency(
 
 function recordCardPlay(
   state: GameState,
-  playerId: PlayerId,
+  playerId: PlayerId | "WhiteCell",
   cardId: CardId,
 ): void {
+  if (playerId === "WhiteCell") {
+    return;
+  }
   state.card_play_history.push({
     card_id: cardId,
     player_id: playerId,
@@ -1030,7 +1027,7 @@ function matchingOutcomeRows(
 
 function visibleToForEffect(
   effect: Effect,
-  owner?: PlayerId,
+  owner?: PlayerId | "WhiteCell",
 ): (PlayerId | "WhiteCell" | "Public")[] {
   if (effect.visibility === "public") {
     return ["Public"];
@@ -1044,7 +1041,7 @@ function visibleToForEffect(
 function addGroundTruthForEffect(
   state: GameState,
   effect: Effect,
-  owner?: PlayerId,
+  owner?: PlayerId | "WhiteCell",
   note = "",
 ): void {
   const item: GroundTruthItem = {
@@ -1084,7 +1081,7 @@ function setPlayerResourceAllocation(
 function applySingleEffect(
   state: GameState,
   effect: Effect,
-  owner?: PlayerId,
+  owner?: PlayerId | "WhiteCell",
   trackDeferred = true,
 ): RuleIssue | undefined {
   if (
@@ -1109,8 +1106,14 @@ function applySingleEffect(
     return undefined;
   }
   const target = effect.target === "ACTOR" && owner ? owner : effect.target;
-  const player = state.players[target];
-  const force = state.forces[target];
+  const player =
+    target === "WhiteCell" || target === "ACTOR"
+      ? undefined
+      : state.players[target as PlayerId];
+  const force =
+    target === "WhiteCell" || target === "ACTOR"
+      ? undefined
+      : state.forces[target as ForceId];
   switch (effect.type) {
     case "adjust_resource_points":
       if (player) {
@@ -1123,7 +1126,9 @@ function applySingleEffect(
       }
       break;
     case "set_or_adjust_per_turn_resource_allocation":
-      setPlayerResourceAllocation(state, effect.target, effect.value);
+      if (target !== "WhiteCell" && target !== "ACTOR") {
+        setPlayerResourceAllocation(state, target as PlayerId, effect.value);
+      }
       break;
     case "set_national_tech_level":
       if (player) {
@@ -1264,9 +1269,7 @@ function applySingleEffect(
       if (isRecord(effect.value)) {
         const base: Base = {
           id: stringFrom(effect.value.id, effect.target),
-          owner: PlayerIdSchema.parse(
-            stringFrom(effect.value.owner, owner ?? effect.target),
-          ),
+          owner: stringFrom(effect.value.owner, owner ?? effect.target),
           location_id: stringFrom(effect.value.location_id, effect.target),
           aor_id: stringFrom(effect.value.aor_id, undefined),
           out_of_area_discount: numberFrom(
@@ -1282,9 +1285,7 @@ function applySingleEffect(
       if (isRecord(effect.value)) {
         const proxy: ProxyForce = {
           id: stringFrom(effect.value.id, effect.target),
-          sponsor: PlayerIdSchema.parse(
-            stringFrom(effect.value.sponsor, owner ?? effect.target),
-          ),
+          sponsor: stringFrom(effect.value.sponsor, owner ?? effect.target),
           label: stringFrom(effect.value.label, effect.target),
           force_factors: numberFrom(effect.value.force_factors),
           modernization_level: numberFrom(effect.value.modernization_level),
@@ -1300,9 +1301,7 @@ function applySingleEffect(
       break;
     case "procure_forces":
       if (isRecord(effect.value)) {
-        const owner = PlayerIdSchema.parse(
-          stringFrom(effect.value.owner, effect.target),
-        );
+        const owner = stringFrom(effect.value.owner, effect.target);
         const id = stringFrom(
           effect.value.id,
           `${owner}-F-${Object.keys(state.forces).length + 1}`,
@@ -1385,7 +1384,7 @@ function applySingleEffect(
 export function applyEffects(
   state: GameState,
   effects: Effect[],
-  owner?: PlayerId,
+  owner?: PlayerId | "WhiteCell",
 ): { state: GameState; issues: RuleIssue[] } {
   const draft = cloneState(state);
   const issues: RuleIssue[] = [];
@@ -1835,7 +1834,7 @@ function resolveCardD10(
 function applyCardOutcome(
   draft: GameState,
   card: Card,
-  actor: PlayerId,
+  actor: PlayerId | "WhiteCell",
   outcome?: ProbabilityOutcome | "Success" | "Fail",
   rollTotal?: number,
 ): RuleIssue[] {
@@ -2599,7 +2598,7 @@ export function buyBackReadiness(
   }
   const spendIssue = spendResources(
     draft,
-    PlayerIdSchema.parse("US"),
+    "US",
     totalCost,
     `readiness buy-back to ${targetReadiness}%`,
   );
@@ -2854,7 +2853,7 @@ export function retireUsForces(
     `U.S. retired ${forceIds.length} force counter(s).`,
     ["DETERMINISTIC"],
     "public",
-    { player_id: PlayerIdSchema.parse("US") },
+    { player_id: "US" },
   );
   return { state: draft, issues };
 }
@@ -3121,14 +3120,14 @@ export function annualResourceAllocation(
     draft.per_turn_resources,
   )) {
     const amount = playerId === "US" ? allocation + usVariation : allocation;
-    draft.players[playerId].resource_points += amount;
+    draft.players[playerId as PlayerId].resource_points += amount;
     appendLog(
       draft,
       `${playerId} received ${amount} RP annual allocation.`,
       ["DETERMINISTIC"],
       "public",
       {
-        player_id: playerId,
+        player_id: playerId as PlayerId,
         roll_id: playerId === "US" ? budgetRoll.id : undefined,
       },
     );
@@ -3140,7 +3139,7 @@ export function annualResourceAllocation(
     ["DETERMINISTIC"],
     "public",
     {
-      player_id: PlayerIdSchema.parse("US"),
+      player_id: "US",
       roll_id: budgetRoll.id,
     },
   );

@@ -4,16 +4,16 @@ export type PlayerSide = "Blue" | "Red" | "Other";
 export const PlayerSideSchema = z.enum(["Blue", "Red", "Other"]);
 
 export type PlayerId = z.infer<typeof PlayerIdSchema>;
-export const PlayerIdSchema = z.string().brand<"PlayerId">();
+export const PlayerIdSchema = z.string();
 
 export type ForceId = string;
-export const ForceIdSchema = z.string().brand<"ForceId">();
+export const ForceIdSchema = z.string();
 
 export type CardId = string;
-export const CardIdSchema = z.string().brand<"CardId">();
+export const CardIdSchema = z.string();
 
 export type LocationId = string;
-export const LocationIdSchema = z.string().brand<"LocationId">();
+export const LocationIdSchema = z.string();
 
 export type CapabilityId =
   | "C4ISR"
