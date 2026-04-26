@@ -12,6 +12,8 @@ import {
   type RedSignalState,
 } from "./types";
 
+// ----------------------------------------------------------------------------
+
 const openai = new OpenAI({
   // This is OK since this web app will only ever be ran locally.
   dangerouslyAllowBrowser: true,
@@ -19,6 +21,17 @@ const openai = new OpenAI({
 });
 
 const medium_model = import.meta.env.TEST ? "gpt-5.4-nano" : "gpt-5.4-mini";
+
+// ----------------------------------------------------------------------------
+
+/**
+ * Prints the game state in an LLM-friendly Markdown style.
+ */
+function printGameState(state: GameState): string {
+  throw new Error("Unimplemented")
+}
+
+// ----------------------------------------------------------------------------
 
 export type RedSignalDecision = {
   cardIds: CardId[];
