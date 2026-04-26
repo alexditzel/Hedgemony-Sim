@@ -6,11 +6,14 @@ import {
   type CtrAColumn,
   type GameState,
   type OutcomeRow,
+  type PlayerId,
   type RtBColumn,
 } from "../engine";
 import { Modal, Tag } from "./ui";
 import { playerLabel, sideToTone } from "./factions";
 import type { FactionTone } from "./factions";
+import { GameCard } from "./Card";
+import { cardFrontImageUrl } from "./cardFronts";
 
 interface CardModalProps {
   card?: GameCardData;
@@ -108,9 +111,22 @@ export function CardModal({ card, state, open, onClose, footer }: CardModalProps
   const tone = toneForCardOwner(card, state);
   const cost = card.cost.resource_points;
   const costLabel = cost === null ? "Free" : typeof cost === "number" ? `${cost} RP` : "Variable";
+  const frontImageUrl = cardFrontImageUrl(card);
   return (
     <Modal open={open} onClose={onClose} title={`${card.id} · ${card.title}`} footer={footer} size="lg">
       <div className="stack-md">
+        <div className="card-modal-preview">
+          {frontImageUrl ? (
+            <img className="card-modal-preview__image" src={frontImageUrl} alt={`${card.id} ${card.title}`} />
+          ) : (
+            <GameCard
+              card={card}
+              tone={tone}
+              ownerLabel={card.owner ? playerLabel(state, card.owner as PlayerId | "WhiteCell") : "Shared"}
+            />
+          )}
+        </div>
+
         <div className="row gap-sm">
           <Tag tone={tone}>{card.type}</Tag>
           {card.subtype ? <Tag>{card.subtype}</Tag> : null}

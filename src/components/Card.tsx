@@ -3,6 +3,7 @@ import { entryValue, type Card as GameCardData, type GameState, type PlayerId } 
 import type { FactionTone } from "./factions";
 import type { CardBackKind } from "./cardBacks";
 import { cardBackImageUrl } from "./cardBacks";
+import { cardFrontImageUrl } from "./cardFronts";
 import { playerLabel, sideToTone } from "./factions";
 
 function toneForCardOwner(card: GameCardData, state: GameState): FactionTone {
@@ -43,7 +44,8 @@ export function GameCard({
   onOpen,
   ownerLabel
 }: GameCardProps) {
-  const interactive = Boolean(onClick) && !disabled;
+  const interactive = (Boolean(onClick) && !disabled) || Boolean(onOpen);
+  const resolvedImageUrl = imageUrl ?? cardFrontImageUrl(card);
   const toneClass =
     (tone ?? defaultToneFor(card)) === "red" ? "gamecard--red" :
     (tone ?? defaultToneFor(card)) === "blue" ? "gamecard--blue" :
@@ -53,7 +55,11 @@ export function GameCard({
     if (!interactive) return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      onClick?.();
+      if (onClick && !disabled) {
+        onClick();
+        return;
+      }
+      onOpen?.();
     }
     if (event.key === "i" || event.key === "I") {
       event.preventDefault();
@@ -67,6 +73,7 @@ export function GameCard({
         "gamecard",
         sizeClass(size),
         toneClass,
+        resolvedImageUrl ? "gamecard--image-front" : "",
         interactive ? "gamecard--interactive" : "",
         selected ? "gamecard--selected" : "",
         disabled ? "gamecard--disabled" : ""
@@ -75,12 +82,42 @@ export function GameCard({
         .join(" ")}
       role={interactive ? "button" : undefined}
       tabIndex={interactive ? 0 : -1}
-      aria-disabled={disabled || undefined}
+      aria-disabled={disabled && !onOpen ? true : undefined}
       aria-pressed={selected || undefined}
-      onClick={interactive ? onClick : undefined}
+      onClick={
+        interactive
+          ? () => {
+              if (onClick && !disabled) {
+                onClick();
+                return;
+              }
+              onOpen?.();
+            }
+          : undefined
+      }
       onKeyDown={handleKey}
       onDoubleClick={onOpen}
     >
+      {resolvedImageUrl ? (
+        <>
+          {onOpen ? (
+            <button
+              type="button"
+              className="gamecard__info"
+              aria-label={`View full text for ${card.title}`}
+              title="View full card text"
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpen();
+              }}
+            >
+              i
+            </button>
+          ) : null}
+          <img className="gamecard__front-image" src={resolvedImageUrl} alt={`${card.id} ${card.title}`} />
+        </>
+      ) : (
+        <>
       {onOpen ? (
         <button
           type="button"
@@ -103,12 +140,13 @@ export function GameCard({
         <div className="gamecard__title">{card.title}</div>
         {card.subtype ? <div className="gamecard__subtitle">{card.subtype}</div> : null}
       </div>
-      {imageUrl ? <div className="gamecard__image" style={{ backgroundImage: `url(${imageUrl})` }} /> : null}
       <div className="gamecard__body">{card.description}</div>
       <div className="gamecard__footer">
         <span className="gamecard__cost">{costLabel(card)}</span>
         <span className="gamecard__aor">{ownerLabel ?? card.owner ?? "Common"}{card.aor ? ` · ${card.aor}` : ""}</span>
       </div>
+        </>
+      )}
     </div>
   );
 }

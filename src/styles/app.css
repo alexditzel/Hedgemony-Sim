@@ -824,6 +824,18 @@ h1, h2, h3, h4, p { margin: 0; }
 .gamecard--interactive:focus-visible { outline: 2px solid var(--blue-400); outline-offset: 2px; }
 .gamecard--selected { border-color: var(--card-accent); box-shadow: 0 0 0 2px var(--card-accent), var(--shadow-card); }
 .gamecard--disabled { opacity: 0.55; filter: saturate(0.6); }
+.gamecard--image-front {
+  display: block;
+  padding: 0;
+  border-top-width: 1px;
+  background: var(--bg-card);
+}
+.gamecard__front-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
 .gamecard__info {
   position: absolute;
@@ -937,6 +949,22 @@ h1, h2, h3, h4, p { margin: 0; }
   height: 64px;
   background-size: cover;
   background-position: center;
+}
+.card-modal-preview {
+  display: grid;
+  justify-content: center;
+}
+.card-modal-preview .gamecard {
+  --card-width: min(420px, calc(100vw - 4rem));
+}
+.card-modal-preview__image {
+  display: block;
+  width: min(520px, calc(100vw - 4rem));
+  max-height: min(70vh, 780px);
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: var(--shadow-card);
+  background: var(--bg-card);
 }
 
 /* Card back (face-down) */

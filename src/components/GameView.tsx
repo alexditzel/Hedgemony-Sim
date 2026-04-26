@@ -17,6 +17,7 @@ import {
   generateWhiteCellSummary,
   getPlayerDeck,
   getPlayersBySide,
+  getRedChoiceOptions,
   payUsReadinessBill,
   playRedSignaledCard,
   procureForces,
@@ -197,6 +198,35 @@ function fallbackOpeningReviews(summary: string, turn: number, label: string): R
   ];
 }
 
+interface OpeningGeneration {
+  summary: string;
+  reviewItems: ReviewItem[];
+}
+
+const openingGenerationCache = new Map<string, Promise<OpeningGeneration>>();
+
+function openingGenerationKey(state: GameState): string {
+  return `${state.scenario_title}:turn-${state.turn}`;
+}
+
+function generateOpeningBriefing(state: GameState): Promise<OpeningGeneration> {
+  const key = openingGenerationKey(state);
+  const cached = openingGenerationCache.get(key);
+  if (cached) return cached;
+
+  const generation = (async () => {
+    const summary = await generateWhiteCellSummary("game_start", state.turn, state);
+    const reviewItems = await generateReviewItems(state, summary);
+    return { summary, reviewItems };
+  })();
+
+  openingGenerationCache.set(key, generation);
+  void generation.catch(() => {
+    openingGenerationCache.delete(key);
+  });
+  return generation;
+}
+
 function SummaryParagraphs({ text }: { text: string }) {
   const paragraphs = text
     .split(/\n\s*\n/)
@@ -320,6 +350,7 @@ export function GameView({ scenario }: GameViewProps) {
   // Auto-advancement (Red + White Cell placeholder behaviors)
   // ------------------------------------------------------------------
   useEffect(() => {
+    let cancelled = false;
     void (async () => {
       {
         if (reviewQueue.length > 0) return;
@@ -331,6 +362,7 @@ export function GameView({ scenario }: GameViewProps) {
             state,
             pendingAdj.id
           );
+          if (cancelled) return;
           if (showIssues(result.issues)) return;
           const diff = diffStates(snapshot, result.state);
           const newRolls = result.state.rolls.filter((roll) => !snapshot.rollIds.has(roll.id));
@@ -356,12 +388,16 @@ export function GameView({ scenario }: GameViewProps) {
         }
 
         if (state.phase === "GameStart") {
-          const summary = await generateWhiteCellSummary("game_start", state.turn, state);
-          const reviewItems = await generateReviewItems(state, summary);
-          const openingSummary = openingSummaryFromReviews(reviewItems, summary);
+          const openingGeneration = await generateOpeningBriefing(state);
+          if (cancelled) return;
+          openingGenerationCache.delete(openingGenerationKey(state));
+          const openingSummary = openingSummaryFromReviews(
+            openingGeneration.reviewItems,
+            openingGeneration.summary
+          );
           const next = recordGameStartSummary(state, openingSummary);
           turnReviewsSeeded.current.add(state.turn);
-          setReviewQueue(reviewItems);
+          setReviewQueue(openingGeneration.reviewItems);
           applyResult(next);
           return;
         }
@@ -373,6 +409,7 @@ export function GameView({ scenario }: GameViewProps) {
             const summary = turnSummary(state, state.turn);
             const label = state.turn === 1 ? "Opening Bell" : `Turn ${state.turn} Opens`;
             const reviewItems = await generateReviewItems(state, summary);
+            if (cancelled) return;
             setReviewQueue(reviewItems.length > 0 ? reviewItems : fallbackOpeningReviews(summary, state.turn, label));
             return;
           }
@@ -385,6 +422,7 @@ export function GameView({ scenario }: GameViewProps) {
           );
           if (nextRed) {
             const decision = await generateRedSignalDecision(state, nextRed.id);
+            if (cancelled) return;
             const result = signalRedCards(state, nextRed.id, decision.cardIds, decision.briefSummary, decision.activationIntent ?? undefined);
             if (showIssues(result.issues)) return;
             setReviewQueue([
@@ -417,18 +455,25 @@ export function GameView({ scenario }: GameViewProps) {
             return;
           }
           const decision = await generateRedPlayDecision(state, playerId);
-          if (decision.kind === "play") {
+          if (cancelled) return;
+          const options = getRedChoiceOptions(state, playerId);
+          const playableIds = new Set(options.remaining.map((card) => card.id));
+          const selectedCardId =
+            decision.kind === "play" && playableIds.has(decision.cardId)
+              ? decision.cardId
+              : options.remaining[0]?.id;
+          if (selectedCardId) {
             const snapshot = takeSnapshot(state);
             const result = playRedSignaledCard(
               state,
               playerId,
-              decision.cardId,
+              selectedCardId,
               roller,
-              commitmentsFor(decision.cardId)
+              commitmentsFor(selectedCardId)
             );
             if (showIssues(result.issues)) return;
             const outcome = result.outcome ? String(result.outcome) : undefined;
-            enqueueCardResolution(playerId, decision.cardId, snapshot, result.state, outcome, result.roll);
+            enqueueCardResolution(playerId, selectedCardId, snapshot, result.state, outcome, result.roll);
             applyResult(result.state);
             return;
           }
@@ -465,6 +510,7 @@ export function GameView({ scenario }: GameViewProps) {
         if (state.phase === "StateOfWorldSummary") {
           const endingTurn = state.turn;
           const next = recordStateOfWorldSummary(state, await generateWhiteCellSummary("state_of_world", endingTurn, state));
+          if (cancelled) return;
           const turnStart = turnStartSnapshots.current[endingTurn] ?? takeSnapshot(state);
           const historyPoint = metricPointFromState(next, endingTurn);
           metricHistory.current = [
@@ -486,6 +532,9 @@ export function GameView({ scenario }: GameViewProps) {
         }
       }
     })()
+    return () => {
+      cancelled = true;
+    };
   }, [state, reviewQueue, roller]);
 
   // ------------------------------------------------------------------
