@@ -97,14 +97,16 @@ export const ProbabilityOutcomeSchema = z.enum([
 ]);
 
 export type ReadinessLevel = 50 | 60 | 70 | 80 | 90 | 100;
-export const ReadinessLevelSchema = z.union([
-  z.literal(50),
-  z.literal(60),
-  z.literal(70),
-  z.literal(80),
-  z.literal(90),
-  z.literal(100),
-]);
+// export const ReadinessLevelSchema = z.union([
+//   z.literal(50),
+//   z.literal(60),
+//   z.literal(70),
+//   z.literal(80),
+//   z.literal(90),
+//   z.literal(100),
+// ]);
+// TODO: make sure this version works when interpreted as a JSON schema for the OpenAI API structured outputs
+export const ReadinessLevelSchema = z.literal([50, 60, 70, 80, 90, 100]);
 
 export type ReliabilityLevel = "Certain" | "High" | "Medium" | "Low";
 export const ReliabilityLevelSchema = z.enum([
