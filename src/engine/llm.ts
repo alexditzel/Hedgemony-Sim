@@ -23,7 +23,7 @@ const openai = new OpenAI({
 });
 
 const medium_model = "gpt-5.4-mini";
-const high_model = "gpt-5.5";
+// // const high_model = "gpt-5.5";
 
 // ----------------------------------------------------------------------------
 

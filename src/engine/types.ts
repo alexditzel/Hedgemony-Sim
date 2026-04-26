@@ -137,63 +137,63 @@ export const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
 );
 
 export type Condition = {
-  id?: string;
+  id: string | null;
   description: string;
-  tag?: RuleTag;
-  expression?: string;
+  tag: RuleTag | null;
+  expression: string | null;
 };
 export const ConditionSchema = z.object({
-  id: z.optional(z.string()),
+  id: z.nullable(z.string()),
   description: z.string(),
-  tag: z.optional(RuleTagSchema),
-  expression: z.optional(z.string()),
+  tag: z.nullable(RuleTagSchema),
+  expression: z.nullable(z.string()),
 });
 
 export type Location = {
   id: LocationId;
   label: string;
-  aor_id?: LocationId;
-  parent_location_id?: LocationId;
-  country_owner?: PlayerId;
-  home_for?: PlayerId[];
-  coordinates?: [number, number];
+  aor_id: LocationId | null;
+  parent_location_id: LocationId | null;
+  country_owner: PlayerId | null;
+  home_for: PlayerId[] | null;
+  coordinates: [number | null, number];
 };
 export const LocationSchema = z.object({
   id: LocationIdSchema,
   label: z.string(),
-  aor_id: z.optional(LocationIdSchema),
-  parent_location_id: z.optional(LocationIdSchema),
-  country_owner: z.optional(PlayerIdSchema),
-  home_for: z.optional(z.array(PlayerIdSchema)),
-  coordinates: z.optional(z.tuple([z.number(), z.number()])),
+  aor_id: z.nullable(LocationIdSchema),
+  parent_location_id: z.nullable(LocationIdSchema),
+  country_owner: z.nullable(PlayerIdSchema),
+  home_for: z.nullable(z.array(PlayerIdSchema)),
+  coordinates: z.nullable(z.tuple([z.number(), z.number()])),
 });
 
 export type MovementEdge = {
   from: LocationId;
   to: LocationId;
-  type?: "adjacent" | "same_aor" | "scenario";
+  type: "adjacent" | "same_aor" | "scenario" | null;
 };
 export const MovementEdgeSchema = z.object({
   from: LocationIdSchema,
   to: LocationIdSchema,
-  type: z.optional(z.enum(["adjacent", "same_aor", "scenario"])),
+  type: z.nullable(z.enum(["adjacent", "same_aor", "scenario"])),
 });
 
 export type Base = {
   id: string;
   owner: PlayerId;
   location_id: LocationId;
-  aor_id?: LocationId;
-  out_of_area_discount?: number;
-  notes?: string;
+  aor_id: LocationId | null;
+  out_of_area_discount: number | null;
+  notes: string | null;
 };
 export const BaseSchema = z.object({
   id: z.string(),
   owner: PlayerIdSchema,
   location_id: LocationIdSchema,
-  aor_id: z.optional(LocationIdSchema),
-  out_of_area_discount: z.optional(z.number()),
-  notes: z.optional(z.string()),
+  aor_id: z.nullable(LocationIdSchema),
+  out_of_area_discount: z.nullable(z.number()),
+  notes: z.nullable(z.string()),
 });
 
 export type ProxyForce = {
@@ -204,7 +204,7 @@ export type ProxyForce = {
   modernization_level: number;
   location_id: LocationId;
   reliability: ReliabilityLevel;
-  scope?: string;
+  scope: string | null;
 };
 export const ProxyForceSchema = z.object({
   id: z.string(),
@@ -214,7 +214,7 @@ export const ProxyForceSchema = z.object({
   modernization_level: z.number(),
   location_id: LocationIdSchema,
   reliability: ReliabilityLevelSchema,
-  scope: z.optional(z.string()),
+  scope: z.nullable(z.string()),
 });
 
 export type PlayerState = {
@@ -230,8 +230,8 @@ export type PlayerState = {
     action_investment: CardId[];
     domestic_event: CardId[];
   };
-  notes?: string;
-  allow_deficit?: boolean;
+  notes: string | null;
+  allow_deficit: boolean | null;
 };
 export const PlayerStateSchema = z.object({
   id: PlayerIdSchema,
@@ -246,8 +246,8 @@ export const PlayerStateSchema = z.object({
     action_investment: z.array(CardIdSchema),
     domestic_event: z.array(CardIdSchema),
   }),
-  notes: z.optional(z.string()),
-  allow_deficit: z.optional(z.boolean()),
+  notes: z.nullable(z.string()),
+  allow_deficit: z.nullable(z.boolean()),
 });
 
 export type ForceCounter = {
@@ -257,15 +257,15 @@ export type ForceCounter = {
   modernization_level: number;
   location_id: LocationId;
   home_base_id: LocationId;
-  readiness_level?: ReadinessLevel;
+  readiness_level: ReadinessLevel | null;
   pinned: {
     active: boolean;
     remaining_turns: number | "indefinite" | null;
-    area_of_interest_id?: LocationId;
+    area_of_interest_id: LocationId | null;
   };
   reset_required: boolean;
-  reset_available_turn?: number;
-  procured_turn?: number;
+  reset_available_turn: number | null;
+  procured_turn: number | null;
   proxy: boolean;
 };
 export const ForceCounterSchema = z.object({
@@ -275,27 +275,27 @@ export const ForceCounterSchema = z.object({
   modernization_level: z.number(),
   location_id: LocationIdSchema,
   home_base_id: LocationIdSchema,
-  readiness_level: z.optional(ReadinessLevelSchema),
+  readiness_level: z.nullable(ReadinessLevelSchema),
   pinned: z.object({
     active: z.boolean(),
     remaining_turns: z.union([z.number(), z.literal("indefinite"), z.null()]),
-    area_of_interest_id: z.optional(LocationIdSchema),
+    area_of_interest_id: z.nullable(LocationIdSchema),
   }),
   reset_required: z.boolean(),
-  reset_available_turn: z.optional(z.number()),
-  procured_turn: z.optional(z.number()),
+  reset_available_turn: z.nullable(z.number()),
+  procured_turn: z.nullable(z.number()),
   proxy: z.boolean(),
 });
 
 export type MarkerDefinition = {
   id: string;
   label: string;
-  description?: string;
+  description: string | null;
 };
 export const MarkerDefinitionSchema = z.object({
   id: z.string(),
   label: z.string(),
-  description: z.optional(z.string()),
+  description: z.nullable(z.string()),
 });
 
 export type PaceRule = {
@@ -309,66 +309,66 @@ export const PaceRuleSchema = z.object({
 
 export type RandomEventRule = {
   enabled: boolean;
-  timing?: PhaseId[];
-  threshold?: number;
+  timing: PhaseId[] | null;
+  threshold: number | null;
 };
 export const RandomEventRuleSchema = z.object({
   enabled: z.boolean(),
-  timing: z.optional(z.array(PhaseIdSchema)),
-  threshold: z.optional(z.number()),
+  timing: z.nullable(z.array(PhaseIdSchema)),
+  threshold: z.nullable(z.number()),
 });
 
 export type TableExtension = {
   table: string;
   row: string;
-  column?: string;
+  column: string | null;
   value: JsonValue;
   tag: "SCENARIO_DEFINED";
 };
 export const TableExtensionSchema = z.object({
   table: z.string(),
   row: z.string(),
-  column: z.optional(z.string()),
+  column: z.nullable(z.string()),
   value: JsonValueSchema,
   tag: z.literal("SCENARIO_DEFINED"),
 });
 
 export type ScenarioRules = {
-  optional_pace_of_play?: PaceRule;
+  optional_pace_of_play: PaceRule | null;
   activation_markers: boolean;
-  random_events?: RandomEventRule;
+  random_events: RandomEventRule | null;
   random_red_sequence: boolean;
-  random_red_sequence_order?: "ascending" | "descending";
-  random_red_sequence_tie_rule?: "player_id" | "white_cell";
+  random_red_sequence_order: "ascending" | "descending" | null;
+  random_red_sequence_tie_rule: "player_id" | "white_cell" | null;
   table_extensions: TableExtension[];
-  allow_us_emergency_deficit?: boolean;
+  allow_us_emergency_deficit: boolean | null;
 };
 export const ScenarioRulesSchema = z.object({
-  optional_pace_of_play: z.optional(PaceRuleSchema),
+  optional_pace_of_play: z.nullable(PaceRuleSchema),
   activation_markers: z.boolean(),
-  random_events: z.optional(RandomEventRuleSchema),
+  random_events: z.nullable(RandomEventRuleSchema),
   random_red_sequence: z.boolean(),
-  random_red_sequence_order: z.optional(z.enum(["ascending", "descending"])),
-  random_red_sequence_tie_rule: z.optional(z.enum(["player_id", "white_cell"])),
+  random_red_sequence_order: z.nullable(z.enum(["ascending", "descending"])),
+  random_red_sequence_tie_rule: z.nullable(z.enum(["player_id", "white_cell"])),
   table_extensions: z.array(TableExtensionSchema),
-  allow_us_emergency_deficit: z.optional(z.boolean()),
+  allow_us_emergency_deficit: z.nullable(z.boolean()),
 });
 
 export type CostValue =
   | number
   | null
   | {
-      table_reference?: string;
-      expression?: string;
-      requires_adjudication?: boolean;
+      table_reference: string | null;
+      expression: string | null;
+      requires_adjudication: boolean | null;
     };
 export const CostValueSchema = z.union([
   z.number(),
   z.null(),
   z.object({
-    table_reference: z.optional(z.string()),
-    expression: z.optional(z.string()),
-    requires_adjudication: z.optional(z.boolean()),
+    table_reference: z.nullable(z.string()),
+    expression: z.nullable(z.string()),
+    requires_adjudication: z.nullable(z.boolean()),
   }),
 ]);
 
@@ -385,7 +385,7 @@ export type CardResponse = {
   allowed_responders: string[];
   response_window: "immediate" | "same_phase" | "card_defined" | "white_cell";
   force_commitment_allowed: boolean;
-  cost_rule?: string;
+  cost_rule: string | null;
 };
 export const CardResponseSchema = z.object({
   allowed_responders: z.array(z.string()),
@@ -396,15 +396,14 @@ export const CardResponseSchema = z.object({
     "white_cell",
   ]),
   force_commitment_allowed: z.boolean(),
-  cost_rule: z.optional(z.string()),
+  cost_rule: z.nullable(z.string()),
 });
 
 export type ModifierDefinition = {
   id: string;
   description: string;
-  value?: number;
-  source?:
-    | "critical_capability_difference"
+  value: number | null;
+  source: | "critical_capability_difference" | null
     | "card"
     | "readiness"
     | "white_cell";
@@ -412,8 +411,8 @@ export type ModifierDefinition = {
 export const ModifierDefinitionSchema = z.object({
   id: z.string(),
   description: z.string(),
-  value: z.optional(z.number()),
-  source: z.optional(
+  value: z.nullable(z.number()),
+  source: z.nullable(
     z.enum([
       "critical_capability_difference",
       "card",
@@ -424,20 +423,20 @@ export const ModifierDefinitionSchema = z.object({
 });
 
 export type OutcomeRow = {
-  outcome?: ProbabilityOutcome;
-  roll_min?: number;
-  roll_max?: number;
-  label?: string;
+  outcome: ProbabilityOutcome | null;
+  roll_min: number | null;
+  roll_max: number | null;
+  label: string | null;
   effects: Effect[];
-  narrative?: string;
+  narrative: string | null;
 };
 export const OutcomeRowSchema = z.object({
-  outcome: z.optional(ProbabilityOutcomeSchema),
-  roll_min: z.optional(z.number()),
-  roll_max: z.optional(z.number()),
-  label: z.optional(z.string()),
+  outcome: z.nullable(ProbabilityOutcomeSchema),
+  roll_min: z.nullable(z.number()),
+  roll_max: z.nullable(z.number()),
+  label: z.nullable(z.string()),
   effects: z.array(z.lazy(() => EffectSchema)),
-  narrative: z.optional(z.string()),
+  narrative: z.nullable(z.string()),
 });
 
 export type ResolutionMethod =
@@ -458,63 +457,62 @@ export const ResolutionMethodSchema = z.enum([
 
 export type PinRule = {
   duration_turns: number | "indefinite";
-  area_of_interest_id?: LocationId;
+  area_of_interest_id: LocationId | null;
 };
 export const PinRuleSchema = z.object({
   duration_turns: z.union([z.number(), z.literal("indefinite")]),
-  area_of_interest_id: z.optional(LocationIdSchema),
+  area_of_interest_id: z.nullable(LocationIdSchema),
 });
 
 export type CardResolution = {
   method: ResolutionMethod[];
-  table_reference?:
-    | "CRT_A"
+  table_reference: | "CRT_A" | null
     | "RT_B"
     | "ProxyReliability"
     | "DoDBudgetVariation"
     | null;
-  die?: "D10";
+  die: "D10" | null;
   modifiers: ModifierDefinition[];
   critical_capabilities: CapabilityId[];
   outcome_map: OutcomeRow[];
   reset_rules_apply: boolean;
-  pinning?: PinRule;
+  pinning: PinRule | null;
 };
 export const CardResolutionSchema = z.object({
   method: z.array(ResolutionMethodSchema),
-  table_reference: z.optional(
+  table_reference: z.nullable(
     z.union([
       z.enum(["CRT_A", "RT_B", "ProxyReliability", "DoDBudgetVariation"]),
       z.null(),
     ]),
   ),
-  die: z.optional(z.literal("D10")),
+  die: z.nullable(z.literal("D10")),
   modifiers: z.array(ModifierDefinitionSchema),
   critical_capabilities: z.array(CapabilityIdSchema),
   outcome_map: z.array(OutcomeRowSchema),
   reset_rules_apply: z.boolean(),
-  pinning: z.optional(PinRuleSchema),
+  pinning: z.nullable(PinRuleSchema),
 });
 
 export type PlayConstraints = {
-  frequency?: string;
+  frequency: string | null;
   phase_restrictions: PhaseId[];
   prerequisites: Condition[];
-  unopposed_rule?: {
+  unopposed_rule: {
     description: string;
-    effects?: Effect[];
-    requires_adjudication?: boolean;
-  };
+    effects: Effect[] | null;
+    requires_adjudication: boolean | null;
+  } | null;
 };
 export const PlayConstraintsSchema = z.object({
-  frequency: z.optional(z.string()),
+  frequency: z.nullable(z.string()),
   phase_restrictions: z.array(PhaseIdSchema),
   prerequisites: z.array(ConditionSchema),
-  unopposed_rule: z.optional(
+  unopposed_rule: z.nullable(
     z.object({
       description: z.string(),
-      effects: z.optional(z.array(z.lazy(() => EffectSchema))),
-      requires_adjudication: z.optional(z.boolean()),
+      effects: z.nullable(z.array(z.lazy(() => EffectSchema))),
+      requires_adjudication: z.nullable(z.boolean()),
     }),
   ),
 });
@@ -522,13 +520,13 @@ export const PlayConstraintsSchema = z.object({
 export type Card = {
   id: CardId;
   type: CardType;
-  subtype?: string;
+  subtype: string | null;
   owner: PlayerId | "WhiteCell" | null;
   public_private: PublicPrivate;
   private_conditions: Condition[];
   title: string;
   description: string;
-  aor?: LocationId;
+  aor: LocationId | null;
   players_involved: PlayerId[];
   cost: CardCost;
   play_constraints: PlayConstraints;
@@ -536,18 +534,18 @@ export type Card = {
   resolution: CardResolution;
   effects: Effect[];
   future_effects: ScheduledEffect[];
-  notes?: string;
+  notes: string | null;
 };
 export const CardSchema = z.object({
   id: CardIdSchema,
   type: CardTypeSchema,
-  subtype: z.optional(z.string()),
+  subtype: z.nullable(z.string()),
   owner: z.union([PlayerIdSchema, z.literal("WhiteCell"), z.null()]),
   public_private: PublicPrivateSchema,
   private_conditions: z.array(ConditionSchema),
   title: z.string(),
   description: z.string(),
-  aor: z.optional(LocationIdSchema),
+  aor: z.nullable(LocationIdSchema),
   players_involved: z.array(PlayerIdSchema),
   cost: CardCostSchema,
   play_constraints: PlayConstraintsSchema,
@@ -555,7 +553,7 @@ export const CardSchema = z.object({
   resolution: CardResolutionSchema,
   effects: z.array(z.lazy(() => EffectSchema)),
   future_effects: z.array(z.lazy(() => ScheduledEffectSchema)),
-  notes: z.optional(z.string()),
+  notes: z.nullable(z.string()),
 });
 
 export type EffectType =
@@ -629,7 +627,7 @@ export type Effect = {
     | "after_pinning_removed"
     | "card_defined";
   visibility: Visibility;
-  source_card_id?: CardId;
+  source_card_id: CardId | null;
   requires_adjudication: boolean;
 };
 export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
@@ -645,23 +643,23 @@ export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
       "card_defined",
     ]),
     visibility: VisibilitySchema,
-    source_card_id: z.optional(CardIdSchema),
+    source_card_id: z.nullable(CardIdSchema),
     requires_adjudication: z.boolean(),
   }),
 );
 
 export type ScheduledEffect = {
   effect: Effect;
-  trigger_turn?: number;
-  expiration_turn?: number;
-  trigger_condition?: Condition;
+  trigger_turn: number | null;
+  expiration_turn: number | null;
+  trigger_condition: Condition | null;
 };
 export const ScheduledEffectSchema: z.ZodType<ScheduledEffect> = z.lazy(() =>
   z.object({
     effect: EffectSchema,
-    trigger_turn: z.optional(z.number()),
-    expiration_turn: z.optional(z.number()),
-    trigger_condition: z.optional(ConditionSchema),
+    trigger_turn: z.nullable(z.number()),
+    expiration_turn: z.nullable(z.number()),
+    trigger_condition: z.nullable(ConditionSchema),
   }),
 );
 
@@ -671,9 +669,9 @@ export type GroundTruthItem = {
   created_turn: number;
   visible_to: (PlayerId | "WhiteCell" | "Public")[];
   effect: Effect;
-  trigger_turn?: number;
-  expiration_turn?: number;
-  trigger_condition?: Condition;
+  trigger_turn: number | null;
+  expiration_turn: number | null;
+  trigger_condition: Condition | null;
   status: "pending" | "active" | "expired" | "resolved";
   narrative_note: string;
 };
@@ -689,9 +687,9 @@ export const GroundTruthItemSchema = z.object({
     z.union([PlayerIdSchema, z.literal("WhiteCell"), z.literal("Public")]),
   ),
   effect: EffectSchema,
-  trigger_turn: z.optional(z.number()),
-  expiration_turn: z.optional(z.number()),
-  trigger_condition: z.optional(ConditionSchema),
+  trigger_turn: z.nullable(z.number()),
+  expiration_turn: z.nullable(z.number()),
+  trigger_condition: z.nullable(ConditionSchema),
   status: z.enum(["pending", "active", "expired", "resolved"]),
   narrative_note: z.string(),
 });
@@ -703,8 +701,8 @@ export type ForceInitialization = {
   modernization_level: number;
   location_id: LocationId;
   home_base_id: LocationId;
-  readiness_level?: ReadinessLevel;
-  proxy?: boolean;
+  readiness_level: ReadinessLevel | null;
+  proxy: boolean | null;
 };
 export const ForceInitializationSchema = z.object({
   id: ForceIdSchema,
@@ -713,8 +711,8 @@ export const ForceInitializationSchema = z.object({
   modernization_level: z.number(),
   location_id: LocationIdSchema,
   home_base_id: LocationIdSchema,
-  readiness_level: z.optional(ReadinessLevelSchema),
-  proxy: z.optional(z.boolean()),
+  readiness_level: z.nullable(ReadinessLevelSchema),
+  proxy: z.nullable(z.boolean()),
 });
 
 export type Scenario = {
@@ -811,9 +809,9 @@ export type EventLogItem = {
   message: string;
   tags: RuleTag[];
   visibility: Visibility;
-  player_id?: PlayerId | "WhiteCell";
-  card_id?: CardId;
-  roll_id?: string;
+  player_id: PlayerId | "WhiteCell" | null;
+  card_id: CardId | null;
+  roll_id: string | null;
 };
 export const EventLogItemSchema = z.object({
   id: z.string(),
@@ -822,9 +820,9 @@ export const EventLogItemSchema = z.object({
   message: z.string(),
   tags: z.array(RuleTagSchema),
   visibility: VisibilitySchema,
-  player_id: z.optional(z.union([PlayerIdSchema, z.enum(["WhiteCell"])])),
-  card_id: z.optional(CardIdSchema),
-  roll_id: z.optional(z.string()),
+  player_id: z.nullable(z.union([PlayerIdSchema, z.enum(["WhiteCell"])])),
+  card_id: z.nullable(CardIdSchema),
+  roll_id: z.nullable(z.string()),
 });
 
 export type AdjudicationRequest = {
@@ -835,10 +833,10 @@ export type AdjudicationRequest = {
   rule_refs: string[];
   tags: RuleTag[];
   status: "pending" | "resolved";
-  requested_by?: PlayerId | "WhiteCell";
-  card_id?: CardId;
-  payload?: JsonValue;
-  resolution_note?: string;
+  requested_by: PlayerId | "WhiteCell" | null;
+  card_id: CardId | null;
+  payload: JsonValue | null;
+  resolution_note: string | null;
 };
 export const AdjudicationRequestSchema = z.object({
   id: z.string(),
@@ -848,24 +846,24 @@ export const AdjudicationRequestSchema = z.object({
   rule_refs: z.array(z.string()),
   tags: z.array(RuleTagSchema),
   status: z.enum(["pending", "resolved"]),
-  requested_by: z.optional(PlayerIdSchema),
-  card_id: z.optional(CardIdSchema),
-  payload: z.optional(JsonValueSchema),
-  resolution_note: z.optional(z.string()),
+  requested_by: z.nullable(PlayerIdSchema),
+  card_id: z.nullable(CardIdSchema),
+  payload: z.nullable(JsonValueSchema),
+  resolution_note: z.nullable(z.string()),
 });
 
 export type RedSignalState = {
   player_id: PlayerId;
   card_ids: CardId[];
-  brief_summary?: string;
-  activation_intent?: Record<CardId, "Yes" | "No" | "Undeclared">;
+  brief_summary: string | null;
+  activation_intent: Record<CardId, "Yes" | "No" | "Undeclared"> | null;
   completed: boolean;
 };
 export const RedSignalStateSchema = z.object({
   player_id: PlayerIdSchema,
   card_ids: z.array(CardIdSchema),
-  brief_summary: z.optional(z.string()),
-  activation_intent: z.optional(
+  brief_summary: z.nullable(z.string()),
+  activation_intent: z.nullable(
     z.record(CardIdSchema, z.enum(["Yes", "No", "Undeclared"])),
   ),
   completed: z.boolean(),
@@ -919,8 +917,8 @@ export type GameState = {
   per_turn_resources: Record<PlayerId, number>;
   rules_in_effect: ScenarioRules;
   max_turns: number;
-  active_player_id?: PlayerId;
-  blue_subphase?: "Investments" | "Actions";
+  active_player_id: PlayerId | null;
+  blue_subphase: "Investments" | "Actions" | null;
   red_sequence: PlayerId[];
   red_signals: Record<PlayerId, RedSignalState>;
   red_plays: Record<PlayerId, RedPlayState>;
@@ -934,7 +932,7 @@ export type GameState = {
   ground_truth: GroundTruthItem[];
   scenario_flags: Record<string, JsonValue>;
   summaries: {
-    game_start?: string;
+    game_start: string | null;
     state_of_world: Record<number, string>;
   };
 };
@@ -951,8 +949,8 @@ export const GameStateSchema = z.object({
   per_turn_resources: z.record(PlayerIdSchema, z.number()),
   rules_in_effect: ScenarioRulesSchema,
   max_turns: z.number(),
-  active_player_id: z.optional(PlayerIdSchema),
-  blue_subphase: z.optional(z.enum(["Investments", "Actions"])),
+  active_player_id: z.nullable(PlayerIdSchema),
+  blue_subphase: z.nullable(z.enum(["Investments", "Actions"])),
   red_sequence: z.array(PlayerIdSchema),
   red_signals: z.record(PlayerIdSchema, RedSignalStateSchema),
   red_plays: z.record(PlayerIdSchema, RedPlayStateSchema),
@@ -966,7 +964,7 @@ export const GameStateSchema = z.object({
   ground_truth: z.array(GroundTruthItemSchema),
   scenario_flags: z.record(z.string(), JsonValueSchema),
   summaries: z.object({
-    game_start: z.optional(z.string()),
+    game_start: z.nullable(z.string()),
     state_of_world: z.record(z.coerce.number(), z.string()),
   }),
 });
@@ -1001,12 +999,12 @@ export const RuleValueSchema = <T extends z.ZodTypeAny>(valueSchema: T) =>
 export type ForceCommitment = {
   force_id: ForceId;
   source: "in_theater" | "adjacent_theater" | "conus_reactive";
-  out_of_area_arrival?: boolean;
+  out_of_area_arrival: boolean | null;
 };
 export const ForceCommitmentSchema = z.object({
   force_id: ForceIdSchema,
   source: z.enum(["in_theater", "adjacent_theater", "conus_reactive"]),
-  out_of_area_arrival: z.optional(z.boolean()),
+  out_of_area_arrival: z.nullable(z.boolean()),
 });
 
 export type CombatFactorsBreakdown = {

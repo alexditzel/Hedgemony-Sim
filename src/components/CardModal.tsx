@@ -35,7 +35,7 @@ const OUTCOME_LABELS: Record<string, string> = {
   Fail: "Fail"
 };
 
-function outcomeLabel(value?: string): string {
+function outcomeLabel(value: string | null): string {
   if (!value) return "—";
   return OUTCOME_LABELS[value] ?? value;
 }
