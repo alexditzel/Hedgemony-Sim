@@ -13,9 +13,12 @@ import {
 } from "./types";
 
 const openai = new OpenAI({
+  // This is OK since this web app will only ever be ran locally.
   dangerouslyAllowBrowser: true,
   apiKey: import.meta.env.VITE_OPENAI_API_KEY,
 });
+
+const medium_model = import.meta.env.TEST ? "gpt-5.4-nano" : "gpt-5.4-mini";
 
 export interface PlaceholderRedSignalDecision {
   cardIds: CardId[];
@@ -26,10 +29,12 @@ export interface PlaceholderRedSignalDecision {
 const SignalDecisionSchema = z.object({
   cardIds: z.array(CardIdSchema),
   briefSummary: z.string(),
-  activationIntent: z.array(z.object({
-    cardId: CardIdSchema,
-    intent: z.enum(["Yes", "No", "Undeclared"])
-  })),
+  activationIntent: z.array(
+    z.object({
+      cardId: CardIdSchema,
+      intent: z.enum(["Yes", "No", "Undeclared"]),
+    }),
+  ),
 });
 
 export async function placeholderRedSignalDecision(
@@ -38,9 +43,13 @@ export async function placeholderRedSignalDecision(
 ): Promise<PlaceholderRedSignalDecision> {
   const options = getPlayerDeck(state, playerId).map((c) => c.id);
   const response = await openai.responses.parse({
-    model: "gpt-5.4-nano",
+    model: medium_model,
     input: [
-      { role: "system", content: "You are the Red player in a military simulation game. Choose between 1 and 3 cards to signal. Rule: If you choose exactly 3 cards, at least one must be an Action (has '-ACT-' in ID) and at least one must be an Investment (has '-INV-' in ID). Write a brief summary of your intent, and declare activation intents." },
+      {
+        role: "system",
+        content:
+          "You are the Red player in a military simulation game. Choose between 1 and 3 cards to signal. Rule: If you choose exactly 3 cards, at least one must be an Action (has '-ACT-' in ID) and at least one must be an Investment (has '-INV-' in ID). Write a brief summary of your intent, and declare activation intents.",
+      },
       { role: "user", content: JSON.stringify({ state, playerId, options }) },
     ],
     text: {
@@ -49,8 +58,9 @@ export async function placeholderRedSignalDecision(
   });
 
   const parsed = response.output_parsed as z.infer<typeof SignalDecisionSchema>;
-  
-  const activationIntentRecord: Record<CardId, "Yes" | "No" | "Undeclared"> = {};
+
+  const activationIntentRecord: Record<CardId, "Yes" | "No" | "Undeclared"> =
+    {};
   for (const { cardId, intent } of parsed.activationIntent) {
     activationIntentRecord[cardId] = intent;
   }
@@ -76,9 +86,13 @@ export async function placeholderRedPlayDecision(
   playerId: PlayerId,
 ): Promise<PlaceholderRedPlayDecision> {
   const response = await openai.responses.parse({
-    model: "gpt-5.4-nano",
+    model: medium_model,
     input: [
-      { role: "system", content: "You are the Red player. Decide whether to play a signaled card or skip based on the current game state." },
+      {
+        role: "system",
+        content:
+          "You are the Red player. Decide whether to play a signaled card or skip based on the current game state.",
+      },
       { role: "user", content: JSON.stringify({ state, playerId }) },
     ],
     text: {
@@ -97,11 +111,17 @@ const SequenceDecisionSchema = z.object({
   sequence: z.array(PlayerIdSchema),
 });
 
-export async function placeholderRedSequenceDecision(state: GameState): Promise<PlayerId[]> {
+export async function placeholderRedSequenceDecision(
+  state: GameState,
+): Promise<PlayerId[]> {
   const response = await openai.responses.parse({
-    model: "gpt-5.4-nano",
+    model: medium_model,
     input: [
-      { role: "system", content: "You are the White Cell. Decide the turn sequence for the Red players based on the current game state." },
+      {
+        role: "system",
+        content:
+          "You are the White Cell. Decide the turn sequence for the Red players based on the current game state.",
+      },
       { role: "user", content: JSON.stringify({ state }) },
     ],
     text: {
@@ -119,9 +139,12 @@ export async function placeholderWhiteCellSummary(
   state: GameState,
 ): Promise<string> {
   const response = await openai.responses.parse({
-    model: "gpt-5.4-nano",
+    model: medium_model,
     input: [
-      { role: "system", content: `You are the White Cell. Summarize the ${kind} for turn ${turn}.` },
+      {
+        role: "system",
+        content: `You are the White Cell. Summarize the ${kind} for turn ${turn}.`,
+      },
       { role: "user", content: JSON.stringify({ state, kind, turn }) },
     ],
     text: {
@@ -138,9 +161,13 @@ export async function placeholderWhiteCellAdjudicationResolution(
   state: GameState,
 ): Promise<string> {
   const response = await openai.responses.parse({
-    model: "gpt-5.4-nano",
+    model: medium_model,
     input: [
-      { role: "system", content: "You are the White Cell. Resolve the adjudication request in rules-engine-compatible terms." },
+      {
+        role: "system",
+        content:
+          "You are the White Cell. Resolve the adjudication request in rules-engine-compatible terms.",
+      },
       { role: "user", content: JSON.stringify({ state, request }) },
     ],
     text: {
@@ -152,11 +179,18 @@ export async function placeholderWhiteCellAdjudicationResolution(
 
 const EventNoteSchema = z.object({ note: z.string() });
 
-export async function placeholderWhiteCellEventNote(cardId: CardId, state: GameState): Promise<string> {
+export async function placeholderWhiteCellEventNote(
+  cardId: CardId,
+  state: GameState,
+): Promise<string> {
   const response = await openai.responses.parse({
-    model: "gpt-5.4-nano",
+    model: medium_model,
     input: [
-      { role: "system", content: "You are the White Cell. Decide why and how to inject a scenario event for the given card ID." },
+      {
+        role: "system",
+        content:
+          "You are the White Cell. Decide why and how to inject a scenario event for the given card ID.",
+      },
       { role: "user", content: JSON.stringify({ state, cardId }) },
     ],
     text: {
@@ -172,9 +206,13 @@ export async function placeholderWhiteCellEventDecision(
   state: GameState,
 ): Promise<CardId | undefined> {
   const response = await openai.responses.parse({
-    model: "gpt-5.4-nano",
+    model: medium_model,
     input: [
-      { role: "system", content: "You are the White Cell. Decide whether to inject an event and which event to use." },
+      {
+        role: "system",
+        content:
+          "You are the White Cell. Decide whether to inject an event and which event to use.",
+      },
       { role: "user", content: JSON.stringify({ state }) },
     ],
     text: {
