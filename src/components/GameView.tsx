@@ -12,11 +12,11 @@ import {
   getPlayersBySide,
   payUsReadinessBill,
   playRedSignaledCard,
-  placeholderRedPlayDecision,
-  placeholderRedSequenceDecision,
-  placeholderRedSignalDecision,
-  placeholderWhiteCellAdjudicationResolution,
-  placeholderWhiteCellSummary,
+  generateRedPlayDecision,
+  generateRedSequenceDecision,
+  generateRedSignalDecision,
+  generateWhiteCellAdjudicationResolution,
+  generateWhiteCellSummary,
   procureForces,
   recordGameStartSummary,
   recordStateOfWorldSummary,
@@ -126,7 +126,7 @@ function commitmentsFor(cardId: CardId): Partial<{
       blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater" }],
       red_commitments: [{ force_id: "PRC-INDO-5-M3", source: "in_theater" }],
       blue_players: ["US"],
-      red_players: ["PRC"]
+      red_players: ["PRC"],
     };
   }
   if (cardId === "NATO-ACT-01") {
@@ -134,21 +134,21 @@ function commitmentsFor(cardId: CardId): Partial<{
       blue_commitments: [{ force_id: "NATO-EUCOM-5", source: "in_theater" }],
       red_commitments: [{ force_id: "RU-EUCOM-5-M2", source: "in_theater" }],
       blue_players: ["NATO_EU"],
-      red_players: ["RU"]
+      red_players: ["RU"],
     };
   }
   if (cardId === "RU-ACT-01") {
     return {
       blue_commitments: [
         { force_id: "NATO-EUCOM-5", source: "in_theater" },
-        { force_id: "US-EUCOM-1", source: "in_theater" }
+        { force_id: "US-EUCOM-1", source: "in_theater" },
       ],
       red_commitments: [
         { force_id: "RU-EUCOM-5-M2", source: "in_theater" },
-        { force_id: "RU-EUCOM-4-M3", source: "in_theater" }
+        { force_id: "RU-EUCOM-4-M3", source: "in_theater" },
       ],
       blue_players: ["NATO_EU", "US"],
-      red_players: ["RU"]
+      red_players: ["RU"],
     };
   }
   if (cardId === "PRC-ACT-01" || cardId === "PRC-ACT-02") {
@@ -156,10 +156,10 @@ function commitmentsFor(cardId: CardId): Partial<{
       blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater" }],
       red_commitments: [
         { force_id: "PRC-INDO-5-M2", source: "in_theater" },
-        { force_id: "PRC-INDO-5-M3", source: "in_theater" }
+        { force_id: "PRC-INDO-5-M3", source: "in_theater" },
       ],
       blue_players: ["US"],
-      red_players: ["PRC"]
+      red_players: ["PRC"],
     };
   }
   if (cardId === "IR-ACT-01") {
@@ -451,7 +451,7 @@ export function GameView({ scenario }: GameViewProps) {
         modernization_level: 3,
         location_id: "CONUS",
         home_base_id: "CONUS",
-        readiness_level: 90
+        readiness_level: 90,
       });
       if (showIssues(result.issues)) return;
       enqueueCardResolution(playerId, card.id, snapshot, result.state);

@@ -20,11 +20,11 @@ const openai = new OpenAI({
 
 const medium_model = import.meta.env.TEST ? "gpt-5.4-nano" : "gpt-5.4-mini";
 
-export interface PlaceholderRedSignalDecision {
+export type RedSignalDecision = {
   cardIds: CardId[];
   briefSummary: string;
   activationIntent: RedSignalState["activation_intent"];
-}
+};
 
 const SignalDecisionSchema = z.object({
   cardIds: z.array(CardIdSchema),
@@ -37,10 +37,10 @@ const SignalDecisionSchema = z.object({
   ),
 });
 
-export async function placeholderRedSignalDecision(
+export async function generateRedSignalDecision(
   state: GameState,
   playerId: PlayerId,
-): Promise<PlaceholderRedSignalDecision> {
+): Promise<RedSignalDecision> {
   const options = getPlayerDeck(state, playerId).map((c) => c.id);
   const response = await openai.responses.parse({
     model: medium_model,
@@ -72,7 +72,7 @@ export async function placeholderRedSignalDecision(
   };
 }
 
-export type PlaceholderRedPlayDecision =
+export type RedPlayDecision =
   | { kind: "play"; cardId: CardId }
   | { kind: "skip" };
 
@@ -81,10 +81,10 @@ const PlayDecisionSchema = z.object({
   cardId: z.nullable(CardIdSchema),
 });
 
-export async function placeholderRedPlayDecision(
+export async function generateRedPlayDecision(
   state: GameState,
   playerId: PlayerId,
-): Promise<PlaceholderRedPlayDecision> {
+): Promise<RedPlayDecision> {
   const response = await openai.responses.parse({
     model: medium_model,
     input: [
@@ -111,7 +111,7 @@ const SequenceDecisionSchema = z.object({
   sequence: z.array(PlayerIdSchema),
 });
 
-export async function placeholderRedSequenceDecision(
+export async function generateRedSequenceDecision(
   state: GameState,
 ): Promise<PlayerId[]> {
   const response = await openai.responses.parse({
@@ -133,7 +133,7 @@ export async function placeholderRedSequenceDecision(
 
 const SummarySchema = z.object({ summary: z.string() });
 
-export async function placeholderWhiteCellSummary(
+export async function generateWhiteCellSummary(
   kind: "game_start" | "state_of_world",
   turn: number,
   state: GameState,
@@ -156,7 +156,7 @@ export async function placeholderWhiteCellSummary(
 
 const ResolutionSchema = z.object({ resolution: z.string() });
 
-export async function placeholderWhiteCellAdjudicationResolution(
+export async function generateWhiteCellAdjudicationResolution(
   request: AdjudicationRequest,
   state: GameState,
 ): Promise<string> {
@@ -179,7 +179,7 @@ export async function placeholderWhiteCellAdjudicationResolution(
 
 const EventNoteSchema = z.object({ note: z.string() });
 
-export async function placeholderWhiteCellEventNote(
+export async function generateWhiteCellEventNote(
   cardId: CardId,
   state: GameState,
 ): Promise<string> {
@@ -202,7 +202,7 @@ export async function placeholderWhiteCellEventNote(
 
 const EventDecisionSchema = z.object({ cardId: z.nullable(CardIdSchema) });
 
-export async function placeholderWhiteCellEventDecision(
+export async function generateWhiteCellEventDecision(
   state: GameState,
 ): Promise<CardId | undefined> {
   const response = await openai.responses.parse({
