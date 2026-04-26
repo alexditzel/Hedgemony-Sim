@@ -1,6 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync } from "node:fs";
-import { basename } from "node:path";
 import defaultScenario from "../src/data/defaultScenario.json";
 import { canViewLog, canViewRoll } from "../src/components/visibility";
 import {
@@ -137,20 +135,51 @@ describe("scenario loading and validation", () => {
     expect(state.summaries.state_of_world[1]).toBe("Year-end summary.");
   });
 
-  it("loads every card from the cards folder into the playable scenario", () => {
+  it("loads scenario-defined cards into the playable scenario", () => {
     const state = freshState();
-    const expectedCardIds = [
+    const expectedScenarioCardIds = [
       "BLUE-01",
       "DPRK-29",
       "DPRK-30",
       "DPRK-31",
       "DPRK-32",
+      "EVT-CON-01",
+      "EVT-CON-02",
+      "EVT-CON-04",
       "EVT-CON-40",
       "EVT-CON-41",
+      "EVT-DPRK-04",
+      "EVT-DPRK-06",
+      "EVT-IR-04",
+      "EVT-IR-10",
       "EVT-IR-11",
+      "EVT-NATO-05",
+      "EVT-NATO-11",
       "EVT-NATO-18",
+      "EVT-PRC-02",
+      "EVT-PRC-08",
+      "EVT-PRC-13",
+      "EVT-PRC-15",
+      "EVT-RU-04",
+      "EVT-RU-13",
       "EVT-RU-22",
+      "EVT-US-01",
+      "EVT-US-06",
+      "IR-01",
+      "IR-04",
+      "PRC-01",
+      "PRC-17",
+      "PRC-22",
+      "PRC-24",
+      "PRC-26",
+      "PRC-27",
+      "PRC-28",
+      "PRC-29",
       "PRC-30",
+      "RU-15",
+      "RU-16",
+      "RU-17",
+      "RU-18",
       "RU-27",
       "RU-28",
       "RU-29",
@@ -158,13 +187,15 @@ describe("scenario loading and validation", () => {
       "US-10",
       "US-11"
     ];
-    const files = readdirSync("cards").map((file) => basename(file, ".md"));
-    expect(files).toHaveLength(expectedCardIds.length);
-    expect(Object.keys(state.cards)).toEqual(expect.arrayContaining(expectedCardIds));
+    expect(Object.keys(state.cards)).toEqual(expect.arrayContaining(expectedScenarioCardIds));
     expect(state.players.US.card_decks.action_investment).toEqual(expect.arrayContaining(["BLUE-01", "UAC-1", "US-10", "US-11"]));
+    expect(state.players.PRC.card_decks.action_investment).toEqual(
+      expect.arrayContaining(["PRC-01", "PRC-17", "PRC-22", "PRC-24", "PRC-26", "PRC-27", "PRC-28", "PRC-29"])
+    );
     expect(state.players.DPRK.card_decks.action_investment).toEqual(
       expect.arrayContaining(["DPRK-29", "DPRK-30", "DPRK-31", "DPRK-32"])
     );
+    expect(state.players.NATO_EU.card_decks.domestic_event).toEqual(expect.arrayContaining(["EVT-NATO-05", "EVT-NATO-11"]));
   });
 });
 
@@ -671,7 +702,7 @@ describe("combat resolution and card effects", () => {
     expect(validateState(blockedUpgrade.state).filter((issue) => issue.severity === "error")).toHaveLength(0);
   });
 
-  it("resolves folder cards with deterministic effects, future effects, and frequency limits", () => {
+  it("resolves scenario cards with deterministic effects, future effects, and frequency limits", () => {
     const paid = payUsReadinessBill(startTurnThroughBlueReadiness()).state;
     const actionPhase = advanceBlueToActions(paid).state;
 
@@ -710,7 +741,7 @@ describe("combat resolution and card effects", () => {
     expect(infrastructureAttack.adjudications.length).toBeGreaterThan(0);
   });
 
-  it("supports Red folder cards that use RT B, ransomware tables, and card-defined limits", () => {
+  it("supports Red scenario cards that use RT B, ransomware tables, and card-defined limits", () => {
     const state = startRedPhase();
     const humanWaves = resolveCard(
       state,
@@ -744,7 +775,43 @@ describe("combat resolution and card effects", () => {
     expect(malware.state.scenario_flags.DPRK_NEXT_RANSOMWARE_MODIFIER).toBe(2);
   });
 
-  it("injects folder event cards and applies supported event effects", () => {
+  it("resolves representative standard cards without adding rule exceptions", () => {
+    const state = startRedPhase();
+
+    const c4isrUpgrade = resolveCard(state, { acting_player_id: "PRC", card_id: "PRC-24" }, new SequenceDiceRoller([2]));
+    expect(c4isrUpgrade.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+    expect(c4isrUpgrade.state.players.PRC.critical_capabilities.C4ISR).toBe(4);
+
+    const grayZone = resolveCard(
+      state,
+      {
+        acting_player_id: "PRC",
+        card_id: "PRC-01",
+        blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater" }],
+        red_commitments: [{ force_id: "PRC-INDO-5-M3", source: "in_theater" }],
+        blue_players: ["US"],
+        red_players: ["PRC"]
+      },
+      new SequenceDiceRoller([4])
+    );
+    expect(grayZone.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+    expect(grayZone.outcome).toBeDefined();
+    expect(grayZone.state.scenario_flags.PRC_REGIONAL_ECONOMIC_ROLL_MODIFIER).toBe(-2);
+
+    const iranSupport = injectWhiteCellEvent(state, "EVT-IR-04", "Support to Hezbollah.", new SequenceDiceRoller([5]));
+    expect(iranSupport.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+    expect(iranSupport.state.ground_truth).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: "EVT-IR-04", status: "pending", trigger_turn: 2 })
+      ])
+    );
+
+    const peacekeeping = injectWhiteCellEvent(state, "EVT-CON-02", "Peacekeeping crisis.", new SequenceDiceRoller([8]));
+    expect(peacekeeping.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+    expect(peacekeeping.adjudications.length).toBeGreaterThan(0);
+  });
+
+  it("injects scenario event cards and applies supported event effects", () => {
     const state = payUsReadinessBill(startTurnThroughBlueReadiness()).state;
     const natoEvent = injectWhiteCellEvent(state, "EVT-NATO-18", "Nordic accession.", new SequenceDiceRoller([5]));
     expect(natoEvent.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
