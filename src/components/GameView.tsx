@@ -62,48 +62,48 @@ import { diffStates, takeSnapshot, type Snapshot, type StateDiff } from "./diff"
 
 type ReviewItem =
   | {
-      kind: "world_newspapers";
-      turn: number;
-      summary: string;
-      label: string;
-    }
+    kind: "world_newspapers";
+    turn: number;
+    summary: string;
+    label: string;
+  }
   | {
-      kind: "world_intel";
-      turn: number;
-      summary: string;
-      label: string;
-    }
+    kind: "world_intel";
+    turn: number;
+    summary: string;
+    label: string;
+  }
   | {
-      kind: "signal_reveal";
-      turn: number;
-      playerId: PlayerId;
-      cardIds: CardId[];
-    }
+    kind: "signal_reveal";
+    turn: number;
+    playerId: PlayerId;
+    cardIds: CardId[];
+  }
   | {
-      kind: "signal_intel";
-      turn: number;
-      playerId: PlayerId;
-      cardIds: CardId[];
-    }
+    kind: "signal_intel";
+    turn: number;
+    playerId: PlayerId;
+    cardIds: CardId[];
+  }
   | {
-      kind: "card_resolution";
-      actor: PlayerId | "WhiteCell";
-      cardId: CardId;
-      outcome?: string;
-      diff: StateDiff;
-      rolls: RollRecord[];
-      narrative?: string;
-    }
+    kind: "card_resolution";
+    actor: PlayerId | "WhiteCell";
+    cardId: CardId;
+    outcome?: string;
+    diff: StateDiff;
+    rolls: RollRecord[];
+    narrative?: string;
+  }
   | {
-      kind: "annual_allocation";
-      turn: number;
-      allocations: { playerId: PlayerId; baseRp: number; variation: number; total: number }[];
-      budgetRoll?: RollRecord;
-    }
+    kind: "annual_allocation";
+    turn: number;
+    allocations: { playerId: PlayerId; baseRp: number; variation: number; total: number }[];
+    budgetRoll?: RollRecord;
+  }
   | {
-      kind: "end_of_turn_map";
-      turn: number;
-    };
+    kind: "end_of_turn_map";
+    turn: number;
+  };
 
 interface GameViewProps {
   scenario: Scenario;
@@ -258,153 +258,157 @@ export function GameView({ scenario }: GameViewProps) {
   // Auto-advancement (Red + White Cell placeholder behaviors)
   // ------------------------------------------------------------------
   useEffect(() => {
-    if (reviewQueue.length > 0) return;
+    void (async () => {
+      {
+        if (reviewQueue.length > 0) return;
 
-    const pendingAdj = state.pending_adjudications.find((entry) => entry.status === "pending");
-    if (pendingAdj) {
-      const snapshot = takeSnapshot(state);
-      const result = resolveWhiteCellAdjudication(
-        state,
-        pendingAdj.id,
-        placeholderWhiteCellAdjudicationResolution(pendingAdj)
-      );
-      if (showIssues(result.issues)) return;
-      const diff = diffStates(snapshot, result.state);
-      const newRolls = result.state.rolls.filter((roll) => !snapshot.rollIds.has(roll.id));
-      const cardId = pendingAdj.card_id;
-      const hasMechanical =
-        diff.scalars.length > 0 || diff.flags.length > 0 || newRolls.length > 0;
-      if (hasMechanical) {
-        setReviewQueue((queue) => [
-          ...queue,
-          {
-            kind: "card_resolution",
-            actor: "WhiteCell",
-            cardId: cardId ?? "WHITE-CELL",
-            outcome: "Adjudicated",
-            diff,
-            rolls: newRolls,
-            narrative: pendingAdj.reason
+        const pendingAdj = state.pending_adjudications.find((entry) => entry.status === "pending");
+        if (pendingAdj) {
+          const snapshot = takeSnapshot(state);
+          const result = await resolveWhiteCellAdjudication(
+            state,
+            pendingAdj.id,
+            await generateWhiteCellAdjudicationResolution(pendingAdj, state)
+          );
+          if (showIssues(result.issues)) return;
+          const diff = diffStates(snapshot, result.state);
+          const newRolls = result.state.rolls.filter((roll) => !snapshot.rollIds.has(roll.id));
+          const cardId = pendingAdj.card_id;
+          const hasMechanical =
+            diff.scalars.length > 0 || diff.flags.length > 0 || newRolls.length > 0;
+          if (hasMechanical) {
+            setReviewQueue((queue) => [
+              ...queue,
+              {
+                kind: "card_resolution",
+                actor: "WhiteCell",
+                cardId: cardId ?? "WHITE-CELL",
+                outcome: "Adjudicated",
+                diff,
+                rolls: newRolls,
+                narrative: pendingAdj.reason
+              }
+            ]);
           }
-        ]);
-      }
-      applyResult(result.state);
-      return;
-    }
-
-    if (state.phase === "GameStart") {
-      const summary = placeholderWhiteCellSummary("game_start", state.turn);
-      const next = recordGameStartSummary(state, summary);
-      turnReviewsSeeded.current.add(state.turn);
-      setReviewQueue([
-        { kind: "world_newspapers", turn: state.turn, summary, label: "Opening Bell" },
-        { kind: "world_intel", turn: state.turn, summary, label: "Opening Bell" }
-      ]);
-      applyResult(next);
-      return;
-    }
-
-    if (state.phase === "RedSignaling") {
-      const nextRed = getPlayersBySide(state, "Red").find((player) => !state.red_signals[player.id]?.completed);
-      if (nextRed) {
-        const decision = placeholderRedSignalDecision(state, nextRed.id);
-        const result = signalRedCards(state, nextRed.id, decision.cardIds, decision.briefSummary, decision.activationIntent);
-        if (showIssues(result.issues)) return;
-        setReviewQueue([
-          {
-            kind: "signal_reveal",
-            turn: state.turn,
-            playerId: nextRed.id,
-            cardIds: decision.cardIds
-          },
-          {
-            kind: "signal_intel",
-            turn: state.turn,
-            playerId: nextRed.id,
-            cardIds: decision.cardIds
-          }
-        ]);
-        applyResult(result.state);
-        return;
-      }
-
-      // All red have signaled. Seed the start-of-turn review queue if not already done.
-      if (!turnReviewsSeeded.current.has(state.turn)) {
-        turnReviewsSeeded.current.add(state.turn);
-        const summary = turnSummary(state, state.turn);
-        const label = state.turn === 1 ? "Opening Bell" : `Turn ${state.turn} Opens`;
-        setReviewQueue([
-          { kind: "world_newspapers", turn: state.turn, summary, label },
-          { kind: "world_intel", turn: state.turn, summary, label }
-        ]);
-        return;
-      }
-
-      // Reviews already seeded for this turn — advance.
-      const result = beginBlueReadinessBill(state);
-      if (!showIssues(result.issues)) applyResult(result.state);
-      return;
-    }
-
-    if (state.phase === "RedInvestmentsAndActions" && state.active_player_id) {
-      const playerId = state.active_player_id;
-      if (state.red_plays[playerId]?.skipped) {
-        applyResult(advanceRedActivePlayer(state));
-        return;
-      }
-      const decision = placeholderRedPlayDecision(state, playerId);
-      if (decision.kind === "play") {
-        const snapshot = takeSnapshot(state);
-        const result = playRedSignaledCard(
-          state,
-          playerId,
-          decision.cardId,
-          roller,
-          commitmentsFor(decision.cardId)
-        );
-        if (showIssues(result.issues)) return;
-        const outcome = result.outcome ? String(result.outcome) : undefined;
-        enqueueCardResolution(playerId, decision.cardId, snapshot, result.state, outcome, result.roll);
-        applyResult(result.state);
-        return;
-      }
-      const result = skipRemainingRedCards(state, playerId);
-      if (!showIssues(result.issues)) applyResult(result.state);
-      return;
-    }
-
-    if (state.phase === "AnnualResourcesAllocation") {
-      const before: Record<string, number> = {};
-      for (const [id, p] of Object.entries(state.players)) before[id] = p.resource_points;
-      const result = annualResourceAllocation(state, roller);
-      if (showIssues(result.issues)) return;
-      const allocations = Object.values(result.state.players).map((player) => {
-        const beforeRp = before[player.id] ?? 0;
-        const total = player.resource_points - beforeRp;
-        const baseRp = state.per_turn_resources[player.id] ?? 0;
-        const variation = total - baseRp;
-        return { playerId: player.id, baseRp, variation, total };
-      });
-      setReviewQueue((queue) => [
-        ...queue,
-        {
-          kind: "annual_allocation",
-          turn: state.turn,
-          allocations,
-          budgetRoll: result.budgetRoll
+          applyResult(result.state);
+          return;
         }
-      ]);
-      applyResult(result.state);
-      return;
-    }
 
-    if (state.phase === "StateOfWorldSummary") {
-      const endingTurn = state.turn;
-      const next = recordStateOfWorldSummary(state, placeholderWhiteCellSummary("state_of_world", endingTurn));
-      setReviewQueue((queue) => [...queue, { kind: "end_of_turn_map", turn: endingTurn } as ReviewItem]);
-      applyResult(next);
-      return;
-    }
+        if (state.phase === "GameStart") {
+          const summary = await generateWhiteCellSummary("game_start", state.turn, state);
+          const next = recordGameStartSummary(state, summary);
+          turnReviewsSeeded.current.add(state.turn);
+          setReviewQueue([
+            { kind: "world_newspapers", turn: state.turn, summary, label: "Opening Bell" },
+            { kind: "world_intel", turn: state.turn, summary, label: "Opening Bell" }
+          ]);
+          applyResult(next);
+          return;
+        }
+
+        if (state.phase === "RedSignaling") {
+          const nextRed = getPlayersBySide(state, "Red").find((player) => !state.red_signals[player.id]?.completed);
+          if (nextRed) {
+            const decision = await generateRedSignalDecision(state, nextRed.id);
+            const result = signalRedCards(state, nextRed.id, decision.cardIds, decision.briefSummary, decision.activationIntent);
+            if (showIssues(result.issues)) return;
+            setReviewQueue([
+              {
+                kind: "signal_reveal",
+                turn: state.turn,
+                playerId: nextRed.id,
+                cardIds: decision.cardIds
+              },
+              {
+                kind: "signal_intel",
+                turn: state.turn,
+                playerId: nextRed.id,
+                cardIds: decision.cardIds
+              }
+            ]);
+            applyResult(result.state);
+            return;
+          }
+
+          // All red have signaled. Seed the start-of-turn review queue if not already done.
+          if (!turnReviewsSeeded.current.has(state.turn)) {
+            turnReviewsSeeded.current.add(state.turn);
+            const summary = turnSummary(state, state.turn);
+            const label = state.turn === 1 ? "Opening Bell" : `Turn ${state.turn} Opens`;
+            setReviewQueue([
+              { kind: "world_newspapers", turn: state.turn, summary, label },
+              { kind: "world_intel", turn: state.turn, summary, label }
+            ]);
+            return;
+          }
+
+          // Reviews already seeded for this turn — advance.
+          const result = beginBlueReadinessBill(state);
+          if (!showIssues(result.issues)) applyResult(result.state);
+          return;
+        }
+
+        if (state.phase === "RedInvestmentsAndActions" && state.active_player_id) {
+          const playerId = state.active_player_id;
+          if (state.red_plays[playerId]?.skipped) {
+            applyResult(advanceRedActivePlayer(state));
+            return;
+          }
+          const decision = await generateRedPlayDecision(state, playerId);
+          if (decision.kind === "play") {
+            const snapshot = takeSnapshot(state);
+            const result = playRedSignaledCard(
+              state,
+              playerId,
+              decision.cardId,
+              roller,
+              commitmentsFor(decision.cardId)
+            );
+            if (showIssues(result.issues)) return;
+            const outcome = result.outcome ? String(result.outcome) : undefined;
+            enqueueCardResolution(playerId, decision.cardId, snapshot, result.state, outcome, result.roll);
+            applyResult(result.state);
+            return;
+          }
+          const result = skipRemainingRedCards(state, playerId);
+          if (!showIssues(result.issues)) applyResult(result.state);
+          return;
+        }
+
+        if (state.phase === "AnnualResourcesAllocation") {
+          const before: Record<string, number> = {};
+          for (const [id, p] of Object.entries(state.players)) before[id] = p.resource_points;
+          const result = annualResourceAllocation(state, roller);
+          if (showIssues(result.issues)) return;
+          const allocations = Object.values(result.state.players).map((player) => {
+            const beforeRp = before[player.id] ?? 0;
+            const total = player.resource_points - beforeRp;
+            const baseRp = state.per_turn_resources[player.id] ?? 0;
+            const variation = total - baseRp;
+            return { playerId: player.id, baseRp, variation, total };
+          });
+          setReviewQueue((queue) => [
+            ...queue,
+            {
+              kind: "annual_allocation",
+              turn: state.turn,
+              allocations,
+              budgetRoll: result.budgetRoll
+            }
+          ]);
+          applyResult(result.state);
+          return;
+        }
+
+        if (state.phase === "StateOfWorldSummary") {
+          const endingTurn = state.turn;
+          const next = recordStateOfWorldSummary(state, await generateWhiteCellSummary("state_of_world", endingTurn, state));
+          setReviewQueue((queue) => [...queue, { kind: "end_of_turn_map", turn: endingTurn } as ReviewItem]);
+          applyResult(next);
+          return;
+        }
+      }
+    })()
   }, [state, reviewQueue, roller]);
 
   // ------------------------------------------------------------------
@@ -432,8 +436,8 @@ export function GameView({ scenario }: GameViewProps) {
     if (!showIssues(result.issues)) applyResult(result.state);
   }
 
-  function endBluePhase(): void {
-    const sequence = state.rules_in_effect.random_red_sequence ? undefined : placeholderRedSequenceDecision(state);
+  async function endBluePhase(): Promise<void> {
+    const sequence = state.rules_in_effect.random_red_sequence ? undefined : await generateRedSequenceDecision(state);
     const result = beginRedInvestmentsAndActions(state, sequence, roller);
     const blocking = result.issues.filter((issue) => issue.severity === "error");
     if (showIssues(blocking)) return;
@@ -1289,7 +1293,7 @@ function BlueIAStage({
         <div>
           <strong>Click a card in the bottom rail to play it immediately.</strong>{" "}
           <span className="muted">Click the <span className="kbd">i</span> on any card to read its full text first. Cards from the
-          other sub-phase are disabled until then.</span>
+            other sub-phase are disabled until then.</span>
         </div>
       </div>
 
