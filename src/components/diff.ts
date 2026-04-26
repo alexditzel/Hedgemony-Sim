@@ -25,6 +25,16 @@ export interface StateDiff {
   affectedPlayers: PlayerId[];
 }
 
+export interface PlayerMetricPoint {
+  turn: number;
+  players: Record<PlayerId, {
+    rp: number;
+    ip: number;
+    perTurn: number;
+    ntl: number;
+  }>;
+}
+
 function asNumber(value: unknown, fallback = 0): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
@@ -264,6 +274,12 @@ export type ReviewItem =
     turn: number;
     allocations: { playerId: PlayerId; baseRp: number; variation: number; total: number }[];
     budgetRoll?: RollRecord;
+  }
+  | {
+    kind: "end_of_turn_dashboard";
+    turn: number;
+    diff: StateDiff;
+    history: PlayerMetricPoint[];
   }
   | {
     kind: "end_of_turn_map";

@@ -39,7 +39,7 @@ import {
   type RollRecord,
   type Scenario
 } from "../engine";
-import { Banner, Button, EmptyState, Modal, Section, Tag } from "./ui";
+import { Banner, Button, EmptyState, Modal, Section, Spinner, Tag } from "./ui";
 import { phaseLabel, playerLabel, sideToTone } from "./factions";
 import { COLOR_SCHEMES, TopBar, type ColorSchemeId } from "./TopBar";
 import { CurrentTaskPanel, RedSignalDeckTrigger, StatPanel } from "./Sidebars";
@@ -48,7 +48,7 @@ import { CardModal } from "./CardModal";
 import { CardBack, PlayerCard } from "./Card";
 import { cardBackImageUrl } from "./cardBacks";
 import { PlayerSwitcher } from "./PlayerSwitcher";
-import { DiceResult, DiceResultList } from "./Dice";
+import { DiceResult } from "./Dice";
 import { EffectsSummary } from "./Effects";
 import {
   BriefingSection,
@@ -56,7 +56,7 @@ import {
   RedSignalIntel,
   WorldStateNewspapers
 } from "./Briefings";
-import type { ReviewItem } from "./diff";
+import type { PlayerMetricPoint, ReviewItem, ScalarChange, StateDiff } from "./diff";
 import { diffStates, takeSnapshot, type Snapshot } from "./diff";
 import { ReadinessSlider } from "./ReadinessSlider";
 import { RedSignalReveal } from "./Reveal";
@@ -150,6 +150,23 @@ function turnSummary(state: GameState, turn: number): string {
   return state.summaries.state_of_world[turn - 1] ?? state.summaries.state_of_world[turn] ?? "Open-source picture is forming.";
 }
 
+function metricPointFromState(state: GameState, turn: number): PlayerMetricPoint {
+  return {
+    turn,
+    players: Object.fromEntries(
+      Object.entries(state.players).map(([id, player]) => [
+        id,
+        {
+          rp: player.resource_points,
+          ip: player.influence_points,
+          perTurn: state.per_turn_resources[player.id] ?? 0,
+          ntl: player.national_tech_level
+        }
+      ])
+    ) as PlayerMetricPoint["players"]
+  };
+}
+
 export function GameView({ scenario }: GameViewProps) {
 	const [state, setState] = useState<GameState>(() => createInitialGameState(scenario));
 	const [message, setMessage] = useState<UiMessage | undefined>();
@@ -164,8 +181,17 @@ export function GameView({ scenario }: GameViewProps) {
 	const [mapOpen, setMapOpen] = useState(false);
 	const [colorScheme, setColorScheme] = useState<ColorSchemeId>(() => initialColorScheme());
 	const turnReviewsSeeded = useRef<Set<number>>(new Set());
+	const turnStartSnapshots = useRef<Record<number, Snapshot>>({});
+	const metricHistory = useRef<PlayerMetricPoint[]>([]);
 
   const roller = useMemo(() => new RandomDiceRoller(), []);
+
+  if (metricHistory.current.length === 0) {
+    metricHistory.current = [metricPointFromState(state, 0)];
+  }
+  if (!turnStartSnapshots.current[state.turn]) {
+    turnStartSnapshots.current[state.turn] = takeSnapshot(state);
+  }
 
   useEffect(() => {
     document.documentElement.dataset.colorScheme = colorScheme;
@@ -279,6 +305,21 @@ export function GameView({ scenario }: GameViewProps) {
         }
 
         if (state.phase === "RedSignaling") {
+          // Every turn opens with the world picture before Red discloses signals.
+          if (!turnReviewsSeeded.current.has(state.turn)) {
+            turnReviewsSeeded.current.add(state.turn);
+            const summary = turnSummary(state, state.turn);
+            const label = state.turn === 1 ? "Opening Bell" : `Turn ${state.turn} Opens`;
+            setReviewQueue([
+              { kind: "world_newspapers", turn: state.turn, summary, label },
+              { kind: "world_intel", turn: state.turn, summary, label }
+            ]);
+            return;
+          }
+
+          if (!turnStartSnapshots.current[state.turn]) {
+            turnStartSnapshots.current[state.turn] = takeSnapshot(state);
+          }
           const nextRed = getPlayersBySide(state, "Red").find((player) => !state.red_signals[player.id]?.completed);
           if (nextRed) {
             const decision = await generateRedSignalDecision(state, nextRed.id);
@@ -302,19 +343,6 @@ export function GameView({ scenario }: GameViewProps) {
             return;
           }
 
-          // All red have signaled. Seed the start-of-turn review queue if not already done.
-          if (!turnReviewsSeeded.current.has(state.turn)) {
-            turnReviewsSeeded.current.add(state.turn);
-            const summary = turnSummary(state, state.turn);
-            const label = state.turn === 1 ? "Opening Bell" : `Turn ${state.turn} Opens`;
-            setReviewQueue([
-              { kind: "world_newspapers", turn: state.turn, summary, label },
-              { kind: "world_intel", turn: state.turn, summary, label }
-            ]);
-            return;
-          }
-
-          // Reviews already seeded for this turn — advance.
           const result = beginBlueReadinessBill(state);
           if (!showIssues(result.issues)) applyResult(result.state);
           return;
@@ -375,7 +403,22 @@ export function GameView({ scenario }: GameViewProps) {
         if (state.phase === "StateOfWorldSummary") {
           const endingTurn = state.turn;
           const next = recordStateOfWorldSummary(state, await generateWhiteCellSummary("state_of_world", endingTurn, state));
-          setReviewQueue((queue) => [...queue, { kind: "end_of_turn_map", turn: endingTurn } as ReviewItem]);
+          const turnStart = turnStartSnapshots.current[endingTurn] ?? takeSnapshot(state);
+          const historyPoint = metricPointFromState(next, endingTurn);
+          metricHistory.current = [
+            ...metricHistory.current.filter((point) => point.turn !== endingTurn),
+            historyPoint
+          ].sort((a, b) => a.turn - b.turn);
+          setReviewQueue((queue) => [
+            ...queue,
+            {
+              kind: "end_of_turn_dashboard",
+              turn: endingTurn,
+              diff: diffStates(turnStart, next),
+              history: metricHistory.current
+            },
+            { kind: "end_of_turn_map", turn: endingTurn } as ReviewItem
+          ]);
           applyResult(next);
           return;
         }
@@ -719,6 +762,14 @@ function describePhase(state: GameState, review?: ReviewItem): DescribedPhase {
         why: "Per-turn allocations and the U.S. budget variation are credited now."
       };
     }
+    if (review.kind === "end_of_turn_dashboard") {
+      return {
+        phaseLabel: "End of Turn",
+        subPhase: `Turn ${review.turn}`,
+        task: "Review turn analytics and major variable changes.",
+        why: "Resource and influence trajectories show how this turn shifted the campaign."
+      };
+    }
     if (review.kind === "end_of_turn_map") {
       return {
         phaseLabel: "End of Turn",
@@ -801,6 +852,142 @@ interface ReviewStageProps {
   review: ReviewItem;
   onContinue: () => void;
   onOpenCard: (card: Card) => void;
+}
+
+const TREND_COLORS = [
+  "var(--blue-300)",
+  "var(--amber-200)",
+  "var(--red-200)",
+  "var(--green-300)",
+  "var(--od-200)",
+  "var(--neutral-200)"
+];
+
+function deltaLabel(delta: number): string {
+  if (delta > 0) return `+${delta}`;
+  return `${delta}`;
+}
+
+function changeTone(delta: number): "up" | "down" | "neutral" {
+  if (delta > 0) return "up";
+  if (delta < 0) return "down";
+  return "neutral";
+}
+
+function keyMetricChanges(diff: StateDiff, prefix: "rp" | "ip"): ScalarChange[] {
+  return diff.scalars
+    .filter((change) => change.key.startsWith(`${prefix}:`))
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+}
+
+function otherImportantChanges(diff: StateDiff): ScalarChange[] {
+  return diff.scalars
+    .filter((change) => !change.key.startsWith("rp:") && !change.key.startsWith("ip:"))
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+}
+
+function TrendChart({
+  state,
+  history,
+  metric,
+  title
+}: {
+  state: GameState;
+  history: PlayerMetricPoint[];
+  metric: "rp" | "ip";
+  title: string;
+}) {
+  const players = Object.values(state.players);
+  const values = history.flatMap((point) => players.map((player) => point.players[player.id]?.[metric] ?? 0));
+  const minValue = Math.min(0, ...values);
+  const maxValue = Math.max(1, ...values);
+  const pad = Math.max(2, Math.ceil((maxValue - minValue) * 0.08));
+  const yMin = minValue - pad;
+  const yMax = maxValue + pad;
+  const width = 420;
+  const height = 190;
+  const inset = { top: 18, right: 18, bottom: 30, left: 42 };
+  const plotWidth = width - inset.left - inset.right;
+  const plotHeight = height - inset.top - inset.bottom;
+  const xFor = (index: number) => inset.left + (history.length <= 1 ? plotWidth : (index / (history.length - 1)) * plotWidth);
+  const yFor = (value: number) => inset.top + ((yMax - value) / (yMax - yMin)) * plotHeight;
+  const zeroY = yFor(0);
+
+  return (
+    <section className="turn-chart" aria-label={title}>
+      <div className="turn-chart__header">
+        <h2>{title}</h2>
+        <span>{history.length > 1 ? `Turns ${history[0].turn}-${history[history.length - 1].turn}` : `Turn ${history[0]?.turn ?? 0}`}</span>
+      </div>
+      <svg className="turn-chart__svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${title} trend chart`}>
+        <line x1={inset.left} x2={width - inset.right} y1={zeroY} y2={zeroY} className="turn-chart__zero" />
+        {[0, 0.5, 1].map((ratio) => {
+          const y = inset.top + ratio * plotHeight;
+          const label = Math.round(yMax - ratio * (yMax - yMin));
+          return (
+            <g key={ratio}>
+              <line x1={inset.left} x2={width - inset.right} y1={y} y2={y} className="turn-chart__grid" />
+              <text x={inset.left - 9} y={y + 4} textAnchor="end" className="turn-chart__axis">{label}</text>
+            </g>
+          );
+        })}
+        {history.map((point, index) => (
+          <g key={point.turn}>
+            <line x1={xFor(index)} x2={xFor(index)} y1={inset.top} y2={height - inset.bottom} className="turn-chart__grid turn-chart__grid--vertical" />
+            <text x={xFor(index)} y={height - 8} textAnchor="middle" className="turn-chart__axis">T{point.turn}</text>
+          </g>
+        ))}
+        {players.map((player, playerIndex) => {
+          const d = history
+            .map((point, pointIndex) => {
+              const value = point.players[player.id]?.[metric] ?? 0;
+              return `${pointIndex === 0 ? "M" : "L"} ${xFor(pointIndex)} ${yFor(value)}`;
+            })
+            .join(" ");
+          const latest = history[history.length - 1]?.players[player.id]?.[metric] ?? 0;
+          return (
+            <g key={player.id}>
+              <path d={d} fill="none" stroke={TREND_COLORS[playerIndex % TREND_COLORS.length]} className="turn-chart__line" />
+              <circle
+                cx={xFor(history.length - 1)}
+                cy={yFor(latest)}
+                r="3.8"
+                fill={TREND_COLORS[playerIndex % TREND_COLORS.length]}
+                className="turn-chart__point"
+              />
+            </g>
+          );
+        })}
+      </svg>
+      <div className="turn-chart__legend">
+        {players.map((player, index) => (
+          <span key={player.id}>
+            <i style={{ background: TREND_COLORS[index % TREND_COLORS.length] }} />
+            {player.label}
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ChangePill({ change }: { change: ScalarChange }) {
+  const tone = changeTone(change.delta);
+  const isNumeric = change.before !== change.after || change.delta !== 0;
+  return (
+    <div className="turn-change">
+      <div>
+        <b>{change.scopeLabel}</b>
+        <span>{change.label}</span>
+      </div>
+      <strong className={`turn-change__delta turn-change__delta--${tone}`}>
+        {isNumeric ? deltaLabel(change.delta) : "changed"}
+      </strong>
+      {isNumeric ? (
+        <small>{change.before} → {change.after}</small>
+      ) : null}
+    </div>
+  );
 }
 
 function ReviewStage({ state, review, onContinue, onOpenCard }: ReviewStageProps) {
@@ -979,6 +1166,69 @@ function ReviewStage({ state, review, onContinue, onOpenCard }: ReviewStageProps
     );
   }
 
+  if (review.kind === "end_of_turn_dashboard") {
+    const rpChanges = keyMetricChanges(review.diff, "rp");
+    const ipChanges = keyMetricChanges(review.diff, "ip");
+    const otherChanges = otherImportantChanges(review.diff);
+    const changedFlags = review.diff.flags;
+    const biggestMoves = [...rpChanges, ...ipChanges, ...otherChanges].slice(0, 6);
+    return (
+      <div className="stack-lg fade-in">
+        <header className="theater-disposition__header">
+          <div>
+            <div className="stage-eyebrow">
+              <span className="stage-eyebrow__dot stage-eyebrow__dot--amber" />
+              <span>END OF TURN {review.turn} · CAMPAIGN READOUT</span>
+            </div>
+            <h1 className="stage-title">Turn {review.turn} Strategic Summary</h1>
+            <p className="stage-subtitle">
+              Resource and influence trajectories across the campaign, with the major mechanical changes from this turn called out before the map review.
+            </p>
+          </div>
+          <Button variant="primary" onClick={onContinue}>Continue to Theater Map →</Button>
+        </header>
+
+        <div className="turn-dashboard">
+          <TrendChart state={state} history={review.history} metric="rp" title="Resource Points" />
+          <TrendChart state={state} history={review.history} metric="ip" title="Influence Points" />
+        </div>
+
+        <section className="turn-brief">
+          <div className="turn-brief__panel">
+            <h2>Largest Moves</h2>
+            {biggestMoves.length > 0 ? (
+              <div className="turn-change-list">
+                {biggestMoves.map((change) => <ChangePill key={change.key} change={change} />)}
+              </div>
+            ) : (
+              <p className="turn-brief__empty">No scored variables moved this turn.</p>
+            )}
+          </div>
+
+          <div className="turn-brief__panel">
+            <h2>Other Variables</h2>
+            {otherChanges.length > 0 || changedFlags.length > 0 ? (
+              <div className="turn-change-list">
+                {otherChanges.slice(0, 8).map((change) => <ChangePill key={change.key} change={change} />)}
+                {changedFlags.slice(0, 4).map((flag) => (
+                  <div className="turn-change" key={flag.key}>
+                    <div>
+                      <b>Scenario flag</b>
+                      <span>{flag.label}</span>
+                    </div>
+                    <strong className="turn-change__delta turn-change__delta--neutral">changed</strong>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="turn-brief__empty">No capability, readiness, per-turn RP, force, or scenario flag changes were recorded.</p>
+            )}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
 	if (review.kind === "end_of_turn_map") {
 		return (
 			<div className="stack-lg fade-in">
@@ -1130,7 +1380,12 @@ function AutoResolvingStage({ state }: { state: GameState }) {
           The engine is resolving Red and White Cell steps. Reviews will pause for your acknowledgment as needed.
         </p>
       </header>
-      <DiceResultList rolls={state.rolls.filter((r) => r.visibility === "public")} emptyLabel="No public rolls in the recent log." />
+      <EmptyState>
+        <span className="row gap-sm" style={{ justifyContent: "center" }}>
+          <Spinner />
+          Resolving...
+        </span>
+      </EmptyState>
     </div>
   );
 }
