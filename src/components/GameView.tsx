@@ -1499,8 +1499,9 @@ interface ReadinessStageProps {
 
 function ReadinessStage({ state, onPay, onSetReadiness }: ReadinessStageProps) {
   const bill = calculateUsReadinessBill(state);
+  const usPlayerId = entryValues(state.players).find((player) => player.label.includes("United States"))?.id ?? "US";
   const usForces = entryValues(state.forces)
-    .filter((force) => force.owner === "US")
+    .filter((force) => force.owner === usPlayerId)
     .sort((a, b) => a.id.localeCompare(b.id));
   return (
     <div className="stack-md fade-in">

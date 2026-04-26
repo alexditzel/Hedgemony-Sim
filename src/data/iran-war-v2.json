@@ -137,7 +137,7 @@
                 },
                 {
                     "id": "PROXY_NETWORK",
-                    "value": 4
+                    "value": 3
                 },
                 {
                     "id": "NUCLEAR_RISK",
@@ -800,7 +800,7 @@
                     },
                     {
                         "id": "PROXY_NETWORK",
-                        "value": 4
+                        "value": 3
                     },
                     {
                         "id": "NUCLEAR_RISK",
@@ -1049,7 +1049,7 @@
                 "value": [
                     {
                         "id": "US_A1",
-                        "type": "Action",
+                        "type": "investment",
                         "subtype": "Standard",
                         "owner": "US",
                         "public_private": "Public",
@@ -1705,7 +1705,7 @@
                 "value": [
                     {
                         "id": "NATO_A1",
-                        "type": "Action",
+                        "type": "investment",
                         "subtype": "Standard",
                         "owner": "NATO_EU",
                         "public_private": "Public",
@@ -2551,7 +2551,7 @@
                     },
                     {
                         "id": "IS_A5",
-                        "type": "Action",
+                        "type": "investment",
                         "subtype": "Standard",
                         "owner": "IS",
                         "public_private": "Public",
@@ -2840,7 +2840,7 @@
                     },
                     {
                         "id": "IR_A2",
-                        "type": "Action",
+                        "type": "investment",
                         "subtype": "Major",
                         "owner": "IR",
                         "public_private": "Private",
@@ -3477,7 +3477,7 @@
                     },
                     {
                         "id": "PRC_A3",
-                        "type": "Action",
+                        "type": "investment",
                         "subtype": "Major",
                         "owner": "PRC",
                         "public_private": "Private",
@@ -3767,7 +3767,7 @@
                     },
                     {
                         "id": "RU_A2",
-                        "type": "Action",
+                        "type": "investment",
                         "subtype": "Major",
                         "owner": "RU",
                         "public_private": "Private",
