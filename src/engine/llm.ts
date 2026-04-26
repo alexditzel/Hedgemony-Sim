@@ -336,7 +336,7 @@ export async function generateWhiteCellAdjudicationResolution(
       },
       {
         role: "user",
-        content: `${printAdjudicationRequest(request)}\n\n${printGameState(state)}`
+        content: `${printAdjudicationRequest(request)}\n\n${printGameState(state)}\n\nMake sure to write your adjudication in natural easily-understandable language that reads well and describes semantically what's going on at a high level.`
       },
     ],
     text: {
