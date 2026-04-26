@@ -58,7 +58,7 @@ ${prompt.players.map((p) => `- ${p.name} [${p.label}]: side ${p.side}`)}
 
 The following events must be used as inspiration for various game elements.
 
-${prompt.events.map((e, i) => `### ${e.name}\n\n${e.description}`).join("\n\n")}
+${prompt.events.map((e) => `### ${e.name}\n\n${e.description}`).join("\n\n")}
 
 ## Requirements
 
