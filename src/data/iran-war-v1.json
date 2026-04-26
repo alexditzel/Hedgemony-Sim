@@ -58,11 +58,11 @@
                 },
                 {
                     "id": "sanctions_coordination",
-                    "value": 5
+                    "value": 4
                 },
                 {
                     "id": "diplomatic_legitimacy",
-                    "value": 5
+                    "value": 4
                 },
                 {
                     "id": "maritime_security",
@@ -665,11 +665,11 @@
                     },
                     {
                         "id": "sanctions_coordination",
-                        "value": 5
+                        "value": 4
                     },
                     {
                         "id": "diplomatic_legitimacy",
-                        "value": 5
+                        "value": 4
                     },
                     {
                         "id": "maritime_security",
@@ -767,7 +767,7 @@
                 "id": "US_CENTCOM_AIR",
                 "owner": "US",
                 "force_factors": 6,
-                "modernization_level": 5,
+                "modernization_level": 4,
                 "location_id": "QATAR",
                 "home_base_id": "QATAR_BASE",
                 "readiness_level": 90,
@@ -777,7 +777,7 @@
                 "id": "US_NAVAL_FORCE",
                 "owner": "US",
                 "force_factors": 5,
-                "modernization_level": 5,
+                "modernization_level": 4,
                 "location_id": "HORMUZ",
                 "home_base_id": "QATAR_BASE",
                 "readiness_level": 80,
@@ -787,7 +787,7 @@
                 "id": "IS_AIR_FORCE",
                 "owner": "IS",
                 "force_factors": 6,
-                "modernization_level": 5,
+                "modernization_level": 4,
                 "location_id": "ISRAEL",
                 "home_base_id": "TEL_AVIV_BASE",
                 "readiness_level": 90,
@@ -797,7 +797,7 @@
                 "id": "IS_DEFENSE_GRID",
                 "owner": "IS",
                 "force_factors": 5,
-                "modernization_level": 5,
+                "modernization_level": 4,
                 "location_id": "ISRAEL",
                 "home_base_id": "TEL_AVIV_BASE",
                 "readiness_level": 90,

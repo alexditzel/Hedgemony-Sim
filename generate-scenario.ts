@@ -8,11 +8,11 @@ config()
 
 const openai = new OpenAI({ apiKey: process.env.VITE_OPENAI_API_KEY, });
 
-// const high_model = "gpt-5.5";
-// const reasoning_effort = "high"
-
-const high_model = "gpt-5.4-mini";
+const high_model = "gpt-5.5";
 const reasoning_effort = "low"
+
+// const high_model = "gpt-5.4-mini";
+// const reasoning_effort = "low"
 
 type ScenarioPrompt = {
     /**
@@ -50,6 +50,8 @@ export async function generateScenario(prompt: ScenarioPrompt): Promise<Scenario
     const printedPrompt = `
 # Scenario Prompt
 
+This simulation will be played for ${prompt.max_turns} turns.
+
 ## Learning Objectives
 
 ${prompt.learning_objectives.map((s) => `- ${s}`).join("\n")}
@@ -64,9 +66,9 @@ The following events must be used as inspiration for various game elements.
 
 ${prompt.events.map((e) => `### ${e.name}\n\n${e.description}`).join("\n\n")}
 
-## Requirements
+## Critical Requirements
 
-The simulation will be played for ${prompt.max_turns} turns.
+You MUST create 3-5 cards for each country.
 
 `.trim();
 
