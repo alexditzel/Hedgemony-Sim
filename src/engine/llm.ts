@@ -155,18 +155,19 @@ export async function generateRedSignalDecision(
   state: GameState,
   playerId: PlayerId,
 ): Promise<RedSignalDecision> {
-  const options = getPlayerDeck(state, playerId).map((c) => c.id);
+  const deck = getPlayerDeck(state, playerId);
+  const options = deck.map((c) => `- ${c.id}: ${c.title} (${c.type})`);
   const response = await openai.responses.parse({
     model: medium_model,
     input: [
       {
         role: "system",
         content:
-          "You are the Red player in a military simulation game. Choose between 1 and 3 cards to signal. Rule: If you choose exactly 3 cards, at least one must be an Action (has '-ACT-' in ID) and at least one must be an Investment (has '-INV-' in ID). Write a brief summary of your intent, and declare activation intents.",
+          "You are the Red player in a military simulation game. Choose between 1 and 3 cards to signal. Rule: If you choose exactly 3 cards, at least one must be an Action and at least one must be an Investment. Write a brief summary of your intent, and declare activation intents.",
       },
       {
         role: "user",
-        content: `Player ID: ${playerId}\n\nOptions (Card IDs):\n${options.map((o) => `- ${o}`).join("\n")}\n\n${printGameState(state)}`,
+        content: `Player ID: ${playerId}\n\nOptions (Card IDs, Titles, and Types):\n${options.join("\n")}\n\n${printGameState(state)}`,
       },
     ],
     text: {
