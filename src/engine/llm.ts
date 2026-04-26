@@ -11,6 +11,7 @@ import {
   PlayerIdSchema,
   type AdjudicationRequest,
   type AdjudicationResolution,
+  type Card,
   type CardId,
   type GameState,
   type PlayerId,
@@ -140,42 +141,102 @@ export type RedSignalDecision = {
   activationIntent: RedSignalState["activation_intent"];
 };
 
-const SignalDecisionSchema = z.object({
-  cardIds: z.array(CardIdSchema),
-  briefSummary: z.string(),
-  activationIntent: z.array(
-    z.object({
-      cardId: CardIdSchema,
-      intent: z.enum(["Yes", "No", "Undeclared"]),
-    }),
-  ),
-});
+
 
 export async function generateRedSignalDecision(
   state: GameState,
   playerId: PlayerId,
 ): Promise<RedSignalDecision> {
   const deck = getPlayerDeck(state, playerId);
+  const actionCount = deck.filter((c) => c.type.toLowerCase() === "action").length;
+  const investmentCount = deck.filter((c) => c.type.toLowerCase() === "investment").length;
+
   const options = deck.map((c) => `- ${c.id}: ${c.title} (${c.type})`);
-  const response = await openai.responses.parse({
-    model: medium_model,
-    input: [
-      {
-        role: "system",
-        content:
-          "You are the Red player in a military simulation game. Choose between 1 and 3 cards to signal. Rule: If you choose exactly 3 cards, at least one must be an Action and at least one must be an Investment. Write a brief summary of your intent, and declare activation intents.",
-      },
-      {
-        role: "user",
-        content: `Player ID: ${playerId}\n\nOptions (Card IDs, Titles, and Types):\n${options.join("\n")}\n\n${printGameState(state)}`,
-      },
-    ],
-    text: {
-      format: zodTextFormat(SignalDecisionSchema, "signal_decision"),
-    },
+  const optionIds = deck.map((c) => c.id);
+
+  // Dynamic schema to ensure LLM only picks from available cards
+  const LocalSignalDecisionSchema = z.object({
+    cardIds: z.array(z.string()).min(1).max(3),
+    briefSummary: z.string(),
+    activationIntent: z.array(
+      z.object({
+        cardId: z.string(),
+        intent: z.enum(["Yes", "No", "Undeclared"]),
+      }),
+    ),
   });
 
-  const parsed = response.output_parsed as z.infer<typeof SignalDecisionSchema>;
+  const systemPrompt = `You are the Red player (${playerId}) in a military simulation game.
+Choose between 1 and 3 cards to signal from your deck.
+CRITICAL RULE: If you choose exactly 3 cards, at least one must be an Action and at least one must be an Investment.
+Current available cards in your deck: ${actionCount} Actions, ${investmentCount} Investments.
+If you have no Investments left, you CANNOT signal 3 cards; you must signal 1 or 2 cards instead.
+Write a brief summary of your intent, and declare activation intents for each signaled card.`;
+
+  const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
+    { role: "system", content: systemPrompt },
+    {
+      role: "user",
+      content: `Options (Card IDs, Titles, and Types):\n${options.join("\n")}\n\n${printGameState(state)}`,
+    },
+  ];
+
+  let parsed: z.infer<typeof LocalSignalDecisionSchema> | null = null;
+  let attempts = 0;
+
+  while (attempts < 3) {
+    const response = await openai.responses.parse({
+      model: medium_model,
+      input: messages,
+      text: {
+        format: zodTextFormat(LocalSignalDecisionSchema, "signal_decision"),
+      },
+    });
+
+    parsed = response.output_parsed as z.infer<typeof LocalSignalDecisionSchema>;
+
+    // Validate card existence and signaling mix rule
+    const selectedCards = parsed.cardIds.map((id) => deck.find((c) => c.id === id));
+    const allIdsValid = selectedCards.every((c) => !!c);
+
+    if (!allIdsValid) {
+      messages.push({ role: "assistant", content: JSON.stringify(parsed) });
+      messages.push({
+        role: "user",
+        content: `ERROR: One or more of the Card IDs you selected are not in your available deck. Please choose only from the provided options: ${optionIds.join(", ")}`,
+      });
+      attempts++;
+      continue;
+    }
+
+    const validCards = selectedCards.filter((c): c is Card => !!c);
+
+    if (parsed.cardIds.length === 3) {
+      const hasAction = validCards.some((c) => c.type.toLowerCase() === "action");
+      const hasInvestment = validCards.some(
+        (c) => c.type.toLowerCase() === "investment",
+      );
+
+      if (hasAction && hasInvestment) {
+        break; // Valid mix
+      } else {
+        // Invalid mix, retry with correction
+        messages.push({ role: "assistant", content: JSON.stringify(parsed) });
+        messages.push({
+          role: "user",
+          content:
+            "ERROR: Your selection of 3 cards does not include both an Action and an Investment. Please revise your selection to satisfy the rule, or select only 1 or 2 cards.",
+        });
+        attempts++;
+      }
+    } else {
+      break; // 1 or 2 cards is always valid
+    }
+  }
+
+  if (!parsed) {
+    throw new Error("Failed to generate valid Red Signal decision");
+  }
 
   return {
     cardIds: parsed.cardIds,
@@ -206,7 +267,7 @@ export async function generateRedPlayDecision(
       {
         role: "system",
         content:
-          "You are the Red player. Decide whether to play a signaled card or skip based on the current game state. Very critically, you must choose AT LEAST 1 investment and AT LEAST one action.",
+          "You are the Red player. Decide whether to play a signaled card or skip based on the current game state.",
       },
       {
         role: "user",
