@@ -44,8 +44,8 @@ import { COLOR_SCHEMES, TopBar, type ColorSchemeId } from "./TopBar";
 import { CurrentTaskPanel, RedSignalDeckTrigger, StatPanel } from "./Sidebars";
 import { EventLogPanel, LogEntryModal } from "./EventLog";
 import { CardModal } from "./CardModal";
-import { PlayerCard } from "./Card";
-import { HandStrip } from "./HandStrip";
+import { CardBack, PlayerCard } from "./Card";
+import { cardBackImageUrl } from "./cardBacks";
 import { PlayerSwitcher } from "./PlayerSwitcher";
 import { DiceResult, DiceResultList } from "./Dice";
 import { EffectsSummary } from "./Effects";
@@ -198,6 +198,7 @@ export function GameView({ scenario }: GameViewProps) {
 	const [message, setMessage] = useState<UiMessage | undefined>();
 	const [reviewQueue, setReviewQueue] = useState<ReviewItem[]>([]);
 	const [signalDeckOpen, setSignalDeckOpen] = useState(false);
+	const [blueDeckOpen, setBlueDeckOpen] = useState(false);
 	const [logEntryModal, setLogEntryModal] = useState<EventLogItem | undefined>();
 	const [summaryModal, setSummaryModal] = useState<{ kind: "game_start" | "state_of_world"; turn: number } | undefined>();
 	const [cardModal, setCardModal] = useState<Card | undefined>();
@@ -564,13 +565,14 @@ export function GameView({ scenario }: GameViewProps) {
 							onSubmitFreePlay={submitFreePlay}
 							onFreePlayIntent={setFreePlayIntent}
 							onOpenCard={setCardModal}
+							onPlayCard={playBlueCard}
 						/>
 					)}
 				</div>
 			</main>
 
 			<aside className="right-rail" aria-label="Stats and intel">
-				<StatPanel state={state} />
+				<StatPanel state={state} onOpenBlueDeck={() => setBlueDeckOpen(true)} />
 				<Section title="Red Signals · Deck" tone="red">
 					<RedSignalDeckTrigger
 						state={state}
@@ -580,17 +582,24 @@ export function GameView({ scenario }: GameViewProps) {
 				</Section>
 			</aside>
 
-			<BlueHand
-				state={state}
-				currentReview={currentReview}
-				bluePlayers={bluePlayers}
-				activePlayerId={activePlayer?.side === "Blue" ? activePlayer.id : undefined}
-				onPlayCard={playBlueCard}
-				onSelectActive={onSelectActiveBlue}
-				onOpenCard={setCardModal}
-			/>
-
 			{/* Modals */}
+			<Modal
+				open={blueDeckOpen}
+				onClose={() => setBlueDeckOpen(false)}
+				title={`Current Blue Deck · ${activePlayer?.label ?? "Blue"}`}
+				size="lg"
+			>
+				<BlueDeckReference
+					state={state}
+					activePlayerId={activePlayer?.side === "Blue" ? activePlayer.id : undefined}
+					onPlayCard={(card) => {
+						playBlueCard(card);
+						setBlueDeckOpen(false);
+					}}
+					onOpenCard={setCardModal}
+				/>
+			</Modal>
+
 			<Modal
 				open={signalDeckOpen}
 				onClose={() => setSignalDeckOpen(false)}
@@ -622,7 +631,7 @@ export function GameView({ scenario }: GameViewProps) {
 			>
 				<div className="map-modal">
 					<TheaterMap state={state} />
-					<p className="map-modal__hint">Hover any unit to see force factor count, location, and pin status.</p>
+					<p className="map-modal__hint">Click any unit to see force factor count, location, and pin status.</p>
 				</div>
 			</Modal>
 
@@ -665,18 +674,29 @@ export function GameView({ scenario }: GameViewProps) {
 					</>
 				}
 			>
-				<div className="stack-md">
-					<p className="muted" style={{ fontSize: "0.9rem", lineHeight: 1.5 }}>
-						Articulate the intent for {pendingFreePlay ? playerLabel(state, pendingFreePlay.playerId) : "Blue"}'s free-play{" "}
-						{pendingFreePlay?.subphase.toLowerCase()}. The White Cell will translate this into game terms and resolve.
-					</p>
-					<textarea
-						value={freePlayIntent}
-						onChange={(event) => setFreePlayIntent(event.target.value)}
-						placeholder="e.g., Reposition USINDOPACOM forces to deter PRC escalation while preserving readiness in CENTCOM."
-						rows={5}
-						aria-label="Free play intent"
-					/>
+				<div className="freeplay-modal">
+					{pendingFreePlay ? (
+						<CardBack
+							tone="blue"
+							playerId={pendingFreePlay.playerId}
+							kind={pendingFreePlay.subphase === "Investments" ? "Investment" : "Action"}
+							stamp=""
+							label={`${playerLabel(state, pendingFreePlay.playerId)} ${pendingFreePlay.subphase} card back`}
+						/>
+					) : null}
+					<div className="stack-md">
+						<p className="muted" style={{ fontSize: "0.9rem", lineHeight: 1.5 }}>
+							Articulate the intent for {pendingFreePlay ? playerLabel(state, pendingFreePlay.playerId) : "Blue"}'s free-play{" "}
+							{pendingFreePlay?.subphase.toLowerCase()}. The White Cell will translate this into game terms and resolve.
+						</p>
+						<textarea
+							value={freePlayIntent}
+							onChange={(event) => setFreePlayIntent(event.target.value)}
+							placeholder="e.g., Reposition USINDOPACOM forces to deter PRC escalation while preserving readiness in CENTCOM."
+							rows={5}
+							aria-label="Free play intent"
+						/>
+					</div>
 				</div>
 			</Modal>
 		</div>
@@ -918,6 +938,16 @@ function ReviewStage({ state, review, onContinue, onOpenCard }: ReviewStageProps
 
 	if (review.kind === "signal_intel") {
 		const signal = state.red_signals[review.playerId];
+		const signalLogMessage = [...state.event_log].reverse().find((entry) =>
+			entry.turn === review.turn &&
+			entry.phase === "RedSignaling" &&
+			entry.player_id === review.playerId &&
+			entry.message.startsWith(`${review.playerId} intelligence briefing:`)
+		)?.message;
+		const signalSummary = signal?.brief_summary?.trim();
+		const implications = signalLogMessage ?? (signalSummary
+			? `${review.playerId} intelligence briefing: ${signalSummary}`
+			: "No intelligence briefing summary is on record for this signal.");
 		return (
 			<div className="stack-lg fade-in">
 				<header>
@@ -934,8 +964,7 @@ function ReviewStage({ state, review, onContinue, onOpenCard }: ReviewStageProps
 					</BriefingSection>
 					<BriefingSection title="Implications">
 						<p className="briefing__paragraph">
-							{playerLabel(state, review.playerId)} has bounded its play space to the cards above. Where Action and Investment cards are mixed,
-							expect at least one of each to be played. Use this to shape Blue investment priorities and force commitments.
+							{implications}
 						</p>
 					</BriefingSection>
 				</IntelBriefing>
@@ -1006,7 +1035,7 @@ function ReviewStage({ state, review, onContinue, onOpenCard }: ReviewStageProps
 						</div>
 						<h1 className="stage-title">Theater Disposition</h1>
 						<p className="stage-subtitle">
-							Final force disposition for turn {review.turn}. Hover any unit for details, then close the turn.
+							Final force disposition for turn {review.turn}. Click any unit for details, then close the turn.
 						</p>
 					</div>
 					<Button variant="primary" onClick={onContinue}>End Turn → Begin Turn {review.turn + 1}</Button>
@@ -1093,6 +1122,7 @@ interface PrimaryStageProps {
 	onSubmitFreePlay: () => void;
 	onFreePlayIntent: (value: string) => void;
 	onOpenCard: (card: Card) => void;
+	onPlayCard: (card: Card) => void;
 }
 
 function PrimaryStage({
@@ -1105,7 +1135,8 @@ function PrimaryStage({
 	onAdvanceToActions,
 	onEndBlue,
 	onRequestFreePlay,
-	onOpenCard
+	onOpenCard,
+	onPlayCard
 }: PrimaryStageProps) {
 	if (state.phase === "BlueReadinessBill") {
 		return <ReadinessStage state={state} onPay={onPay} onSetReadiness={onSetReadiness} />;
@@ -1121,6 +1152,7 @@ function PrimaryStage({
 				onEndBlue={onEndBlue}
 				onRequestFreePlay={onRequestFreePlay}
 				onOpenCard={onOpenCard}
+				onPlayCard={onPlayCard}
 			/>
 		);
 	}
@@ -1267,6 +1299,7 @@ interface BlueIAStageProps {
 	onEndBlue: () => void;
 	onRequestFreePlay: (playerId: PlayerId, subphase: "Investments" | "Actions") => void;
 	onOpenCard: (card: Card) => void;
+	onPlayCard: (card: Card) => void;
 }
 
 function BlueIAStage({
@@ -1277,13 +1310,16 @@ function BlueIAStage({
 	onAdvanceToActions,
 	onEndBlue,
 	onRequestFreePlay,
-	onOpenCard
+	onOpenCard,
+	onPlayCard
 }: BlueIAStageProps) {
 	const subphase = state.blue_subphase ?? "Investments";
 	const activePlayer = bluePlayers.find((player) => player.id === activePlayerId) ?? bluePlayers[0];
 	const allCards = activePlayer ? getPlayerDeck(state, activePlayer.id) : [];
 	const inSubphaseCards = allCards.filter((card) => (subphase === "Investments" ? card.type === "Investment" : card.type === "Action"));
 	const otherSubphaseCards = allCards.filter((card) => (subphase === "Investments" ? card.type === "Action" : card.type === "Investment"));
+	const activeBackKind = subphase === "Investments" ? "Investment" : "Action";
+	const activeBackUrl = activePlayer ? cardBackImageUrl(activePlayer.id, activeBackKind) : undefined;
 	return (
 		<div className="stack-md fade-in">
 			<header>
@@ -1312,7 +1348,7 @@ function BlueIAStage({
       <div className="play-instructions" role="note">
         <span className="play-instructions__pip" aria-hidden />
         <div>
-          <strong>Click a card in the bottom rail to play it immediately.</strong>{" "}
+          <strong>Click a card in the deck reference to play it immediately.</strong>{" "}
           <span className="muted">Click the <span className="kbd">i</span> on any card to read its full text first. Cards from the
             other sub-phase are disabled until then.</span>
         </div>
@@ -1320,11 +1356,20 @@ function BlueIAStage({
 
 			{activePlayer ? (
 				<div className="freeplay-cta">
-					<div>
+					<div className="freeplay-cta__card" aria-hidden>
+						<CardBack
+							tone="blue"
+							imageUrl={activeBackUrl}
+							stamp=""
+							label={`${activePlayer.label} ${subphase} card back`}
+						/>
+					</div>
+					<div className="freeplay-cta__copy">
+						<div className="freeplay-cta__kicker">{activePlayer.label} · {subphase} card back</div>
 						<div className="freeplay-cta__title">Free-Play {subphase}</div>
 						<div className="freeplay-cta__sub">
-							No card fits the play you have in mind? Describe Blue's intent in plain language and the White Cell
-							will translate it into game terms.
+							Use this blank {subphase.toLowerCase()} back when no card fits the play in mind. Describe Blue's intent in
+							plain language and the White Cell will translate it into game terms.
 						</div>
 					</div>
 					<Button
@@ -1344,77 +1389,67 @@ function BlueIAStage({
 			) : null}
 			{otherSubphaseCards.length > 0 ? (
 				<p className="muted" style={{ fontSize: "0.82rem" }}>
-					{otherSubphaseCards.length} {subphase === "Investments" ? "action" : "investment"} card(s) are visible in the hand but
+					{otherSubphaseCards.length} {subphase === "Investments" ? "action" : "investment"} card(s) are visible in the deck reference but
 					disabled until {subphase === "Investments" ? "the action sub-phase" : "investments complete"}.
 				</p>
 			) : null}
 
-			<details>
+			<details open>
 				<summary className="muted" style={{ cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: "0.74rem", letterSpacing: "0.08em" }}>
 					Show full deck reference for {activePlayer?.label ?? "—"}
 				</summary>
-				<div className="stage-card-row" style={{ marginTop: "0.6rem" }}>
-					{allCards.map((card) => (
-						<PlayerCard
-							key={`ref-${card.id}`}
-							card={card}
-							state={state}
-							size="compact"
-							onOpen={() => onOpenCard(card)}
-						/>
-					))}
-				</div>
+				<BlueDeckReference
+					state={state}
+					activePlayerId={activePlayer?.id}
+					onPlayCard={onPlayCard}
+					onOpenCard={onOpenCard}
+				/>
 			</details>
 		</div>
 	);
 }
 
-// ----- Bottom rail: Blue hand -----
+// ----- Blue deck reference -----
 
-interface BlueHandProps {
+interface BlueDeckReferenceProps {
 	state: GameState;
-	currentReview?: ReviewItem;
-	bluePlayers: ReturnType<typeof getPlayersBySide>;
 	activePlayerId?: PlayerId;
 	onPlayCard: (card: Card) => void;
-	onSelectActive: (id: PlayerId) => void;
 	onOpenCard: (card: Card) => void;
 }
 
-function BlueHand({ state, currentReview, bluePlayers, activePlayerId, onPlayCard, onSelectActive, onOpenCard }: BlueHandProps) {
+function BlueDeckReference({ state, activePlayerId, onPlayCard, onOpenCard }: BlueDeckReferenceProps) {
+	const bluePlayers = getPlayersBySide(state, "Blue");
 	const activePlayer = bluePlayers.find((player) => player.id === activePlayerId) ?? bluePlayers[0];
 	const cards = activePlayer ? getPlayerDeck(state, activePlayer.id) : [];
-
-	// Determine which cards are playable in the current state.
-	let selectable: Set<string> | undefined;
-	let title = "Blue Hand";
-	if (state.phase === "BlueInvestmentsAndActions" && !currentReview) {
-		const subphase = state.blue_subphase ?? "Investments";
-		selectable = new Set(cards.filter((card) => (subphase === "Investments" ? card.type === "Investment" : card.type === "Action")).map((card) => card.id));
-		title = `${activePlayer?.label ?? "Blue"} · ${subphase}`;
-	} else {
-		selectable = new Set();
-	}
+	const subphase = state.blue_subphase ?? "Investments";
+	const playableType = subphase === "Investments" ? "Investment" : "Action";
+	const canPlayCurrentPhase = state.phase === "BlueInvestmentsAndActions";
 
 	return (
-		<HandStrip
-			state={state}
-			title={title}
-			cards={cards}
-			selectableCardIds={selectable}
-			onSelect={(card) => onPlayCard(card)}
-			onOpen={onOpenCard}
-			emptyLabel={activePlayer ? `${activePlayer.label} has no cards in their action/investment deck.` : "No active Blue player."}
-			rightSlot={
-				bluePlayers.length > 1 ? (
-					<PlayerSwitcher
-						players={bluePlayers}
-						activeId={activePlayer?.id}
-						onSelect={onSelectActive}
-						ariaLabel="Active Blue player (hand)"
-					/>
-				) : null
-			}
-		/>
+		<div className="blue-deck-reference">
+			{cards.length === 0 ? (
+				<EmptyState>
+					{activePlayer ? `${activePlayer.label} has no cards in their action/investment deck.` : "No active Blue player."}
+				</EmptyState>
+			) : (
+				cards.map((card) => {
+					const playable = canPlayCurrentPhase && card.type === playableType;
+					return (
+						<div key={`blue-deck-${activePlayer?.id ?? "none"}-${card.id}`} className="blue-deck-reference__item">
+							<Tag tone={playable ? "blue" : "neutral"}>{card.type}</Tag>
+							<PlayerCard
+								card={card}
+								state={state}
+								size="compact"
+								disabled={!playable}
+								onClick={playable ? () => onPlayCard(card) : undefined}
+								onOpen={() => onOpenCard(card)}
+							/>
+						</div>
+					);
+				})
+			)}
+		</div>
 	);
 }

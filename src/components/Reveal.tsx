@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Card as GameCardData, GameState } from "../engine";
 import { CardBack, GameCard } from "./Card";
+import { cardBackImageUrlForCard } from "./cardBacks";
 import { playerLabel } from "./factions";
 
 interface RedSignalRevealProps {
@@ -49,7 +50,14 @@ export function RedSignalReveal({ state, playerId, cards, onComplete, isCurrent,
             key={`${playerId}-${card.id}-${idx}`}
             revealed={revealed[idx] ?? false}
             front={<GameCard card={card} tone="red" size="default" onOpen={() => onOpenCard?.(card)} />}
-            back={<CardBack tone="red" stamp={`Red ${idx + 1}/${cards.length}`} />}
+            back={
+              <CardBack
+                tone="red"
+                stamp={`Red ${idx + 1}/${cards.length}`}
+                imageUrl={cardBackImageUrlForCard(card)}
+                label={`${playerLabel(state, playerId)} ${card.type} card back`}
+              />
+            }
           />
         ))}
       </div>

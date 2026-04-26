@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it, test } from "vitest";
 import defaultScenario from "../src/data/defaultScenario.json";
+import { resolveMapCoordinates } from "../src/components/mapCoordinates";
 import { canViewLog, canViewRoll } from "../src/components/visibility";
 import {
   SequenceDiceRoller,
@@ -148,6 +149,29 @@ describe("scenario loading and validation", () => {
     expect(
       validateState(state).filter((issue) => issue.severity === "error"),
     ).toHaveLength(0);
+  });
+
+  it("plots forward forces at real stationing coordinates instead of adversary country centroids", () => {
+    const state = freshState();
+
+    expect(
+      resolveMapCoordinates(
+        { owner: "US", locationId: "INDOPACOM_PRC" },
+        state.locations.INDOPACOM_PRC,
+      ),
+    ).toEqual([21.3069, -157.8583]);
+    expect(
+      resolveMapCoordinates(
+        { owner: "US", locationId: "INDOPACOM_DPRK" },
+        state.locations.INDOPACOM_DPRK,
+      ),
+    ).toEqual([36.9622, 127.0311]);
+    expect(
+      resolveMapCoordinates(
+        { owner: "PRC", locationId: "INDOPACOM_PRC" },
+        state.locations.INDOPACOM_PRC,
+      ),
+    ).toEqual([35.8617, 104.1954]);
   });
 
   it("records required summaries and advances the turn loop", () => {

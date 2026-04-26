@@ -1,4 +1,12 @@
-import type { Card as GameCardData, GameState } from "../engine";
+import {
+  getCrtAOutcome,
+  getRtBOutcome,
+  type Card as GameCardData,
+  type CtrAColumn,
+  type GameState,
+  type OutcomeRow,
+  type RtBColumn,
+} from "../engine";
 import { Modal, Tag } from "./ui";
 import { playerLabel, sideToTone } from "./factions";
 import type { FactionTone } from "./factions";
@@ -32,6 +40,68 @@ function outcomeLabel(value?: string): string {
   return OUTCOME_LABELS[value] ?? value;
 }
 
+const CRT_A_COLUMNS: CtrAColumn[] = ["Red >=4:1", "Red 3:1", "Red 2:1", "1:1", "Blue 2:1", "Blue 3:1", "Blue >=4:1"];
+const RT_B_COLUMNS: RtBColumn[] = ["Red Advantage", "Parity", "Blue Advantage"];
+
+function rollRangeLabel(min?: number, max?: number): string {
+  if (min === undefined || max === undefined) return "Fixed";
+  if (min === max) return String(min);
+  return `${min}-${max}`;
+}
+
+function fixedModifierForCard(card: GameCardData): number {
+  return card.resolution.modifiers.reduce((sum, modifier) => sum + (modifier.value ?? 0), 0);
+}
+
+function compactRollFaces(faces: number[]): string {
+  const sorted = [...faces].sort((a, b) => a - b);
+  const ranges: string[] = [];
+  let start = sorted[0];
+  let end = sorted[0];
+
+  for (const face of sorted.slice(1)) {
+    if (face === end + 1) {
+      end = face;
+      continue;
+    }
+    ranges.push(rollRangeLabel(start, end));
+    start = face;
+    end = face;
+  }
+
+  ranges.push(rollRangeLabel(start, end));
+  return ranges.join(", ");
+}
+
+function outcomeRollDetails(card: GameCardData, row: OutcomeRow): Array<{ label: string; range: string }> {
+  if (!row.outcome) return [];
+  const modifier = fixedModifierForCard(card);
+  const naturalRolls = Array.from({ length: 10 }, (_, index) => index + 1);
+
+  if (card.resolution.table_reference === "RT_B") {
+    return RT_B_COLUMNS.flatMap((column) => {
+      const faces = naturalRolls.filter((face) => getRtBOutcome(face + modifier, column) === row.outcome);
+      return faces.length > 0 ? [{ label: shortColumnLabel(column), range: compactRollFaces(faces) }] : [];
+    });
+  }
+
+  if (card.resolution.table_reference === "CRT_A") {
+    return CRT_A_COLUMNS.flatMap((column) => {
+      const faces = naturalRolls.filter((face) => getCrtAOutcome(face + modifier, column) === row.outcome);
+      return faces.length > 0 ? [{ label: shortColumnLabel(column), range: compactRollFaces(faces) }] : [];
+    });
+  }
+
+  return [];
+}
+
+function shortColumnLabel(column: CtrAColumn | RtBColumn): string {
+  return column
+    .replace(" Advantage", " adv")
+    .replace("Blue ", "Blue ")
+    .replace("Red ", "Red ");
+}
+
 export function CardModal({ card, state, open, onClose, footer }: CardModalProps) {
   if (!card) return null;
   const tone = toneForCardOwner(card, state);
@@ -59,15 +129,34 @@ export function CardModal({ card, state, open, onClose, footer }: CardModalProps
         {card.resolution.outcome_map.length > 0 ? (
           <div className="stack">
             <span className="section__title section__title--muted">Possible Outcomes</span>
-            <div className="stack" style={{ gap: "0.3rem" }}>
+            <div className="outcome-list">
               {card.resolution.outcome_map.map((row, idx) => {
                 const label = row.label ?? outcomeLabel(row.outcome);
+                const rollDetails = outcomeRollDetails(card, row);
+                const hasExplicitRange = row.roll_min !== undefined && row.roll_max !== undefined;
+                const rollLabel = hasExplicitRange ? rollRangeLabel(row.roll_min, row.roll_max) : rollDetails.length > 0 ? "Table" : "Fixed";
                 return (
-                  <div key={idx} className="signal-item">
-                    <span className="signal-item__id">{label}</span>
-                    <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                      {row.narrative ?? (row.effects.map(describeEffect).filter(Boolean).join("; ") || "No mechanical effect.")}
-                    </span>
+                  <div key={idx} className="outcome-item">
+                    <div className="outcome-item__roll" aria-label={`D10 roll ${rollLabel}`}>
+                      <span className="outcome-item__roll-label">D10</span>
+                      <span className="outcome-item__roll-value">{rollLabel}</span>
+                    </div>
+                    <div className="outcome-item__body">
+                      <span className="outcome-item__title">{label}</span>
+                      <span className="outcome-item__effect">
+                        {row.narrative ?? (row.effects.map(describeEffect).filter(Boolean).join("; ") || "No mechanical effect.")}
+                      </span>
+                      {rollDetails.length > 0 ? (
+                        <span className="outcome-item__ranges" aria-label="Natural D10 roll ranges by table column">
+                          {rollDetails.map((detail) => (
+                            <span key={`${detail.label}-${detail.range}`} className="outcome-item__range">
+                              <span className="outcome-item__range-label">{detail.label}</span>
+                              <span className="outcome-item__range-value">{detail.range}</span>
+                            </span>
+                          ))}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                 );
               })}

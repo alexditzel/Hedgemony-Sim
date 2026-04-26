@@ -106,11 +106,10 @@ h1, h2, h3, h4, p { margin: 0; }
 .app-shell {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr) 320px;
-  grid-template-rows: 64px minmax(0, 1fr) clamp(230px, 30vh, 320px);
+  grid-template-rows: 64px minmax(0, 1fr);
   grid-template-areas:
     "topbar topbar topbar"
-    "left   stage  right"
-    "left   hand   right";
+    "left   stage  right";
   height: 100vh;
   overflow: hidden;
 }
@@ -954,11 +953,21 @@ h1, h2, h3, h4, p { margin: 0; }
   box-shadow: var(--shadow-card);
 }
 .gamecard-back--blue { border-color: var(--blue-700); background: linear-gradient(135deg, var(--card-back-blue-start) 0%, var(--card-back-blue-mid) 50%, var(--card-back-blue-start) 100%); }
+.gamecard-back--image {
+  border-color: var(--border-strong);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
 .gamecard-back::before {
   content: "";
   position: absolute; inset: 8px;
   border: 1px solid var(--white-border-faint);
   border-radius: 3px;
+}
+.gamecard-back--image::before,
+.gamecard-back--image::after {
+  content: none;
 }
 .gamecard-back::after {
   content: attr(data-stamp);
@@ -1643,6 +1652,92 @@ h1, h2, h3, h4, p { margin: 0; }
 }
 .modal__close:hover { background: var(--bg-card); border-color: var(--border-default); }
 
+.outcome-list {
+  display: grid;
+  gap: 0.45rem;
+}
+.outcome-item {
+  display: grid;
+  grid-template-columns: 4.75rem minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0.65rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+}
+.outcome-item__roll {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.12rem;
+  min-height: 3rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(180deg, var(--bg-card-strong), var(--bg-elevated));
+  box-shadow: inset 0 1px 0 var(--surface-shade-hairline);
+}
+.outcome-item__roll-label {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.outcome-item__roll-value {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--amber-200);
+  line-height: 1;
+}
+.outcome-item__body {
+  display: grid;
+  align-content: center;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.outcome-item__title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-primary);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.outcome-item__effect {
+  font-size: 0.85rem;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+.outcome-item__ranges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding-top: 0.1rem;
+}
+.outcome-item__range {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 1.45rem;
+  padding: 0.16rem 0.38rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xs);
+  background: var(--bg-elevated);
+}
+.outcome-item__range-label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-muted);
+}
+.outcome-item__range-value {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--amber-200);
+}
+
 /* ============================================================
    Player switcher
    ============================================================ */
@@ -1761,6 +1856,8 @@ h1, h2, h3, h4, p { margin: 0; }
   cursor: pointer;
 }
 .signal-deck-trigger:hover { background: var(--bg-card-strong); border-color: var(--red-700); }
+.signal-deck-trigger--blue:hover { border-color: var(--blue-600); }
+.signal-deck-trigger--blue .signal-deck-trigger__count { color: var(--blue-200); }
 .signal-deck-trigger__count {
   font-family: var(--font-display);
   font-size: 1.1rem;
@@ -1773,6 +1870,20 @@ h1, h2, h3, h4, p { margin: 0; }
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-secondary);
+}
+
+.blue-deck-reference {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+  justify-content: flex-start;
+  margin-top: 0.65rem;
+}
+.blue-deck-reference__item {
+  display: grid;
+  gap: 0.4rem;
+  width: min-content;
 }
 
 .reveal-stage {
@@ -1821,15 +1932,37 @@ h1, h2, h3, h4, p { margin: 0; }
 
 .freeplay-cta {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.85rem;
+  gap: 1rem;
   padding: 0.85rem 1rem;
   border: 1px solid var(--amber-700);
   background:
     linear-gradient(180deg, var(--amber-tint-subtle), var(--amber-tint));
   border-left: 3px solid var(--amber-400);
   border-radius: 2px;
+}
+.freeplay-cta__card {
+  width: 58px;
+  aspect-ratio: 2 / 3;
+  flex: 0 0 auto;
+}
+.freeplay-cta__card .gamecard-back {
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
+}
+.freeplay-cta__copy {
+  min-width: 0;
+}
+.freeplay-cta__kicker {
+  margin-bottom: 0.16rem;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 .freeplay-cta__title {
   font-family: var(--font-stencil), var(--font-display);
@@ -1860,6 +1993,31 @@ h1, h2, h3, h4, p { margin: 0; }
   filter: brightness(1.05);
   background: linear-gradient(180deg, var(--freeplay-button-hover-start), var(--freeplay-button-hover-end));
   color: var(--warm-button-text);
+}
+.freeplay-modal {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+.freeplay-modal > .gamecard-back {
+  width: 150px;
+  box-shadow: var(--shadow-card);
+}
+@media (max-width: 720px) {
+  .freeplay-cta {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .freeplay-cta__btn {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+  }
+  .freeplay-modal {
+    grid-template-columns: 84px minmax(0, 1fr);
+  }
+  .freeplay-modal > .gamecard-back {
+    width: 84px;
+  }
 }
 
 .alloc-table {

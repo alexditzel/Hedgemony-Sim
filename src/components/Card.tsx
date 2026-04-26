@@ -1,6 +1,8 @@
 import type { KeyboardEvent } from "react";
 import type { Card as GameCardData, GameState, PlayerId } from "../engine";
 import type { FactionTone } from "./factions";
+import type { CardBackKind } from "./cardBacks";
+import { cardBackImageUrl } from "./cardBacks";
 import { playerLabel, sideToTone } from "./factions";
 
 function toneForCardOwner(card: GameCardData, state: GameState): FactionTone {
@@ -127,9 +129,25 @@ function costLabel(card: GameCardData): string {
 interface CardBackProps {
   tone?: "blue" | "red";
   stamp?: string;
+  imageUrl?: string;
+  playerId?: PlayerId;
+  kind?: CardBackKind;
+  label?: string;
 }
-export function CardBack({ tone = "red", stamp = "Classified" }: CardBackProps) {
-  return <div className={`gamecard-back ${tone === "blue" ? "gamecard-back--blue" : ""}`} data-stamp={stamp} />;
+export function CardBack({ tone = "red", stamp = "Classified", imageUrl, playerId, kind, label }: CardBackProps) {
+  const resolvedImageUrl = imageUrl ?? cardBackImageUrl(playerId, kind);
+  return (
+    <div
+      className={[
+        "gamecard-back",
+        tone === "blue" ? "gamecard-back--blue" : "",
+        resolvedImageUrl ? "gamecard-back--image" : ""
+      ].filter(Boolean).join(" ")}
+      data-stamp={stamp}
+      aria-label={label ?? stamp}
+      style={resolvedImageUrl ? { backgroundImage: `url(${resolvedImageUrl})` } : undefined}
+    />
+  );
 }
 
 interface CardFlipProps {

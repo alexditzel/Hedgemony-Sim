@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import type { GameState, PlayerId } from "../engine";
 import { sideToTone } from "./factions";
+import { offsetCoordinates, resolveMapCoordinates } from "./mapCoordinates";
 import { buildFfMarkerIcon, buildPopupHtml, type MarkerSide } from "./MapMarker";
 
 interface TheaterMapProps {
@@ -64,12 +65,11 @@ export function TheaterMap({ state }: TheaterMapProps) {
         />
         {tokens.map((token, index) => {
           const location = state.locations[token.locationId];
-          const coords = location?.coordinates;
+          const coords = resolveMapCoordinates(token, location);
           if (!coords) return null;
           // small offset within a location so multiple owners don't overlap exactly
           const offsetIndex = ownerOffsetIndex(tokens, token);
-          const lat = coords[0] + offsetIndex * 0.7;
-          const lng = coords[1] + offsetIndex * 0.7;
+          const [lat, lng] = offsetCoordinates(coords, offsetIndex);
           const icon = buildFfMarkerIcon({
             owner: token.owner,
             ownerLabel: token.ownerLabel,

@@ -29,9 +29,10 @@ export function CurrentTaskPanel({ phaseLabel, subPhase, task, why, advance }: C
 interface StatPanelProps {
   state: GameState;
   visiblePlayers?: PlayerId[];
+  onOpenBlueDeck?: () => void;
 }
 
-export function StatPanel({ state, visiblePlayers }: StatPanelProps) {
+export function StatPanel({ state, visiblePlayers, onOpenBlueDeck }: StatPanelProps) {
   const players = useMemo(() => Object.values(state.players), [state.players]);
   const red = players.filter((p) => p.side === "Red");
   const usPlayer = state.players.US ?? players.find((player) => player.side === "Blue");
@@ -61,6 +62,13 @@ export function StatPanel({ state, visiblePlayers }: StatPanelProps) {
             <div className="player-row__sub">Victory metric: Influence Points</div>
           </div>
         </div>
+        {onOpenBlueDeck ? (
+          <button type="button" className="signal-deck-trigger signal-deck-trigger--blue" onClick={onOpenBlueDeck}>
+            <span className="signal-deck-trigger__count">{state.blue_subphase === "Actions" ? "A" : "I"}</span>
+            <span className="signal-deck-trigger__label">Show current deck</span>
+            <Tag tone="blue">VIEW</Tag>
+          </button>
+        ) : null}
 
         <div className="stat-grid stat-grid--compact">
           <StatCell label="Resource Points" value={usPlayer.resource_points} sub="Budget pool" />
