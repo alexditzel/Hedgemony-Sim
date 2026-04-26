@@ -1,8 +1,20 @@
+import z from "zod";
+
 export type PlayerSide = "Blue" | "Red" | "Other";
+export const PlayerSideSchema = z.enum(["Blue", "Red", "Other"]);
+
 export type PlayerId = string;
+export const PlayerIdSchema = z.string().brand<"PlayerId">;
+
 export type ForceId = string;
+export const ForceIdSchema = z.string().brand<"ForceId">;
+
 export type CardId = string;
+export const CardIdSchema = z.string().brand<"CardId">;
+
 export type LocationId = string;
+export const LocationIdSchema = z.string().brand<"LocationId">;
+
 export type CapabilityId =
   | "C4ISR"
   | "LRF"
@@ -11,12 +23,24 @@ export type CapabilityId =
   | "NUCLEAR"
   | string;
 
+export const CapabilityIdSchema = z.union([
+  z.enum(["C4ISR", "LRF", "SOF", "IAMD_BMD", "NUCLEAR"]),
+  z.string(),
+]);
+
 export type RuleTag =
   | "DETERMINISTIC"
   | "CARD_DEFINED"
   | "WHITE_CELL_ADJUDICATION"
   | "SUMMARY_REQUIRED"
   | "SCENARIO_DEFINED";
+export const RuleTagSchema = z.enum([
+  "DETERMINISTIC",
+  "CARD_DEFINED",
+  "WHITE_CELL_ADJUDICATION",
+  "SUMMARY_REQUIRED",
+  "SCENARIO_DEFINED",
+]);
 
 export type PhaseId =
   | "GameStart"
@@ -27,14 +51,32 @@ export type PhaseId =
   | "AnnualResourcesAllocation"
   | "StateOfWorldSummary"
   | "GameOver";
+export const PhaseIdSchema = z.enum([
+  "GameStart",
+  "RedSignaling",
+  "BlueReadinessBill",
+  "BlueInvestmentsAndActions",
+  "RedInvestmentsAndActions",
+  "AnnualResourcesAllocation",
+  "StateOfWorldSummary",
+  "GameOver",
+]);
 
 export type CardType =
   | "Action"
   | "Investment"
   | "DomesticEvent"
   | "InternationalEvent";
+export const CardTypeSchema = z.enum([
+  "Action",
+  "Investment",
+  "DomesticEvent",
+  "InternationalEvent",
+]);
 
 export type PublicPrivate = "Public" | "Private";
+export const PublicPrivateSchema = z.enum(["Public", "Private"]);
+
 export type Visibility =
   | "public"
   | "private_to_player_and_white_cell"
@@ -56,6 +98,12 @@ export interface Condition {
   tag?: RuleTag;
   expression?: string;
 }
+export const ConditionSchema = z.object({
+  id: z.optional(z.string()),
+  description: z.string(),
+  tag: z.optional(z.string()),
+  expression: z.optional(z.string()),
+});
 
 export interface Location {
   id: LocationId;
@@ -190,7 +238,11 @@ export interface ModifierDefinition {
   id: string;
   description: string;
   value?: number;
-  source?: "critical_capability_difference" | "card" | "readiness" | "white_cell";
+  source?:
+    | "critical_capability_difference"
+    | "card"
+    | "readiness"
+    | "white_cell";
 }
 
 export interface OutcomeRow {
@@ -296,7 +348,12 @@ export interface Effect {
   type: EffectType;
   target: string;
   value: JsonValue;
-  timing: "immediate" | "start_of_turn" | "end_of_turn" | "after_pinning_removed" | "card_defined";
+  timing:
+    | "immediate"
+    | "start_of_turn"
+    | "end_of_turn"
+    | "after_pinning_removed"
+    | "card_defined";
   visibility: Visibility;
   source_card_id?: CardId;
   requires_adjudication: boolean;
