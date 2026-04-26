@@ -1,11 +1,15 @@
 import OpenAI from "openai";
-import { getPlayerDeck, getPlayersBySide, getRedChoiceOptions } from "./rules";
-import type {
-  AdjudicationRequest,
-  CardId,
-  GameState,
-  PlayerId,
-  RedSignalState,
+import z from "zod";
+import { zodTextFormat } from "openai/helpers/zod";
+import { getPlayerDeck } from "./rules";
+import {
+  CardIdSchema,
+  PlayerIdSchema,
+  type AdjudicationRequest,
+  type CardId,
+  type GameState,
+  type PlayerId,
+  type RedSignalState,
 } from "./types";
 
 const openai = new OpenAI({
@@ -19,93 +23,143 @@ export interface PlaceholderRedSignalDecision {
   activationIntent: RedSignalState["activation_intent"];
 }
 
+const SignalDecisionSchema = z.object({
+  cardIds: z.array(CardIdSchema),
+  briefSummary: z.string(),
+  activationIntent: z.record(CardIdSchema, z.enum(["Yes", "No", "Undeclared"])),
+});
+
+export async function placeholderRedSignalDecision(
+  state: GameState,
+  playerId: PlayerId,
+): Promise<PlaceholderRedSignalDecision> {
+  const options = getPlayerDeck(state, playerId).map((c) => c.id);
+  const response = await openai.responses.parse({
+    model: "gpt-5.4-nano",
+    input: [
+      { role: "system", content: "You are the Red player in a military simulation game. Choose your signaled cards, write a brief summary of your intent, and declare activation intents." },
+      { role: "user", content: JSON.stringify({ state, playerId, options }) },
+    ],
+    text: {
+      format: zodTextFormat(SignalDecisionSchema, "signal_decision"),
+    },
+  });
+  return response.output_parsed as PlaceholderRedSignalDecision;
+}
+
 export type PlaceholderRedPlayDecision =
   | { kind: "play"; cardId: CardId }
   | { kind: "skip" };
 
-export function placeholderRedSignalDecision(
+const PlayDecisionSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("play"), cardId: CardIdSchema }),
+  z.object({ kind: z.literal("skip") }),
+]);
+
+export async function placeholderRedPlayDecision(
   state: GameState,
   playerId: PlayerId,
-): PlaceholderRedSignalDecision {
-  const deck = getPlayerDeck(state, playerId);
-  const action = deck.find((card) => card.type === "Action");
-  const investment = deck.find((card) => card.type === "Investment");
-  const cardIds = [action, investment, ...deck]
-    .filter((card): card is NonNullable<typeof card> => Boolean(card))
-    .map((card) => card.id)
-    .filter((id, index, ids) => ids.indexOf(id) === index)
-    .slice(0, 3);
-
-  // Placeholder for a future Red-player LLM request that will choose signaled cards and write the intelligence brief.
-  return {
-    cardIds,
-    briefSummary: `${playerId} placeholder LLM signal brief.`,
-    activationIntent: Object.fromEntries(
-      cardIds.map((id) => [id, "Undeclared"]),
-    ),
-  };
+): Promise<PlaceholderRedPlayDecision> {
+  const response = await openai.responses.parse({
+    model: "gpt-5.4-nano",
+    input: [
+      { role: "system", content: "You are the Red player. Decide whether to play a signaled card or skip based on the current game state." },
+      { role: "user", content: JSON.stringify({ state, playerId }) },
+    ],
+    text: {
+      format: zodTextFormat(PlayDecisionSchema, "play_decision"),
+    },
+  });
+  return response.output_parsed as PlaceholderRedPlayDecision;
 }
 
-export function placeholderRedPlayDecision(
-  state: GameState,
-  playerId: PlayerId,
-): PlaceholderRedPlayDecision {
-  const options = getRedChoiceOptions(state, playerId);
-  const alreadyPlayed = state.red_plays[playerId]?.played_card_ids.length ?? 0;
-  if (alreadyPlayed > 0 && options.canSkip) {
-    // Placeholder for a future Red-player LLM request that will decide whether to stop after legal played-card mix is achieved.
-    return { kind: "skip" };
-  }
-  const nextCard = options.remaining[0];
-  if (nextCard) {
-    // Placeholder for a future Red-player LLM request that will select which remaining signaled card to play.
-    return { kind: "play", cardId: nextCard.id };
-  }
-  // Placeholder for a future Red-player LLM request that will decide to pass when no playable Red card remains.
-  return { kind: "skip" };
+const SequenceDecisionSchema = z.object({
+  sequence: z.array(PlayerIdSchema),
+});
+
+export async function placeholderRedSequenceDecision(state: GameState): Promise<PlayerId[]> {
+  const response = await openai.responses.parse({
+    model: "gpt-5.4-nano",
+    input: [
+      { role: "system", content: "You are the White Cell. Decide the turn sequence for the Red players based on the current game state." },
+      { role: "user", content: JSON.stringify({ state }) },
+    ],
+    text: {
+      format: zodTextFormat(SequenceDecisionSchema, "sequence_decision"),
+    },
+  });
+  return response.output_parsed!.sequence;
 }
 
-export function placeholderRedSequenceDecision(state: GameState): PlayerId[] {
-  // Placeholder for a future White Cell LLM request that will choose the Red player action sequence.
-  return getPlayersBySide(state, "Red").map((player) => player.id);
-}
+const SummarySchema = z.object({ summary: z.string() });
 
-export function placeholderWhiteCellSummary(
+export async function placeholderWhiteCellSummary(
   kind: "game_start" | "state_of_world",
   turn: number,
-): string {
-  // Placeholder for a future White Cell LLM request that will summarize relevant world-state changes.
-  return kind === "game_start"
-    ? "Placeholder White Cell opening state-of-world summary."
-    : `Placeholder White Cell state-of-world summary for turn ${turn}.`;
-}
-
-export function placeholderWhiteCellAdjudicationResolution(
-  request: AdjudicationRequest,
-): string {
-  // Placeholder for a future White Cell LLM request that will resolve adjudications in rules-engine-compatible terms.
-  if (
-    typeof request.payload === "object" &&
-    request.payload !== null &&
-    !Array.isArray(request.payload) &&
-    request.payload.kind === "table_extension"
-  ) {
-    return "0";
-  }
-  return "Placeholder White Cell adjudication resolution.";
-}
-
-export function placeholderWhiteCellEventNote(cardId: CardId): string {
-  // Placeholder for a future White Cell LLM request that will decide why and how to inject a scenario event.
-  return `Placeholder White Cell event injection for ${cardId}.`;
-}
-
-export function placeholderWhiteCellEventDecision(
   state: GameState,
-): CardId | undefined {
-  // Placeholder for a future White Cell LLM request that will decide whether to inject an event and which event to use.
-  return Object.values(state.cards).find(
-    (card) =>
-      card.type === "InternationalEvent" || card.type === "DomesticEvent",
-  )?.id;
+): Promise<string> {
+  const response = await openai.responses.parse({
+    model: "gpt-5.4-nano",
+    input: [
+      { role: "system", content: `You are the White Cell. Summarize the ${kind} for turn ${turn}.` },
+      { role: "user", content: JSON.stringify({ state, kind, turn }) },
+    ],
+    text: {
+      format: zodTextFormat(SummarySchema, "summary"),
+    },
+  });
+  return response.output_parsed!.summary;
+}
+
+const ResolutionSchema = z.object({ resolution: z.string() });
+
+export async function placeholderWhiteCellAdjudicationResolution(
+  request: AdjudicationRequest,
+  state: GameState,
+): Promise<string> {
+  const response = await openai.responses.parse({
+    model: "gpt-5.4-nano",
+    input: [
+      { role: "system", content: "You are the White Cell. Resolve the adjudication request in rules-engine-compatible terms." },
+      { role: "user", content: JSON.stringify({ state, request }) },
+    ],
+    text: {
+      format: zodTextFormat(ResolutionSchema, "resolution"),
+    },
+  });
+  return response.output_parsed!.resolution;
+}
+
+const EventNoteSchema = z.object({ note: z.string() });
+
+export async function placeholderWhiteCellEventNote(cardId: CardId, state: GameState): Promise<string> {
+  const response = await openai.responses.parse({
+    model: "gpt-5.4-nano",
+    input: [
+      { role: "system", content: "You are the White Cell. Decide why and how to inject a scenario event for the given card ID." },
+      { role: "user", content: JSON.stringify({ state, cardId }) },
+    ],
+    text: {
+      format: zodTextFormat(EventNoteSchema, "event_note"),
+    },
+  });
+  return response.output_parsed!.note;
+}
+
+const EventDecisionSchema = z.object({ cardId: CardIdSchema.optional() });
+
+export async function placeholderWhiteCellEventDecision(
+  state: GameState,
+): Promise<CardId | undefined> {
+  const response = await openai.responses.parse({
+    model: "gpt-5.4-nano",
+    input: [
+      { role: "system", content: "You are the White Cell. Decide whether to inject an event and which event to use." },
+      { role: "user", content: JSON.stringify({ state }) },
+    ],
+    text: {
+      format: zodTextFormat(EventDecisionSchema, "event_decision"),
+    },
+  });
+  return response.output_parsed!.cardId;
 }

@@ -239,13 +239,13 @@ describe("scenario loading and validation", () => {
 });
 
 describe("turn sequence and Red signaling", () => {
-  it("feeds Red and White Cell placeholder decisions through existing rules-engine interfaces", () => {
+  it("feeds Red and White Cell placeholder decisions through existing rules-engine interfaces", async () => {
     let state = recordGameStartSummary(
       freshState(),
-      placeholderWhiteCellSummary("game_start", 1),
+      await placeholderWhiteCellSummary("game_start", 1, freshState()),
     );
     for (const player of getPlayersBySide(state, "Red")) {
-      const decision = placeholderRedSignalDecision(state, player.id);
+      const decision = await placeholderRedSignalDecision(state, player.id);
       const result = signalRedCards(
         state,
         player.id,
@@ -262,18 +262,17 @@ describe("turn sequence and Red signaling", () => {
     const actionPhase = advanceBlueToActions(paid).state;
     const redPhase = beginRedInvestmentsAndActions(
       actionPhase,
-      placeholderRedSequenceDecision(actionPhase),
+      await placeholderRedSequenceDecision(actionPhase),
       new SequenceDiceRoller([5]),
     );
     expect(redPhase.issues).toHaveLength(0);
+    const playDecision = await placeholderRedPlayDecision(
+      redPhase.state,
+      redPhase.state.active_player_id ?? "RU",
+    );
+    expect(playDecision.kind).toBe("play");
     expect(
-      placeholderRedPlayDecision(
-        redPhase.state,
-        redPhase.state.active_player_id ?? "RU",
-      ).kind,
-    ).toBe("play");
-    expect(
-      placeholderWhiteCellAdjudicationResolution({
+      await placeholderWhiteCellAdjudicationResolution({
         id: "adj-test",
         turn: 1,
         phase: "BlueReadinessBill",
@@ -282,7 +281,7 @@ describe("turn sequence and Red signaling", () => {
         tags: ["WHITE_CELL_ADJUDICATION"],
         status: "pending",
         payload: { kind: "table_extension", table: "T", row: "R", column: "C" },
-      }),
+      }, actionPhase),
     ).toBe("0");
   });
 
