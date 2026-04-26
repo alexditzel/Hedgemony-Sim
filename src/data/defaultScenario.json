@@ -1,0 +1,882 @@
+{
+  "title": "Hedgemony Digital Example Scenario",
+  "learning_objectives": [
+    "Explore posture, readiness, hedging, and resource tradeoffs.",
+    "Exercise Blue free-play adjudication and Red signaled-card sequencing.",
+    "Demonstrate deterministic tables, card-defined outcomes, and White Cell pauses."
+  ],
+  "security_environment": "A compact example scenario based on the default Hedgemony starting conditions. Values are for game demonstration only and are not real-world assessments.",
+  "players": [
+    {
+      "id": "US",
+      "label": "United States",
+      "side": "Blue",
+      "resource_points": 40,
+      "influence_points": 50,
+      "national_tech_level": 4,
+      "critical_capabilities": {
+        "C4ISR": 3,
+        "IAMD_BMD": 3,
+        "SOF": 3
+      },
+      "victory_condition": "IPs > IPs of everyone, and DPRK does not win",
+      "card_decks": {
+        "action_investment": ["US-INV-01", "US-INV-02", "US-ACT-01", "US-ACT-02"],
+        "domestic_event": ["US-DOM-01"]
+      },
+      "notes": "U.S. readiness is deliberately split by readiness level so printed readiness tables apply without interpolation."
+    },
+    {
+      "id": "NATO_EU",
+      "label": "NATO/EU",
+      "side": "Blue",
+      "resource_points": 10,
+      "influence_points": 50,
+      "national_tech_level": 4,
+      "critical_capabilities": {
+        "C4ISR": 3,
+        "IAMD_BMD": 3
+      },
+      "victory_condition": "IPs > IPs of RU, and RU does not win",
+      "card_decks": {
+        "action_investment": ["NATO-INV-01", "NATO-ACT-01"],
+        "domestic_event": []
+      },
+      "notes": ""
+    },
+    {
+      "id": "RU",
+      "label": "Russia",
+      "side": "Red",
+      "resource_points": 15,
+      "influence_points": 15,
+      "national_tech_level": 4,
+      "critical_capabilities": {
+        "LRF": 4,
+        "C4ISR": 3
+      },
+      "victory_condition": "IPs >= US IPs - 5",
+      "card_decks": {
+        "action_investment": ["RU-ACT-01", "RU-ACT-02", "RU-INV-01", "RU-INV-PROC"],
+        "domestic_event": ["RU-DOM-01"]
+      },
+      "notes": ""
+    },
+    {
+      "id": "PRC",
+      "label": "China",
+      "side": "Red",
+      "resource_points": 15,
+      "influence_points": 40,
+      "national_tech_level": 4,
+      "critical_capabilities": {
+        "LRF": 4,
+        "C4ISR": 3
+      },
+      "victory_condition": "IPs >= US IPs - 3, and DPRK neither wins nor loses",
+      "card_decks": {
+        "action_investment": ["PRC-ACT-01", "PRC-ACT-02", "PRC-INV-01", "PRC-INV-PROC"],
+        "domestic_event": ["PRC-DOM-01"]
+      },
+      "notes": ""
+    },
+    {
+      "id": "DPRK",
+      "label": "North Korea",
+      "side": "Red",
+      "resource_points": 5,
+      "influence_points": 5,
+      "national_tech_level": 1,
+      "critical_capabilities": {
+        "LRF": 1,
+        "NUCLEAR": 0
+      },
+      "victory_condition": "IPs > 15, or U.S. leaves Korean Peninsula; lose if IPs = 0",
+      "card_decks": {
+        "action_investment": ["DPRK-ACT-01", "DPRK-ACT-02", "DPRK-INV-01"],
+        "domestic_event": ["DPRK-DOM-01"]
+      },
+      "notes": ""
+    },
+    {
+      "id": "IR",
+      "label": "Iran",
+      "side": "Red",
+      "resource_points": 8,
+      "influence_points": 5,
+      "national_tech_level": 2,
+      "critical_capabilities": {
+        "LRF": 2,
+        "SOF": 1
+      },
+      "victory_condition": "IPs > 20",
+      "card_decks": {
+        "action_investment": ["IR-ACT-01", "IR-ACT-02", "IR-INV-01"],
+        "domestic_event": ["IR-DOM-01"]
+      },
+      "notes": ""
+    }
+  ],
+  "map": {
+    "locations": [
+      { "id": "CONUS", "label": "CONUS", "aor_id": "USNORTHCOM", "country_owner": "US", "coordinates": [39.8283, -98.5795] },
+      { "id": "USNORTHCOM", "label": "USNORTHCOM", "coordinates": [45, -105] },
+      { "id": "USEUCOM", "label": "USEUCOM", "coordinates": [52, 20] },
+      { "id": "USCENTCOM", "label": "USCENTCOM", "coordinates": [28, 45] },
+      { "id": "USINDOPACOM", "label": "USINDOPACOM", "coordinates": [18, 125] },
+      { "id": "USSOUTHCOM", "label": "USSOUTHCOM", "coordinates": [-15, -60] },
+      { "id": "USAFRICOM", "label": "USAFRICOM", "coordinates": [2, 20] },
+      { "id": "INDOPACOM_PRC", "label": "INDOPACOM (PRC)", "aor_id": "USINDOPACOM", "country_owner": "PRC", "coordinates": [35.8617, 104.1954] },
+      { "id": "INDOPACOM_DPRK", "label": "INDOPACOM (DPRK)", "aor_id": "USINDOPACOM", "country_owner": "DPRK", "coordinates": [40.3399, 127.5101] },
+      { "id": "CENTCOM_IRAN", "label": "CENTCOM (Iran)", "aor_id": "USCENTCOM", "country_owner": "IR", "coordinates": [32.4279, 53.688] },
+      { "id": "CENTCOM_AFGHANISTAN", "label": "CENTCOM (Afghanistan)", "aor_id": "USCENTCOM", "coordinates": [33.9391, 67.71] },
+      { "id": "CENTCOM_IRAQ", "label": "CENTCOM (Iraq)", "aor_id": "USCENTCOM", "coordinates": [33.2232, 43.6793] },
+      { "id": "EUCOM_RU", "label": "EUCOM (RU)", "aor_id": "USEUCOM", "country_owner": "RU", "coordinates": [55.7558, 37.6173] },
+      { "id": "EUCOM_NATO", "label": "EUCOM (NATO)", "aor_id": "USEUCOM", "country_owner": "NATO_EU", "coordinates": [50.8503, 4.3517] }
+    ],
+    "movement_edges": [
+      { "from": "CONUS", "to": "USINDOPACOM", "type": "scenario" },
+      { "from": "CONUS", "to": "USCENTCOM", "type": "scenario" },
+      { "from": "CONUS", "to": "USEUCOM", "type": "scenario" },
+      { "from": "USCENTCOM", "to": "USEUCOM", "type": "adjacent" },
+      { "from": "USCENTCOM", "to": "USINDOPACOM", "type": "adjacent" }
+    ],
+    "aor_boundaries": []
+  },
+  "starting_conditions": {
+    "resources": {
+      "US": 40,
+      "NATO_EU": 10,
+      "RU": 15,
+      "PRC": 15,
+      "DPRK": 5,
+      "IR": 8
+    },
+    "per_turn_resources": {
+      "US": 30,
+      "NATO_EU": 5,
+      "RU": 5,
+      "PRC": 4,
+      "DPRK": 3,
+      "IR": 4
+    },
+    "influence": {
+      "US": 50,
+      "NATO_EU": 50,
+      "RU": 15,
+      "PRC": 40,
+      "DPRK": 5,
+      "IR": 5
+    },
+    "national_tech_levels": {
+      "US": 4,
+      "NATO_EU": 4,
+      "RU": 4,
+      "PRC": 4,
+      "DPRK": 1,
+      "IR": 2
+    },
+    "critical_capabilities": {
+      "US": { "C4ISR": 3, "IAMD_BMD": 3, "SOF": 3 },
+      "NATO_EU": { "C4ISR": 3, "IAMD_BMD": 3 },
+      "RU": { "LRF": 4, "C4ISR": 3 },
+      "PRC": { "LRF": 4, "C4ISR": 3 },
+      "DPRK": { "LRF": 1, "NUCLEAR": 0 },
+      "IR": { "LRF": 2, "SOF": 1 }
+    },
+    "force_laydown": [
+      { "id": "US-CONUS-10", "owner": "US", "force_factors": 10, "modernization_level": 3, "location_id": "CONUS", "home_base_id": "CONUS", "readiness_level": 100 },
+      { "id": "US-CONUS-4", "owner": "US", "force_factors": 4, "modernization_level": 3, "location_id": "CONUS", "home_base_id": "CONUS", "readiness_level": 80 },
+      { "id": "US-PRC-1", "owner": "US", "force_factors": 1, "modernization_level": 3, "location_id": "INDOPACOM_PRC", "home_base_id": "CONUS", "readiness_level": 100 },
+      { "id": "US-DPRK-2", "owner": "US", "force_factors": 2, "modernization_level": 3, "location_id": "INDOPACOM_DPRK", "home_base_id": "CONUS", "readiness_level": 100 },
+      { "id": "US-AFG-1", "owner": "US", "force_factors": 1, "modernization_level": 3, "location_id": "CENTCOM_AFGHANISTAN", "home_base_id": "CONUS", "readiness_level": 100 },
+      { "id": "US-IRQ-1", "owner": "US", "force_factors": 1, "modernization_level": 3, "location_id": "CENTCOM_IRAQ", "home_base_id": "CONUS", "readiness_level": 100 },
+      { "id": "US-EUCOM-1", "owner": "US", "force_factors": 1, "modernization_level": 3, "location_id": "EUCOM_RU", "home_base_id": "CONUS", "readiness_level": 100 },
+      { "id": "NATO-EUCOM-5", "owner": "NATO_EU", "force_factors": 5, "modernization_level": 4, "location_id": "EUCOM_NATO", "home_base_id": "EUCOM_NATO" },
+      { "id": "RU-EUCOM-5-M2", "owner": "RU", "force_factors": 5, "modernization_level": 2, "location_id": "EUCOM_RU", "home_base_id": "EUCOM_RU" },
+      { "id": "RU-EUCOM-4-M3", "owner": "RU", "force_factors": 4, "modernization_level": 3, "location_id": "EUCOM_RU", "home_base_id": "EUCOM_RU" },
+      { "id": "PRC-INDO-5-M1", "owner": "PRC", "force_factors": 5, "modernization_level": 1, "location_id": "INDOPACOM_PRC", "home_base_id": "INDOPACOM_PRC" },
+      { "id": "PRC-INDO-5-M2", "owner": "PRC", "force_factors": 5, "modernization_level": 2, "location_id": "INDOPACOM_PRC", "home_base_id": "INDOPACOM_PRC" },
+      { "id": "PRC-INDO-5-M3", "owner": "PRC", "force_factors": 5, "modernization_level": 3, "location_id": "INDOPACOM_PRC", "home_base_id": "INDOPACOM_PRC" },
+      { "id": "DPRK-INDO-10", "owner": "DPRK", "force_factors": 10, "modernization_level": 1, "location_id": "INDOPACOM_DPRK", "home_base_id": "INDOPACOM_DPRK" },
+      { "id": "IR-CENTCOM-5", "owner": "IR", "force_factors": 5, "modernization_level": 2, "location_id": "CENTCOM_IRAN", "home_base_id": "CENTCOM_IRAN" }
+    ],
+    "bases": [
+      { "id": "US-CONUS-BASE", "owner": "US", "location_id": "CONUS", "aor_id": "USNORTHCOM", "notes": "Home base" },
+      { "id": "RU-HOME-BASE", "owner": "RU", "location_id": "EUCOM_RU", "aor_id": "USEUCOM", "notes": "Home base" },
+      { "id": "PRC-HOME-BASE", "owner": "PRC", "location_id": "INDOPACOM_PRC", "aor_id": "USINDOPACOM", "notes": "Home base" }
+    ],
+    "proxy_forces": [
+      { "id": "IR-PROXY-01", "sponsor": "IR", "label": "Regional Partner Militia", "force_factors": 2, "modernization_level": 1, "location_id": "CENTCOM_IRAN", "reliability": "Medium", "scope": "CENTCOM only" }
+    ]
+  },
+  "victory_conditions": {
+    "US": "IPs > IPs of everyone, and DPRK does not win",
+    "NATO_EU": "IPs > IPs of RU, and RU does not win",
+    "RU": "IPs >= US IPs - 5",
+    "PRC": "IPs >= US IPs - 3, and DPRK neither wins nor loses",
+    "DPRK": "IPs > 15, or U.S. leaves Korean Peninsula; lose if IPs = 0",
+    "IR": "IPs > 20"
+  },
+  "card_decks": {
+    "action_investment": {
+      "US": [
+        {
+          "id": "US-INV-01",
+          "type": "Investment",
+          "subtype": "Critical Capability Upgrade",
+          "owner": "US",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Integrated C4ISR Upgrade",
+          "description": "Invest in C4ISR integration. In the example scenario this upgrades the U.S. C4ISR critical capability by one level if the National Tech Level cap allows it.",
+          "aor": "CONUS",
+          "players_involved": ["US"],
+          "cost": { "resource_points": 4, "additional_red_card_cost_applies": false },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["BlueInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": [], "response_window": "card_defined", "force_commitment_allowed": false },
+          "resolution": {
+            "method": ["fixed_effect"],
+            "table_reference": null,
+            "die": "D10",
+            "modifiers": [],
+            "critical_capabilities": [],
+            "outcome_map": [],
+            "reset_rules_apply": false
+          },
+          "effects": [
+            { "type": "adjust_critical_capability_mod_level", "target": "US", "value": { "capability": "C4ISR", "amount": 1 }, "timing": "immediate", "visibility": "public", "requires_adjudication": false }
+          ],
+          "future_effects": [],
+          "notes": ""
+        },
+        {
+          "id": "US-INV-02",
+          "type": "Investment",
+          "subtype": "Procure New Forces",
+          "owner": "US",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Procurement Surge",
+          "description": "Use the procurement table through the dedicated engine command. The sample UI buys 1 FF at M3 and 90% readiness so the next readiness bill remains inside printed sustainment rows.",
+          "aor": "CONUS",
+          "players_involved": ["US"],
+          "cost": { "resource_points": 0, "additional_red_card_cost_applies": false },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["BlueInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": [], "response_window": "card_defined", "force_commitment_allowed": false },
+          "resolution": {
+            "method": ["white_cell_adjudication"],
+            "table_reference": null,
+            "die": "D10",
+            "modifiers": [],
+            "critical_capabilities": [],
+            "outcome_map": [],
+            "reset_rules_apply": false
+          },
+          "effects": [
+            { "type": "procure_forces", "target": "US", "value": { "note": "Use procureForces command for exact FF and Mod Level." }, "timing": "card_defined", "visibility": "public", "requires_adjudication": true }
+          ],
+          "future_effects": [],
+          "notes": ""
+        },
+        {
+          "id": "US-ACT-01",
+          "type": "Action",
+          "subtype": "Posture Operation",
+          "owner": "US",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Freedom of Navigation Operation",
+          "description": "Resolve as an RT B noncombat posture interaction.",
+          "aor": "USINDOPACOM",
+          "players_involved": ["US", "PRC"],
+          "cost": { "resource_points": 1, "additional_red_card_cost_applies": false },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["BlueInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": ["PRC"], "response_window": "immediate", "force_commitment_allowed": true },
+          "resolution": {
+            "method": ["rt_b_then_card_outcome"],
+            "table_reference": "RT_B",
+            "die": "D10",
+            "modifiers": [],
+            "critical_capabilities": [],
+            "outcome_map": [
+              { "outcome": "RMG", "effects": [{ "type": "adjust_influence_points", "target": "PRC", "value": 2, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "RmG", "effects": [{ "type": "adjust_influence_points", "target": "PRC", "value": 1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "SQ", "effects": [] },
+              { "outcome": "BmG", "effects": [{ "type": "adjust_influence_points", "target": "US", "value": 1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "BMG", "effects": [{ "type": "adjust_influence_points", "target": "US", "value": 2, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] }
+            ],
+            "reset_rules_apply": false,
+            "pinning": { "duration_turns": 1, "area_of_interest_id": "INDOPACOM_PRC" }
+          },
+          "effects": [],
+          "future_effects": [],
+          "notes": ""
+        },
+        {
+          "id": "US-ACT-02",
+          "type": "Action",
+          "subtype": "Free Play",
+          "owner": "US",
+          "public_private": "Private",
+          "private_conditions": [],
+          "title": "Blue Free-Play Initiative",
+          "description": "Blue articulates intent; the White Cell translates it into Hedgemony game terms.",
+          "players_involved": ["US"],
+          "cost": { "resource_points": 0, "additional_red_card_cost_applies": false },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["BlueInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": ["WhiteCell"], "response_window": "white_cell", "force_commitment_allowed": true },
+          "resolution": {
+            "method": ["white_cell_adjudication"],
+            "table_reference": null,
+            "die": "D10",
+            "modifiers": [],
+            "critical_capabilities": [],
+            "outcome_map": [],
+            "reset_rules_apply": false
+          },
+          "effects": [],
+          "future_effects": [],
+          "notes": "Use requestBlueFreePlayAdjudication."
+        }
+      ],
+      "NATO_EU": [
+        {
+          "id": "NATO-INV-01",
+          "type": "Investment",
+          "subtype": "Base Access",
+          "owner": "NATO_EU",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Host-Nation Access Package",
+          "description": "Creates a scenario flag for improved EUCOM access.",
+          "aor": "USEUCOM",
+          "players_involved": ["NATO_EU"],
+          "cost": { "resource_points": 2, "additional_red_card_cost_applies": false },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["BlueInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": [], "response_window": "card_defined", "force_commitment_allowed": false },
+          "resolution": { "method": ["fixed_effect"], "table_reference": null, "die": "D10", "modifiers": [], "critical_capabilities": [], "outcome_map": [], "reset_rules_apply": false },
+          "effects": [
+            { "type": "create_scenario_flag", "target": "NATO_ACCESS_EUCOM", "value": true, "timing": "immediate", "visibility": "public", "requires_adjudication": false },
+            { "type": "adjust_influence_points", "target": "NATO_EU", "value": 1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }
+          ],
+          "future_effects": [],
+          "notes": ""
+        },
+        {
+          "id": "NATO-ACT-01",
+          "type": "Action",
+          "subtype": "Exercise",
+          "owner": "NATO_EU",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "EUCOM Readiness Exercise",
+          "description": "Resolve as RT B against Russian posture.",
+          "aor": "USEUCOM",
+          "players_involved": ["NATO_EU", "RU"],
+          "cost": { "resource_points": 1, "additional_red_card_cost_applies": false },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["BlueInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": ["RU"], "response_window": "immediate", "force_commitment_allowed": true },
+          "resolution": {
+            "method": ["rt_b_then_card_outcome"],
+            "table_reference": "RT_B",
+            "die": "D10",
+            "modifiers": [{ "id": "exercise-preparation", "description": "Prepared exercise", "value": 1, "source": "card" }],
+            "critical_capabilities": [],
+            "outcome_map": [
+              { "outcome": "RMG", "effects": [{ "type": "adjust_influence_points", "target": "RU", "value": 2, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "RmG", "effects": [{ "type": "adjust_influence_points", "target": "RU", "value": 1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "SQ", "effects": [] },
+              { "outcome": "BmG", "effects": [{ "type": "adjust_influence_points", "target": "NATO_EU", "value": 1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "BMG", "effects": [{ "type": "adjust_influence_points", "target": "NATO_EU", "value": 2, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] }
+            ],
+            "reset_rules_apply": false
+          },
+          "effects": [],
+          "future_effects": [],
+          "notes": ""
+        }
+      ],
+      "RU": [
+        {
+          "id": "RU-ACT-01",
+          "type": "Action",
+          "subtype": "Major Action",
+          "owner": "RU",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Limited Incursion",
+          "description": "A force-on-force action resolved on CRT A.",
+          "aor": "USEUCOM",
+          "players_involved": ["RU", "US", "NATO_EU"],
+          "cost": { "resource_points": 2, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": ["Blue"], "response_window": "immediate", "force_commitment_allowed": true },
+          "resolution": {
+            "method": ["crt_a_then_card_outcome"],
+            "table_reference": "CRT_A",
+            "die": "D10",
+            "modifiers": [],
+            "critical_capabilities": ["C4ISR", "LRF"],
+            "outcome_map": [
+              { "outcome": "RMG", "effects": [{ "type": "adjust_influence_points", "target": "RU", "value": 4, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "RmG", "effects": [{ "type": "adjust_influence_points", "target": "RU", "value": 2, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "SQ", "effects": [] },
+              { "outcome": "BmG", "effects": [{ "type": "adjust_influence_points", "target": "NATO_EU", "value": 2, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "BMG", "effects": [{ "type": "adjust_influence_points", "target": "NATO_EU", "value": 4, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] }
+            ],
+            "reset_rules_apply": true,
+            "pinning": { "duration_turns": 1, "area_of_interest_id": "EUCOM_RU" }
+          },
+          "effects": [],
+          "future_effects": [],
+          "notes": ""
+        },
+        {
+          "id": "RU-ACT-02",
+          "type": "Action",
+          "subtype": "Gray Zone",
+          "owner": "RU",
+          "public_private": "Private",
+          "private_conditions": [],
+          "title": "Political Warfare",
+          "description": "A private action resolved with a card-defined D10 table.",
+          "aor": "USEUCOM",
+          "players_involved": ["RU", "NATO_EU"],
+          "cost": { "resource_points": 1, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": ["WhiteCell"], "response_window": "card_defined", "force_commitment_allowed": false },
+          "resolution": {
+            "method": ["card_d10_table"],
+            "table_reference": null,
+            "die": "D10",
+            "modifiers": [{ "id": "covert-access", "description": "Prepared networks", "value": 1, "source": "card" }],
+            "critical_capabilities": [],
+            "outcome_map": [
+              { "roll_min": 0, "roll_max": 3, "label": "Fail", "effects": [{ "type": "adjust_influence_points", "target": "RU", "value": -1, "timing": "immediate", "visibility": "private_to_player_and_white_cell", "requires_adjudication": false }] },
+              { "roll_min": 4, "roll_max": 7, "label": "Success", "effects": [{ "type": "adjust_influence_points", "target": "RU", "value": 1, "timing": "immediate", "visibility": "private_to_player_and_white_cell", "requires_adjudication": false }] },
+              { "roll_min": 8, "roll_max": 10, "label": "Success", "effects": [{ "type": "adjust_influence_points", "target": "RU", "value": 2, "timing": "immediate", "visibility": "private_to_player_and_white_cell", "requires_adjudication": false }] }
+            ],
+            "reset_rules_apply": false
+          },
+          "effects": [],
+          "future_effects": [],
+          "notes": ""
+        },
+        {
+          "id": "RU-INV-01",
+          "type": "Investment",
+          "subtype": "Critical Capability Upgrade",
+          "owner": "RU",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Long-Range Fires Modernization",
+          "description": "Attempts to improve RU LRF; capped by National Tech Level.",
+          "players_involved": ["RU"],
+          "cost": { "resource_points": 3, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": [], "response_window": "card_defined", "force_commitment_allowed": false },
+          "resolution": { "method": ["fixed_effect"], "table_reference": null, "die": "D10", "modifiers": [], "critical_capabilities": [], "outcome_map": [], "reset_rules_apply": false },
+          "effects": [
+            { "type": "adjust_critical_capability_mod_level", "target": "RU", "value": { "capability": "LRF", "amount": 0 }, "timing": "immediate", "visibility": "public", "requires_adjudication": false }
+          ],
+          "future_effects": [],
+          "notes": "The example leaves LRF unchanged because RU is already at its National Tech Level."
+        },
+        {
+          "id": "RU-INV-PROC",
+          "type": "Investment",
+          "subtype": "Procure New Forces",
+          "owner": "RU",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Procure New Forces",
+          "description": "Does not count against Red per-turn card costs or limits; pay only procurement table cost through the dedicated command.",
+          "players_involved": ["RU"],
+          "cost": { "resource_points": 0, "additional_red_card_cost_applies": false },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": [], "response_window": "card_defined", "force_commitment_allowed": false },
+          "resolution": { "method": ["white_cell_adjudication"], "table_reference": null, "die": "D10", "modifiers": [], "critical_capabilities": [], "outcome_map": [], "reset_rules_apply": false },
+          "effects": [{ "type": "procure_forces", "target": "RU", "value": { "note": "Use procureForces command." }, "timing": "card_defined", "visibility": "public", "requires_adjudication": true }],
+          "future_effects": [],
+          "notes": ""
+        }
+      ],
+      "PRC": [
+        {
+          "id": "PRC-ACT-01",
+          "type": "Action",
+          "subtype": "Presence Operation",
+          "owner": "PRC",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Maritime Pressure Campaign",
+          "description": "Resolve as RT B against Blue presence.",
+          "aor": "USINDOPACOM",
+          "players_involved": ["PRC", "US"],
+          "cost": { "resource_points": 1, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": ["Blue"], "response_window": "immediate", "force_commitment_allowed": true },
+          "resolution": {
+            "method": ["rt_b_then_card_outcome"],
+            "table_reference": "RT_B",
+            "die": "D10",
+            "modifiers": [],
+            "critical_capabilities": [],
+            "outcome_map": [
+              { "outcome": "RMG", "effects": [{ "type": "adjust_influence_points", "target": "PRC", "value": 3, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "RmG", "effects": [{ "type": "adjust_influence_points", "target": "PRC", "value": 1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "SQ", "effects": [] },
+              { "outcome": "BmG", "effects": [{ "type": "adjust_influence_points", "target": "US", "value": 1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "BMG", "effects": [{ "type": "adjust_influence_points", "target": "US", "value": 3, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] }
+            ],
+            "reset_rules_apply": false
+          },
+          "effects": [],
+          "future_effects": [],
+          "notes": ""
+        },
+        {
+          "id": "PRC-ACT-02",
+          "type": "Action",
+          "subtype": "Major Action",
+          "owner": "PRC",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Crisis Escalation",
+          "description": "A CRT A action in INDOPACOM.",
+          "aor": "USINDOPACOM",
+          "players_involved": ["PRC", "US"],
+          "cost": { "resource_points": 2, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": ["Blue"], "response_window": "immediate", "force_commitment_allowed": true },
+          "resolution": {
+            "method": ["crt_a_then_card_outcome"],
+            "table_reference": "CRT_A",
+            "die": "D10",
+            "modifiers": [],
+            "critical_capabilities": ["C4ISR", "LRF"],
+            "outcome_map": [
+              { "outcome": "RMG", "effects": [{ "type": "adjust_influence_points", "target": "PRC", "value": 4, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "RmG", "effects": [{ "type": "adjust_influence_points", "target": "PRC", "value": 2, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "SQ", "effects": [] },
+              { "outcome": "BmG", "effects": [{ "type": "adjust_influence_points", "target": "US", "value": 2, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "BMG", "effects": [{ "type": "adjust_influence_points", "target": "US", "value": 4, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] }
+            ],
+            "reset_rules_apply": true,
+            "pinning": { "duration_turns": 1, "area_of_interest_id": "INDOPACOM_PRC" }
+          },
+          "effects": [],
+          "future_effects": [],
+          "notes": ""
+        },
+        {
+          "id": "PRC-INV-01",
+          "type": "Investment",
+          "subtype": "Base Construction",
+          "owner": "PRC",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Out-of-Area Logistics Node",
+          "description": "Creates a base marker with a one-RP out-of-area discount for PRC in CENTCOM.",
+          "players_involved": ["PRC"],
+          "cost": { "resource_points": 3, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "Once per AOR", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": [], "response_window": "card_defined", "force_commitment_allowed": false },
+          "resolution": { "method": ["fixed_effect"], "table_reference": null, "die": "D10", "modifiers": [], "critical_capabilities": [], "outcome_map": [], "reset_rules_apply": false },
+          "effects": [{ "type": "create_or_modify_base", "target": "PRC-CENTCOM-BASE", "value": { "id": "PRC-CENTCOM-BASE", "owner": "PRC", "location_id": "CENTCOM_IRAN", "aor_id": "USCENTCOM", "out_of_area_discount": 1, "notes": "Example Red out-of-area base." }, "timing": "immediate", "visibility": "public", "requires_adjudication": false }],
+          "future_effects": [],
+          "notes": ""
+        },
+        {
+          "id": "PRC-INV-PROC",
+          "type": "Investment",
+          "subtype": "Procure New Forces",
+          "owner": "PRC",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Procure New Forces",
+          "description": "Dedicated procurement command.",
+          "players_involved": ["PRC"],
+          "cost": { "resource_points": 0, "additional_red_card_cost_applies": false },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": [], "response_window": "card_defined", "force_commitment_allowed": false },
+          "resolution": { "method": ["white_cell_adjudication"], "table_reference": null, "die": "D10", "modifiers": [], "critical_capabilities": [], "outcome_map": [], "reset_rules_apply": false },
+          "effects": [{ "type": "procure_forces", "target": "PRC", "value": { "note": "Use procureForces command." }, "timing": "card_defined", "visibility": "public", "requires_adjudication": true }],
+          "future_effects": [],
+          "notes": ""
+        }
+      ],
+      "DPRK": [
+        {
+          "id": "DPRK-ACT-01",
+          "type": "Action",
+          "subtype": "Provocation",
+          "owner": "DPRK",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Missile Demonstration",
+          "description": "Resolve using card D10 table.",
+          "aor": "USINDOPACOM",
+          "players_involved": ["DPRK", "US"],
+          "cost": { "resource_points": 1, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": ["WhiteCell"], "response_window": "card_defined", "force_commitment_allowed": false },
+          "resolution": {
+            "method": ["card_d10_table"],
+            "table_reference": null,
+            "die": "D10",
+            "modifiers": [],
+            "critical_capabilities": ["LRF"],
+            "outcome_map": [
+              { "roll_min": 0, "roll_max": 3, "label": "Fail", "effects": [{ "type": "adjust_influence_points", "target": "DPRK", "value": -1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "roll_min": 4, "roll_max": 7, "label": "Success", "effects": [{ "type": "adjust_influence_points", "target": "DPRK", "value": 1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "roll_min": 8, "roll_max": 9, "label": "Success", "effects": [{ "type": "adjust_influence_points", "target": "DPRK", "value": 2, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] }
+            ],
+            "reset_rules_apply": false
+          },
+          "effects": [],
+          "future_effects": [],
+          "notes": ""
+        },
+        {
+          "id": "DPRK-ACT-02",
+          "type": "Action",
+          "subtype": "White Cell Adjudicated Crisis",
+          "owner": "DPRK",
+          "public_private": "Private",
+          "private_conditions": [],
+          "title": "Unclear Escalatory Signal",
+          "description": "Requires White Cell interpretation.",
+          "players_involved": ["DPRK", "US"],
+          "cost": { "resource_points": 0, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": ["WhiteCell"], "response_window": "white_cell", "force_commitment_allowed": false },
+          "resolution": { "method": ["white_cell_adjudication"], "table_reference": null, "die": "D10", "modifiers": [], "critical_capabilities": [], "outcome_map": [], "reset_rules_apply": false },
+          "effects": [],
+          "future_effects": [],
+          "notes": ""
+        },
+        {
+          "id": "DPRK-INV-01",
+          "type": "Investment",
+          "subtype": "Capability Development",
+          "owner": "DPRK",
+          "public_private": "Private",
+          "private_conditions": [],
+          "title": "Nuclear Forces Development",
+          "description": "Private investment visible to DPRK and White Cell.",
+          "players_involved": ["DPRK"],
+          "cost": { "resource_points": 2, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": [], "response_window": "card_defined", "force_commitment_allowed": false },
+          "resolution": { "method": ["fixed_effect"], "table_reference": null, "die": "D10", "modifiers": [], "critical_capabilities": [], "outcome_map": [], "reset_rules_apply": false },
+          "effects": [{ "type": "adjust_critical_capability_mod_level", "target": "DPRK", "value": { "capability": "NUCLEAR", "amount": 1 }, "timing": "immediate", "visibility": "private_to_player_and_white_cell", "requires_adjudication": false }],
+          "future_effects": [],
+          "notes": ""
+        }
+      ],
+      "IR": [
+        {
+          "id": "IR-ACT-01",
+          "type": "Action",
+          "subtype": "Regional Pressure",
+          "owner": "IR",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Strait Harassment",
+          "description": "Resolve as RT B in CENTCOM.",
+          "aor": "USCENTCOM",
+          "players_involved": ["IR", "US"],
+          "cost": { "resource_points": 1, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": ["Blue"], "response_window": "immediate", "force_commitment_allowed": true },
+          "resolution": {
+            "method": ["rt_b_then_card_outcome"],
+            "table_reference": "RT_B",
+            "die": "D10",
+            "modifiers": [],
+            "critical_capabilities": [],
+            "outcome_map": [
+              { "outcome": "RMG", "effects": [{ "type": "adjust_influence_points", "target": "IR", "value": 3, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "RmG", "effects": [{ "type": "adjust_influence_points", "target": "IR", "value": 1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "SQ", "effects": [] },
+              { "outcome": "BmG", "effects": [{ "type": "adjust_influence_points", "target": "US", "value": 1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "BMG", "effects": [{ "type": "adjust_influence_points", "target": "US", "value": 3, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] }
+            ],
+            "reset_rules_apply": false
+          },
+          "effects": [],
+          "future_effects": [],
+          "notes": ""
+        },
+        {
+          "id": "IR-ACT-02",
+          "type": "Action",
+          "subtype": "Proxy Employment",
+          "owner": "IR",
+          "public_private": "Private",
+          "private_conditions": [],
+          "title": "Proxy Mobilization",
+          "description": "Roll proxy reliability before resolving participation.",
+          "aor": "USCENTCOM",
+          "players_involved": ["IR"],
+          "cost": { "resource_points": 1, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": ["WhiteCell"], "response_window": "card_defined", "force_commitment_allowed": false },
+          "resolution": {
+            "method": ["proxy_reliability"],
+            "table_reference": "ProxyReliability",
+            "die": "D10",
+            "modifiers": [],
+            "critical_capabilities": [],
+            "outcome_map": [
+              { "label": "Success", "effects": [{ "type": "adjust_influence_points", "target": "IR", "value": 1, "timing": "immediate", "visibility": "private_to_player_and_white_cell", "requires_adjudication": false }] },
+              { "label": "Fail", "effects": [{ "type": "adjust_influence_points", "target": "IR", "value": -1, "timing": "immediate", "visibility": "private_to_player_and_white_cell", "requires_adjudication": false }] }
+            ],
+            "reset_rules_apply": false
+          },
+          "effects": [],
+          "future_effects": [],
+          "notes": ""
+        },
+        {
+          "id": "IR-INV-01",
+          "type": "Investment",
+          "subtype": "Proxy Development",
+          "owner": "IR",
+          "public_private": "Private",
+          "private_conditions": [],
+          "title": "Proxy Force Development",
+          "description": "Use proxy development command for exact sponsor share and reliability.",
+          "players_involved": ["IR"],
+          "cost": { "resource_points": 0, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": ["WhiteCell"], "response_window": "white_cell", "force_commitment_allowed": false },
+          "resolution": { "method": ["white_cell_adjudication"], "table_reference": null, "die": "D10", "modifiers": [], "critical_capabilities": [], "outcome_map": [], "reset_rules_apply": false },
+          "effects": [{ "type": "develop_proxy_force", "target": "IR-PROXY-01", "value": { "note": "Use developProxyForce command." }, "timing": "card_defined", "visibility": "private_to_player_and_white_cell", "requires_adjudication": true }],
+          "future_effects": [],
+          "notes": ""
+        }
+      ]
+    },
+    "domestic_event": {
+      "US": [
+        {
+          "id": "US-DOM-01",
+          "type": "DomesticEvent",
+          "subtype": "Budget Event",
+          "owner": "WhiteCell",
+          "public_private": "Private",
+          "private_conditions": [],
+          "title": "Congressional Budget Scrutiny",
+          "description": "Private U.S. domestic event.",
+          "players_involved": ["US"],
+          "cost": { "resource_points": 0, "additional_red_card_cost_applies": false },
+          "play_constraints": { "phase_restrictions": [], "prerequisites": [] },
+          "response": { "allowed_responders": ["US"], "response_window": "white_cell", "force_commitment_allowed": false },
+          "resolution": {
+            "method": ["card_d10_table"],
+            "table_reference": null,
+            "die": "D10",
+            "modifiers": [],
+            "critical_capabilities": [],
+            "outcome_map": [
+              { "roll_min": 0, "roll_max": 4, "label": "Fail", "effects": [{ "type": "set_or_adjust_per_turn_resource_allocation", "target": "US", "value": { "mode": "adjust", "amount": -1 }, "timing": "immediate", "visibility": "private_to_player_and_white_cell", "requires_adjudication": false }] },
+              { "roll_min": 5, "roll_max": 9, "label": "Success", "effects": [] }
+            ],
+            "reset_rules_apply": false
+          },
+          "effects": [],
+          "future_effects": [],
+          "notes": ""
+        }
+      ],
+      "RU": [
+        {
+          "id": "RU-DOM-01",
+          "type": "DomesticEvent",
+          "subtype": "Domestic Event",
+          "owner": "WhiteCell",
+          "public_private": "Private",
+          "private_conditions": [],
+          "title": "Elite Bargaining",
+          "description": "White Cell domestic pressure.",
+          "players_involved": ["RU"],
+          "cost": { "resource_points": 0, "additional_red_card_cost_applies": false },
+          "play_constraints": { "phase_restrictions": [], "prerequisites": [] },
+          "response": { "allowed_responders": ["RU"], "response_window": "white_cell", "force_commitment_allowed": false },
+          "resolution": { "method": ["fixed_effect"], "table_reference": null, "die": "D10", "modifiers": [], "critical_capabilities": [], "outcome_map": [], "reset_rules_apply": false },
+          "effects": [{ "type": "adjust_resource_points", "target": "RU", "value": -1, "timing": "immediate", "visibility": "private_to_player_and_white_cell", "requires_adjudication": false }],
+          "future_effects": [],
+          "notes": ""
+        }
+      ],
+      "PRC": [],
+      "DPRK": [],
+      "IR": []
+    },
+    "international_event": [
+      {
+        "id": "INT-EVT-01",
+        "type": "InternationalEvent",
+        "subtype": "Global Event",
+        "owner": "WhiteCell",
+        "public_private": "Public",
+        "private_conditions": [],
+        "title": "Global Market Shock",
+        "description": "A public international event with resource effects.",
+        "players_involved": ["US", "NATO_EU", "RU", "PRC", "DPRK", "IR"],
+        "cost": { "resource_points": 0, "additional_red_card_cost_applies": false },
+        "play_constraints": { "phase_restrictions": [], "prerequisites": [] },
+        "response": { "allowed_responders": ["All"], "response_window": "white_cell", "force_commitment_allowed": false },
+        "resolution": { "method": ["fixed_effect"], "table_reference": null, "die": "D10", "modifiers": [], "critical_capabilities": [], "outcome_map": [], "reset_rules_apply": false },
+        "effects": [
+          { "type": "adjust_resource_points", "target": "US", "value": -1, "timing": "immediate", "visibility": "public", "requires_adjudication": false },
+          { "type": "adjust_resource_points", "target": "PRC", "value": -1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }
+        ],
+        "future_effects": [],
+        "notes": ""
+      },
+      {
+        "id": "INT-EVT-02",
+        "type": "InternationalEvent",
+        "subtype": "White Cell Event",
+        "owner": "WhiteCell",
+        "public_private": "Public",
+        "private_conditions": [],
+        "title": "Ambiguous Regional Crisis",
+        "description": "The White Cell defines who is affected and how.",
+        "players_involved": [],
+        "cost": { "resource_points": 0, "additional_red_card_cost_applies": false },
+        "play_constraints": { "phase_restrictions": [], "prerequisites": [] },
+        "response": { "allowed_responders": ["WhiteCell"], "response_window": "white_cell", "force_commitment_allowed": true },
+        "resolution": { "method": ["white_cell_adjudication"], "table_reference": null, "die": "D10", "modifiers": [], "critical_capabilities": [], "outcome_map": [], "reset_rules_apply": false },
+        "effects": [],
+        "future_effects": [],
+        "notes": ""
+      }
+    ]
+  },
+  "rules_in_effect": {
+    "activation_markers": false,
+    "random_events": { "enabled": false },
+    "random_red_sequence": false,
+    "random_red_sequence_order": "ascending",
+    "random_red_sequence_tie_rule": "white_cell",
+    "table_extensions": [
+      { "table": "US_CONUS_READINESS_SUSTAINMENT_COST", "row": "11", "column": "100", "value": 11, "tag": "SCENARIO_DEFINED" },
+      { "table": "US_CONUS_READINESS_SUSTAINMENT_COST", "row": "12", "column": "100", "value": 12, "tag": "SCENARIO_DEFINED" },
+      { "table": "US_CONUS_READINESS_SUSTAINMENT_COST", "row": "13", "column": "100", "value": 13, "tag": "SCENARIO_DEFINED" },
+      { "table": "US_CONUS_READINESS_SUSTAINMENT_COST", "row": "14", "column": "100", "value": 14, "tag": "SCENARIO_DEFINED" }
+    ],
+    "allow_us_emergency_deficit": false
+  },
+  "marker_chits": [
+    { "id": "PIN-1", "label": "Pinned 1 Turn", "description": "Committed forces are tied to the AOI for one turn." },
+    { "id": "PIN-2", "label": "Pinned 2 Turns", "description": "Committed forces are tied to the AOI for two turns." },
+    { "id": "RESET", "label": "Reset Required", "description": "Forces return home and must reset before use." },
+    { "id": "ACTIVATE", "label": "Activate?", "description": "Optional Red activation marker." }
+  ],
+  "max_turns": 16
+}
