@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  RandomDiceRoller,
   advanceBlueToActions,
   advanceRedActivePlayer,
   annualResourceAllocation,
@@ -8,16 +7,18 @@ import {
   beginRedInvestmentsAndActions,
   calculateUsReadinessBill,
   createInitialGameState,
+  generateRedPlayDecision,
+  generateRedSequenceDecision,
+  generateRedSignalDecision,
+  generateReviewItems,
+  generateWhiteCellAdjudicationResolution,
+  generateWhiteCellSummary,
   getPlayerDeck,
   getPlayersBySide,
   payUsReadinessBill,
   playRedSignaledCard,
-  generateRedPlayDecision,
-  generateRedSequenceDecision,
-  generateRedSignalDecision,
-  generateWhiteCellAdjudicationResolution,
-  generateWhiteCellSummary,
   procureForces,
+  RandomDiceRoller,
   recordGameStartSummary,
   recordStateOfWorldSummary,
   requestBlueFreePlayAdjudication,
@@ -38,72 +39,27 @@ import {
   type RollRecord,
   type Scenario
 } from "../engine";
-import { Banner, Button, EmptyState, Modal, Section, Tag } from "./ui";
-import { phaseLabel, playerLabel, sideToTone } from "./factions";
-import { COLOR_SCHEMES, TopBar, type ColorSchemeId } from "./TopBar";
-import { CurrentTaskPanel, RedSignalDeckTrigger, StatPanel } from "./Sidebars";
-import { EventLogPanel, LogEntryModal } from "./EventLog";
-import { CardModal } from "./CardModal";
-import { PlayerCard } from "./Card";
-import { HandStrip } from "./HandStrip";
-import { PlayerSwitcher } from "./PlayerSwitcher";
-import { DiceResult, DiceResultList } from "./Dice";
-import { EffectsSummary } from "./Effects";
 import {
   BriefingSection,
   IntelBriefing,
   RedSignalIntel,
   WorldStateNewspapers
 } from "./Briefings";
-import { RedSignalReveal } from "./Reveal";
+import { PlayerCard } from "./Card";
+import { CardModal } from "./CardModal";
+import { DiceResult, DiceResultList } from "./Dice";
+import { diffStates, ReviewItem, takeSnapshot, type Snapshot } from "./diff";
+import { EffectsSummary } from "./Effects";
+import { EventLogPanel, LogEntryModal } from "./EventLog";
+import { phaseLabel, playerLabel, sideToTone } from "./factions";
+import { HandStrip } from "./HandStrip";
+import { PlayerSwitcher } from "./PlayerSwitcher";
 import { ReadinessSlider } from "./ReadinessSlider";
+import { RedSignalReveal } from "./Reveal";
+import { CurrentTaskPanel, RedSignalDeckTrigger, StatPanel } from "./Sidebars";
 import { TheaterMap } from "./TheaterMap";
-import { diffStates, takeSnapshot, type Snapshot, type StateDiff } from "./diff";
-
-type ReviewItem =
-  | {
-    kind: "world_newspapers";
-    turn: number;
-    summary: string;
-    label: string;
-  }
-  | {
-    kind: "world_intel";
-    turn: number;
-    summary: string;
-    label: string;
-  }
-  | {
-    kind: "signal_reveal";
-    turn: number;
-    playerId: PlayerId;
-    cardIds: CardId[];
-  }
-  | {
-    kind: "signal_intel";
-    turn: number;
-    playerId: PlayerId;
-    cardIds: CardId[];
-  }
-  | {
-    kind: "card_resolution";
-    actor: PlayerId | "WhiteCell";
-    cardId: CardId;
-    outcome?: string;
-    diff: StateDiff;
-    rolls: RollRecord[];
-    narrative?: string;
-  }
-  | {
-    kind: "annual_allocation";
-    turn: number;
-    allocations: { playerId: PlayerId; baseRp: number; variation: number; total: number }[];
-    budgetRoll?: RollRecord;
-  }
-  | {
-    kind: "end_of_turn_map";
-    turn: number;
-  };
+import { COLOR_SCHEMES, TopBar, type ColorSchemeId } from "./TopBar";
+import { Banner, Button, EmptyState, Modal, Section, Tag } from "./ui";
 
 interface GameViewProps {
   scenario: Scenario;
@@ -312,12 +268,10 @@ export function GameView({ scenario }: GameViewProps) {
 
         if (state.phase === "GameStart") {
           const summary = await generateWhiteCellSummary("game_start", state.turn, state);
+          const reviewItems = await generateReviewItems(state, summary)
           const next = recordGameStartSummary(state, summary);
           turnReviewsSeeded.current.add(state.turn);
-          setReviewQueue([
-            { kind: "world_newspapers", turn: state.turn, summary, label: "Opening Bell" },
-            { kind: "world_intel", turn: state.turn, summary, label: "Opening Bell" }
-          ]);
+          setReviewQueue(reviewItems);
           applyResult(next);
           return;
         }

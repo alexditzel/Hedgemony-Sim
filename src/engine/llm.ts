@@ -1,6 +1,6 @@
 import OpenAI from "openai";
-import z from "zod";
 import { zodTextFormat } from "openai/helpers/zod";
+import z from "zod";
 import { getPlayerDeck } from "./rules";
 import {
   CardIdSchema,
@@ -11,6 +11,7 @@ import {
   type PlayerId,
   type RedSignalState,
 } from "./types";
+import { ReviewItem } from "../components/diff";
 
 // ----------------------------------------------------------------------------
 
@@ -257,7 +258,7 @@ export async function generateWhiteCellSummary(
     input: [
       {
         role: "system",
-        content: `You are the White Cell. Summarize the ${kind} for turn ${turn}.`,
+        content: `You are the White Cell. Summarize the ${kind} for turn ${turn}. Your summary must be an organized details executive summary.`,
       },
       {
         role: "user",
@@ -271,7 +272,25 @@ export async function generateWhiteCellSummary(
   return response.output_parsed!.summary;
 }
 
-// export async function generate
+/**
+ * Based on a natural-language summary, generate a few thematic newspaper articles and intel reports.
+ */
+export async function generateReviewItems(state: GameState, summary: string): Promise<ReviewItem[]> {
+  const ReviewItemSchema = z.union([
+    z.object({
+      kind: z.enum(["world_newspapers"]),
+      summary: z.string().describe("A concise one-paragraph summary of a newspaper article."),
+      label: z.string().describe("The newpaper publisher."),
+    }),
+    z.object({
+      kind: z.enum(["world_intel"]),
+      summary: z.string().describe("A concise one-paragraph summary of an intel briefing."),
+      label: z.string().describe("The intel report publisher."),
+    })
+  ])
+
+  throw new Error("TODO: use LLM structured output to generate an array of ReviewItem based on the given summary. After generating with ReviewItemSchema, add the turn determined by the game state.")
+}
 
 const ResolutionSchema = z.object({ resolution: z.string() });
 

@@ -1,4 +1,4 @@
-import type { GameState, PlayerId, RollRecord } from "../engine";
+import type { CardId, GameState, PlayerId, RollRecord } from "../engine";
 
 export interface ScalarChange {
   key: string;
@@ -224,3 +224,48 @@ export function diffStates(before: Snapshot, after: GameState): StateDiff {
     affectedPlayers: Array.from(affected)
   };
 }
+
+export type ReviewItem =
+  | {
+    kind: "world_newspapers";
+    turn: number;
+    summary: string;
+    label: string;
+  }
+  | {
+    kind: "world_intel";
+    turn: number;
+    summary: string;
+    label: string;
+  }
+  | {
+    kind: "signal_reveal";
+    turn: number;
+    playerId: PlayerId;
+    cardIds: CardId[];
+  }
+  | {
+    kind: "signal_intel";
+    turn: number;
+    playerId: PlayerId;
+    cardIds: CardId[];
+  }
+  | {
+    kind: "card_resolution";
+    actor: PlayerId | "WhiteCell";
+    cardId: CardId;
+    outcome?: string;
+    diff: StateDiff;
+    rolls: RollRecord[];
+    narrative?: string;
+  }
+  | {
+    kind: "annual_allocation";
+    turn: number;
+    allocations: { playerId: PlayerId; baseRp: number; variation: number; total: number }[];
+    budgetRoll?: RollRecord;
+  }
+  | {
+    kind: "end_of_turn_map";
+    turn: number;
+  };
