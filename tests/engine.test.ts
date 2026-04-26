@@ -280,7 +280,7 @@ describe("turn sequence and Red signaling", () => {
             player.id,
             decision.cardIds,
             decision.briefSummary,
-            decision.activationIntent,
+            decision.activationIntent ?? undefined,
           );
           expect(result.issues).toEqual([]);
           state = result.state;
@@ -310,7 +310,7 @@ describe("turn sequence and Red signaling", () => {
               reason: "table",
               rule_refs: ["test"],
               tags: ["WHITE_CELL_ADJUDICATION"],
-              status: "pending",
+              status: "pending", requested_by: null, card_id: null, resolution_note: null,
               payload: {
                 kind: "table_extension",
                 table: "T",
@@ -384,8 +384,8 @@ describe("turn sequence and Red signaling", () => {
       "PRC-ACT-01",
       new SequenceDiceRoller([5]),
       {
-        blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater" }],
-        red_commitments: [{ force_id: "PRC-INDO-5-M3", source: "in_theater" }],
+        blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater", out_of_area_arrival: null }],
+        red_commitments: [{ force_id: "PRC-INDO-5-M3", source: "in_theater", out_of_area_arrival: null }],
         blue_players: ["US"],
         red_players: ["PRC"],
       },
@@ -400,8 +400,8 @@ describe("turn sequence and Red signaling", () => {
       "PRC-ACT-02",
       new SequenceDiceRoller([5]),
       {
-        blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater" }],
-        red_commitments: [{ force_id: "PRC-INDO-5-M2", source: "in_theater" }],
+        blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater", out_of_area_arrival: null }],
+        red_commitments: [{ force_id: "PRC-INDO-5-M2", source: "in_theater", out_of_area_arrival: null }],
         blue_players: ["US"],
         red_players: ["PRC"],
       },
@@ -451,8 +451,8 @@ describe("turn sequence and Red signaling", () => {
       "PRC-ACT-01",
       new SequenceDiceRoller([5]),
       {
-        blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater" }],
-        red_commitments: [{ force_id: "PRC-INDO-5-M3", source: "in_theater" }],
+        blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater", out_of_area_arrival: null }],
+        red_commitments: [{ force_id: "PRC-INDO-5-M3", source: "in_theater", out_of_area_arrival: null }],
         blue_players: ["US"],
         red_players: ["PRC"],
       },
@@ -639,8 +639,8 @@ describe("readiness, resources, and movement", () => {
       {
         acting_player_id: "US",
         card_id: "US-ACT-01",
-        blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater" }],
-        red_commitments: [{ force_id: "PRC-INDO-5-M3", source: "in_theater" }],
+        blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater", out_of_area_arrival: null }],
+        red_commitments: [{ force_id: "PRC-INDO-5-M3", source: "in_theater", out_of_area_arrival: null }],
         blue_players: ["US"],
         red_players: ["PRC"],
       },
@@ -739,8 +739,8 @@ describe("readiness, resources, and movement", () => {
           location_id: "CONUS",
           home_base_id: "CONUS",
           readiness_level: 100,
-          pinned: { active: false, remaining_turns: null },
-          reset_required: false,
+          pinned: { active: false, remaining_turns: null, area_of_interest_id: null },
+          reset_required: false, reset_available_turn: null, 
           procured_turn: 1,
           proxy: false,
         },
@@ -775,8 +775,8 @@ describe("readiness, resources, and movement", () => {
           location_id: "CONUS",
           home_base_id: "CONUS",
           readiness_level: 100,
-          pinned: { active: false, remaining_turns: null },
-          reset_required: false,
+          pinned: { active: false, remaining_turns: null, area_of_interest_id: null },
+          reset_required: false, reset_available_turn: null, 
           procured_turn: 1,
           proxy: false,
         },
@@ -854,13 +854,13 @@ describe("combat resolution and card effects", () => {
   it("calculates combat factors with readiness and source rules", () => {
     const state = freshState();
     const us = calculateCombatFactors(state, "US", [
-      { force_id: "US-CONUS-4", source: "in_theater" },
-      { force_id: "US-PRC-1", source: "in_theater" },
+      { force_id: "US-CONUS-4", source: "in_theater", out_of_area_arrival: null },
+      { force_id: "US-PRC-1", source: "in_theater", out_of_area_arrival: null },
     ]);
     expect(us.total).toBe(9);
     expect(us.breakdown.map((entry) => entry.final_cf)).toEqual([6, 3]);
     const prc = calculateCombatFactors(state, "PRC", [
-      { force_id: "PRC-INDO-5-M3", source: "in_theater" },
+      { force_id: "PRC-INDO-5-M3", source: "in_theater", out_of_area_arrival: null },
     ]);
     expect(prc.total).toBe(11);
   });
@@ -874,8 +874,8 @@ describe("combat resolution and card effects", () => {
       {
         acting_player_id: "US",
         card_id: "US-ACT-01",
-        blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater" }],
-        red_commitments: [{ force_id: "PRC-INDO-5-M3", source: "in_theater" }],
+        blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater", out_of_area_arrival: null }],
+        red_commitments: [{ force_id: "PRC-INDO-5-M3", source: "in_theater", out_of_area_arrival: null }],
         blue_players: ["US"],
         red_players: ["PRC"],
       },
@@ -896,12 +896,12 @@ describe("combat resolution and card effects", () => {
       new SequenceDiceRoller([9]),
       {
         blue_commitments: [
-          { force_id: "NATO-EUCOM-5", source: "in_theater" },
-          { force_id: "US-EUCOM-1", source: "in_theater" },
+          { force_id: "NATO-EUCOM-5", source: "in_theater", out_of_area_arrival: null },
+          { force_id: "US-EUCOM-1", source: "in_theater", out_of_area_arrival: null },
         ],
         red_commitments: [
-          { force_id: "RU-EUCOM-5-M2", source: "in_theater" },
-          { force_id: "RU-EUCOM-4-M3", source: "in_theater" },
+          { force_id: "RU-EUCOM-5-M2", source: "in_theater", out_of_area_arrival: null },
+          { force_id: "RU-EUCOM-4-M3", source: "in_theater", out_of_area_arrival: null },
         ],
         blue_players: ["NATO_EU", "US"],
         red_players: ["RU"],
@@ -1027,9 +1027,9 @@ describe("combat resolution and card effects", () => {
             ...state.cards["DPRK-ACT-01"].resolution,
             outcome_map: [
               {
-                roll_min: 0,
+                outcome: null, roll_min: 0,
                 roll_max: 3,
-                label: "Fail",
+                label: "Fail", narrative: null, 
                 effects: [
                   {
                     type: "adjust_influence_points",
@@ -1037,6 +1037,7 @@ describe("combat resolution and card effects", () => {
                     value: -1,
                     timing: "immediate",
                     visibility: "public",
+                    source_card_id: null,
                     requires_adjudication: false,
                   },
                 ],
@@ -1159,8 +1160,8 @@ describe("combat resolution and card effects", () => {
       {
         acting_player_id: "RU",
         card_id: "RU-29",
-        blue_commitments: [{ force_id: "NATO-EUCOM-5", source: "in_theater" }],
-        red_commitments: [{ force_id: "RU-EUCOM-5-M2", source: "in_theater" }],
+        blue_commitments: [{ force_id: "NATO-EUCOM-5", source: "in_theater", out_of_area_arrival: null }],
+        red_commitments: [{ force_id: "RU-EUCOM-5-M2", source: "in_theater", out_of_area_arrival: null }],
         blue_players: ["NATO_EU"],
         red_players: ["RU"],
       },
@@ -1222,8 +1223,8 @@ describe("combat resolution and card effects", () => {
       {
         acting_player_id: "PRC",
         card_id: "PRC-01",
-        blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater" }],
-        red_commitments: [{ force_id: "PRC-INDO-5-M3", source: "in_theater" }],
+        blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater", out_of_area_arrival: null }],
+        red_commitments: [{ force_id: "PRC-INDO-5-M3", source: "in_theater", out_of_area_arrival: null }],
         blue_players: ["US"],
         red_players: ["PRC"],
       },

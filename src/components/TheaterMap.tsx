@@ -69,7 +69,8 @@ export function TheaterMap({ state }: TheaterMapProps) {
           if (!coords) return null;
           // small offset within a location so multiple owners don't overlap exactly
           const offsetIndex = ownerOffsetIndex(tokens, token);
-          const [lat, lng] = offsetCoordinates(coords, offsetIndex);
+          const lat = (coords[0] ?? 0) + offsetIndex * 0.7;
+          const lng = coords[1] + offsetIndex * 0.7;
           const icon = buildFfMarkerIcon({
             owner: token.owner,
             ownerLabel: token.ownerLabel,

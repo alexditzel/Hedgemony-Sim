@@ -90,16 +90,16 @@ function commitmentsFor(cardId: CardId): Partial<{
 }> {
   if (cardId === "US-ACT-01") {
     return {
-      blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater" }],
-      red_commitments: [{ force_id: "PRC-INDO-5-M3", source: "in_theater" }],
+      blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater", out_of_area_arrival: null }],
+      red_commitments: [{ force_id: "PRC-INDO-5-M3", source: "in_theater", out_of_area_arrival: null }],
       blue_players: ["US"],
       red_players: ["PRC"],
     };
   }
   if (cardId === "NATO-ACT-01") {
     return {
-      blue_commitments: [{ force_id: "NATO-EUCOM-5", source: "in_theater" }],
-      red_commitments: [{ force_id: "RU-EUCOM-5-M2", source: "in_theater" }],
+      blue_commitments: [{ force_id: "NATO-EUCOM-5", source: "in_theater", out_of_area_arrival: null }],
+      red_commitments: [{ force_id: "RU-EUCOM-5-M2", source: "in_theater", out_of_area_arrival: null }],
       blue_players: ["NATO_EU"],
       red_players: ["RU"],
     };
@@ -107,12 +107,12 @@ function commitmentsFor(cardId: CardId): Partial<{
   if (cardId === "RU-ACT-01") {
     return {
       blue_commitments: [
-        { force_id: "NATO-EUCOM-5", source: "in_theater" },
-        { force_id: "US-EUCOM-1", source: "in_theater" },
+        { force_id: "NATO-EUCOM-5", source: "in_theater", out_of_area_arrival: null },
+        { force_id: "US-EUCOM-1", source: "in_theater", out_of_area_arrival: null },
       ],
       red_commitments: [
-        { force_id: "RU-EUCOM-5-M2", source: "in_theater" },
-        { force_id: "RU-EUCOM-4-M3", source: "in_theater" },
+        { force_id: "RU-EUCOM-5-M2", source: "in_theater", out_of_area_arrival: null },
+        { force_id: "RU-EUCOM-4-M3", source: "in_theater", out_of_area_arrival: null },
       ],
       blue_players: ["NATO_EU", "US"],
       red_players: ["RU"],
@@ -120,10 +120,10 @@ function commitmentsFor(cardId: CardId): Partial<{
   }
   if (cardId === "PRC-ACT-01" || cardId === "PRC-ACT-02") {
     return {
-      blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater" }],
+      blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater", out_of_area_arrival: null }],
       red_commitments: [
-        { force_id: "PRC-INDO-5-M2", source: "in_theater" },
-        { force_id: "PRC-INDO-5-M3", source: "in_theater" },
+        { force_id: "PRC-INDO-5-M2", source: "in_theater", out_of_area_arrival: null },
+        { force_id: "PRC-INDO-5-M3", source: "in_theater", out_of_area_arrival: null },
       ],
       blue_players: ["US"],
       red_players: ["PRC"],
@@ -131,8 +131,8 @@ function commitmentsFor(cardId: CardId): Partial<{
   }
   if (cardId === "IR-ACT-01") {
     return {
-      blue_commitments: [{ force_id: "US-IRQ-1", source: "in_theater" }],
-      red_commitments: [{ force_id: "IR-CENTCOM-5", source: "in_theater" }],
+      blue_commitments: [{ force_id: "US-IRQ-1", source: "in_theater", out_of_area_arrival: null }],
+      red_commitments: [{ force_id: "IR-CENTCOM-5", source: "in_theater", out_of_area_arrival: null }],
       blue_players: ["US"],
       red_players: ["US"]
     };
@@ -355,7 +355,7 @@ export function GameView({ scenario }: GameViewProps) {
           const nextRed = getPlayersBySide(state, "Red").find((player) => !state.red_signals[player.id]?.completed);
           if (nextRed) {
             const decision = await generateRedSignalDecision(state, nextRed.id);
-            const result = signalRedCards(state, nextRed.id, decision.cardIds, decision.briefSummary, decision.activationIntent);
+            const result = signalRedCards(state, nextRed.id, decision.cardIds, decision.briefSummary, decision.activationIntent ?? undefined);
             if (showIssues(result.issues)) return;
             setReviewQueue([
               {

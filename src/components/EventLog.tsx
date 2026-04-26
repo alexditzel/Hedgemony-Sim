@@ -61,7 +61,7 @@ function matchesFilter(entry: EventLogItem, filter: Filter, state: GameState): b
   if (filter === "all") return true;
   if (filter === "rolls") return Boolean(entry.roll_id);
   if (filter === "white") return entry.tags.includes("WHITE_CELL_ADJUDICATION") || entry.player_id === undefined;
-  const tone = playerTone(state, entry.player_id);
+  const tone = playerTone(state, entry.player_id ?? undefined);
   if (filter === "blue") return tone === "blue";
   if (filter === "red") return tone === "red";
   return true;
@@ -78,7 +78,7 @@ function LogEntry({
   onSelectEntry?: (entry: EventLogItem) => void;
   onOpenSummary?: (kind: "game_start" | "state_of_world", turn: number) => void;
 }) {
-  const tone = entry.tags.includes("WHITE_CELL_ADJUDICATION") ? "white" : playerTone(state, entry.player_id);
+  const tone = entry.tags.includes("WHITE_CELL_ADJUDICATION") ? "white" : playerTone(state, entry.player_id ?? undefined);
   const dotClass =
     tone === "red" ? "event-log__pin--red" :
     tone === "blue" ? "event-log__pin--blue" :

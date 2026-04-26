@@ -156,7 +156,7 @@ export type Location = {
   parent_location_id: LocationId | null;
   country_owner: PlayerId | null;
   home_for: PlayerId[] | null;
-  coordinates: [number | null, number];
+  coordinates: [number, number] | null;
 };
 export const LocationSchema = z.object({
   id: LocationIdSchema,

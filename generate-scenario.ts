@@ -1,12 +1,12 @@
 import * as fs from "node:fs/promises";
 import z from "zod";
-import { ScenarioSchema, Scenario } from "./src/engine";
+import { ScenarioSchema, type Scenario } from "./src/engine";
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 
 const openai = new OpenAI({ apiKey: process.env.VITE_OPENAI_API_KEY, });
 
-const medium_model = "gpt-5.4-mini";
+// const medium_model = "gpt-5.4-mini";
 const high_model = "gpt-5.5";
 
 type ScenarioPrompt = {

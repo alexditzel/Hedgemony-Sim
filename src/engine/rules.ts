@@ -147,7 +147,7 @@ function appendLog(
     message,
     tags,
     visibility,
-    ...extras,
+    player_id: extras.player_id ?? null, card_id: extras.card_id ?? null, roll_id: extras.roll_id ?? null,
   });
 }
 
@@ -167,9 +167,10 @@ function addAdjudication(
     rule_refs: ruleRefs,
     tags: ["WHITE_CELL_ADJUDICATION"],
     status: "pending",
-    requested_by: requestedBy,
-    card_id: cardId,
-    payload,
+    requested_by: requestedBy ?? null,
+    card_id: cardId ?? null,
+    payload: payload ?? null,
+    resolution_note: null,
   };
   state.pending_adjudications.push(request);
   appendLog(
@@ -276,9 +277,10 @@ function forceMapFromScenario(
         pinned: {
           active: false,
           remaining_turns: null,
-        },
-        reset_required: false,
-        procured_turn: undefined,
+          area_of_interest_id: null,
+          },
+        reset_required: false, reset_available_turn: null, 
+        procured_turn: null,
         proxy: force.proxy ?? false,
       },
     ]),
@@ -309,8 +311,8 @@ export function createInitialGameState(scenario: Scenario): GameState {
     per_turn_resources: { ...scenario.starting_conditions.per_turn_resources },
     rules_in_effect: scenario.rules_in_effect,
     max_turns: scenario.max_turns,
-    active_player_id: undefined,
-    blue_subphase: undefined,
+    active_player_id: null,
+    blue_subphase: null,
     red_sequence: DEFAULT_RED_SEQUENCE.filter(
       (id) => players[id]?.side === "Red",
     ),
@@ -326,6 +328,7 @@ export function createInitialGameState(scenario: Scenario): GameState {
     ground_truth: [],
     scenario_flags: {},
     summaries: {
+      game_start: null,
       state_of_world: {},
     },
   };
@@ -1013,8 +1016,8 @@ function matchingOutcomeRows(
       (row) =>
         row.roll_min !== undefined &&
         row.roll_max !== undefined &&
-        rollTotal >= row.roll_min &&
-        rollTotal <= row.roll_max,
+        row.roll_min !== null && rollTotal >= row.roll_min &&
+        row.roll_max !== null && rollTotal <= row.roll_max,
     );
     if (rollRows.length > 0) {
       return rollRows;
@@ -1050,6 +1053,9 @@ function addGroundTruthForEffect(
     created_turn: state.turn,
     visible_to: visibleToForEffect(effect, owner),
     effect,
+    trigger_turn: null,
+    expiration_turn: null,
+    trigger_condition: null,
     status: effect.timing === "immediate" ? "resolved" : "pending",
     narrative_note: note,
   };
@@ -1248,14 +1254,14 @@ function applySingleEffect(
                 | "indefinite")
             : 1,
           area_of_interest_id: isRecord(effect.value)
-            ? stringFrom(effect.value.area_of_interest_id)
-            : undefined,
+            ? (stringFrom(effect.value.area_of_interest_id) || null)
+            : null,
         };
       }
       break;
     case "unpin_forces":
       if (force) {
-        force.pinned = { active: false, remaining_turns: null };
+        force.pinned = { active: false, remaining_turns: null, area_of_interest_id: null };
       }
       break;
     case "reset_forces":
@@ -1319,9 +1325,9 @@ function applySingleEffect(
           readiness_level:
             owner === "US" && typeof effect.value.readiness_level === "number"
               ? (effect.value.readiness_level as ReadinessLevel)
-              : undefined,
-          pinned: { active: false, remaining_turns: null },
-          reset_required: false,
+              : null,
+          pinned: { active: false, remaining_turns: null, area_of_interest_id: null },
+          reset_required: false, reset_available_turn: null, 
           procured_turn: state.turn,
           proxy: false,
         };
@@ -1375,7 +1381,7 @@ function applySingleEffect(
     effect.visibility,
     {
       player_id: owner,
-      card_id: effect.source_card_id,
+      card_id: effect.source_card_id ?? undefined,
     },
   );
   return undefined;
@@ -1399,7 +1405,7 @@ export function applyEffects(
           issue.rule_refs,
           effect.value,
           owner,
-          effect.source_card_id,
+          effect.source_card_id ?? undefined,
         );
       }
     }
@@ -2408,7 +2414,7 @@ export function beginRedInvestmentsAndActions(
     return { state, issues };
   }
   draft.phase = "RedInvestmentsAndActions";
-  draft.blue_subphase = undefined;
+  draft.blue_subphase = null;
   draft.active_red_index = 0;
   draft.active_player_id = draft.red_sequence[0];
   appendLog(
@@ -2425,7 +2431,7 @@ export function advanceRedActivePlayer(state: GameState): GameState {
   const nextIndex = draft.active_red_index + 1;
   if (nextIndex >= draft.red_sequence.length) {
     draft.phase = "AnnualResourcesAllocation";
-    draft.active_player_id = undefined;
+    draft.active_player_id = null;
     appendLog(
       draft,
       "Red phase complete. Annual resources allocation begins.",
@@ -2674,9 +2680,9 @@ export function procureForces(
     location_id: args.location_id,
     home_base_id: args.home_base_id,
     readiness_level:
-      args.player_id === "US" ? (args.readiness_level ?? 100) : undefined,
-    pinned: { active: false, remaining_turns: null },
-    reset_required: false,
+      args.player_id === "US" ? (args.readiness_level ?? 100) : null,
+    pinned: { active: false, remaining_turns: null, area_of_interest_id: null },
+    reset_required: false, reset_available_turn: null, 
     procured_turn: draft.turn,
     proxy: false,
   };
@@ -2885,7 +2891,7 @@ export function applyResetRules(
     force.location_id = force.home_base_id;
     force.reset_required = true;
     force.reset_available_turn = draft.turn + 1;
-    force.pinned = { active: false, remaining_turns: null };
+    force.pinned = { active: false, remaining_turns: null, area_of_interest_id: null };
     resetFfs += force.force_factors;
   }
   if (resetFfs < requiredFfs) {
@@ -3165,13 +3171,13 @@ export function recordStateOfWorldSummary(
     ) {
       force.pinned.remaining_turns -= 1;
       if (force.pinned.remaining_turns <= 0) {
-        force.pinned = { active: false, remaining_turns: null };
+        force.pinned = { active: false, remaining_turns: null, area_of_interest_id: null };
       }
     }
     if (
       force.reset_required &&
       force.reset_available_turn !== undefined &&
-      force.reset_available_turn <= draft.turn
+      force.reset_available_turn !== null && force.reset_available_turn <= draft.turn
     ) {
       force.reset_required = false;
     }
@@ -3205,7 +3211,7 @@ export function recordStateOfWorldSummary(
     if (
       item.status === "pending" &&
       item.trigger_turn !== undefined &&
-      item.trigger_turn <= draft.turn + 1
+      item.trigger_turn !== null && item.trigger_turn <= draft.turn + 1
     ) {
       const issue = applySingleEffect(draft, item.effect, undefined, false);
       if (issue?.severity === "adjudication") {
@@ -3224,7 +3230,7 @@ export function recordStateOfWorldSummary(
     }
     if (
       item.expiration_turn !== undefined &&
-      item.expiration_turn <= draft.turn
+      item.expiration_turn !== null && item.expiration_turn <= draft.turn
     ) {
       item.status = "expired";
     }
@@ -3240,8 +3246,8 @@ export function recordStateOfWorldSummary(
   } else {
     draft.turn += 1;
     draft.phase = "RedSignaling";
-    draft.active_player_id = undefined;
-    draft.blue_subphase = undefined;
+    draft.active_player_id = null;
+    draft.blue_subphase = null;
     draft.red_signals = {};
     draft.red_plays = {};
     draft.active_red_index = 0;
@@ -3309,7 +3315,7 @@ export function resolveWhiteCellAdjudication(
       card_id: request.card_id,
     },
   );
-  const applied = applyEffects(draft, effects, request.requested_by);
+  const applied = applyEffects(draft, effects, request.requested_by ?? undefined);
   return { state: applied.state, issues: applied.issues };
 }
 

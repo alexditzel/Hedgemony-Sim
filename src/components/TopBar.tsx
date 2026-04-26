@@ -25,7 +25,7 @@ interface TopBarProps {
 }
 
 export function TopBar({ state, onOpenMap, advance, colorScheme, onColorSchemeChange }: TopBarProps) {
-  const tone = playerTone(state, state.active_player_id);
+  const tone = playerTone(state, state.active_player_id ?? undefined);
   const pillClass =
     tone === "red" ? "topbar__active-side-pill--red" :
     tone === "blue" ? "topbar__active-side-pill--blue" :
