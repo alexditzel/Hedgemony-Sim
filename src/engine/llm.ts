@@ -276,20 +276,22 @@ export async function generateWhiteCellSummary(
  * Based on a natural-language summary, generate a few thematic newspaper articles and intel reports.
  */
 export async function generateReviewItems(state: GameState, summary: string): Promise<ReviewItem[]> {
-  const ReviewItemSchema = z.union([
-    z.object({
-      kind: z.enum(["world_newspapers"]),
-      summary: z.string().describe("A concise one-paragraph summary of a newspaper article."),
-      label: z.string().describe("The newspaper publisher."),
-    }),
-    z.object({
-      kind: z.enum(["world_intel"]),
-      summary: z.string().describe("A concise one-paragraph summary of an intel briefing."),
-      label: z.string().describe("The intel report publisher."),
-    })
-  ]);
+  const WorldNewspapersReviewItemSchema = z.object({
+    kind: z.enum(["world_newspapers"]),
+    summary: z.string().describe("A concise one-paragraph summary of a newspaper article."),
+    label: z.string().describe("The newspaper publisher."),
+  });
+  const WorldIntelReviewItemSchema = z.object({
+    kind: z.enum(["world_intel"]),
+    summary: z.string().describe("A concise one-paragraph summary of an intel briefing."),
+    label: z.string().describe("The intel report publisher."),
+  });
 
-  const ReviewItemsListSchema = z.object({ items: z.array(ReviewItemSchema) });
+  const ReviewItemsListSchema = z.object({
+    newspaper1: WorldNewspapersReviewItemSchema,
+    newspaper2: WorldNewspapersReviewItemSchema,
+    intel1: WorldIntelReviewItemSchema
+  });
 
   const response = await openai.responses.parse({
     model: medium_model,
@@ -297,7 +299,7 @@ export async function generateReviewItems(state: GameState, summary: string): Pr
       {
         role: "system",
         content:
-          "You are the White Cell. Based on the provided summary and game state, generate a few thematic newspaper articles and intel reports.",
+          "You are the White Cell. Based on the provided summary and game state, generate some thematic newspaper articles and intel reports.",
       },
       {
         role: "user",
@@ -309,10 +311,13 @@ export async function generateReviewItems(state: GameState, summary: string): Pr
     },
   });
 
-  return response.output_parsed!.items.map((item) => ({
-    ...item,
-    turn: state.turn,
-  }));
+  const items: ReviewItem[] = [
+    { ...response.output_parsed!.newspaper1, turn: state.turn, },
+    { ...response.output_parsed!.newspaper2, turn: state.turn, },
+    { ...response.output_parsed!.intel1, turn: state.turn, }
+  ]
+
+  return items;
 }
 
 const ResolutionSchema = z.object({ resolution: z.string() });
