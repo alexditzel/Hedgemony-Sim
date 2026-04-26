@@ -28,7 +28,102 @@ const medium_model = import.meta.env.TEST ? "gpt-5.4-nano" : "gpt-5.4-mini";
  * Prints the game state in an LLM-friendly Markdown style.
  */
 function printGameState(state: GameState): string {
-  throw new Error("Unimplemented")
+  const parts: string[] = [];
+
+  parts.push(`# Game State`);
+  parts.push(`Scenario: ${state.scenario_title}`);
+  parts.push(`Turn: ${state.turn} / ${state.max_turns}`);
+  parts.push(`Phase: ${state.phase}`);
+  if (state.active_player_id) parts.push(`Active Player: ${state.active_player_id}`);
+  if (state.blue_subphase) parts.push(`Blue Subphase: ${state.blue_subphase}`);
+
+  parts.push(`\n## Players`);
+  for (const player of Object.values(state.players)) {
+    parts.push(`### ${player.label} (${player.id})`);
+    parts.push(`Side: ${player.side}`);
+    parts.push(`Resource Points: ${player.resource_points} (Per turn: +${state.per_turn_resources[player.id] ?? 0})`);
+    parts.push(`Influence Points: ${player.influence_points}`);
+    parts.push(`National Tech Level: ${player.national_tech_level}`);
+    parts.push(`Victory Condition: ${player.victory_condition}`);
+    parts.push(`Critical Capabilities:`);
+    for (const [cap, val] of Object.entries(player.critical_capabilities)) {
+      parts.push(`  - ${cap}: ${val}`);
+    }
+  }
+
+  parts.push(`\n## Forces`);
+  for (const force of Object.values(state.forces)) {
+    let forceStr = `- ${force.id} (Owner: ${force.owner}): Location ${force.location_id}, Factors ${force.force_factors}, Mod ${force.modernization_level}`;
+    if (force.readiness_level) forceStr += `, Readiness ${force.readiness_level}`;
+    if (force.proxy) forceStr += ` [PROXY]`;
+    parts.push(forceStr);
+  }
+
+  if (Object.keys(state.bases).length > 0) {
+    parts.push(`\n## Bases`);
+    for (const base of Object.values(state.bases)) {
+      parts.push(`- ${base.id} (Owner: ${base.owner}): Location ${base.location_id}`);
+    }
+  }
+
+  if (Object.keys(state.proxy_forces).length > 0) {
+    parts.push(`\n## Proxy Forces`);
+    for (const proxy of Object.values(state.proxy_forces)) {
+      parts.push(`- ${proxy.id} (Sponsor: ${proxy.sponsor}): Location ${proxy.location_id}, Factors ${proxy.force_factors}, Mod ${proxy.modernization_level}, Reliability ${proxy.reliability}`);
+    }
+  }
+
+  parts.push(`\n## Cards`);
+  for (const card of Object.values(state.cards)) {
+    parts.push(`### Card: ${card.id}`);
+    parts.push(`Title: ${card.title}`);
+    parts.push(`Type: ${card.type} (Owner: ${card.owner ?? "None"})`);
+    parts.push(`Description: ${card.description}`);
+    parts.push(`Cost: ${JSON.stringify(card.cost)}`);
+    if (card.effects.length > 0) parts.push(`Effects: ${JSON.stringify(card.effects)}`);
+    if (card.notes) parts.push(`Notes: ${card.notes}`);
+  }
+
+  parts.push(`\n## Locations`);
+  for (const loc of Object.values(state.locations)) {
+    parts.push(`- ${loc.id} (${loc.label}): Owner ${loc.country_owner ?? "None"}`);
+  }
+
+  parts.push(`\n## Red Sequencer`);
+  parts.push(`Sequence: ${state.red_sequence.join(" -> ")}`);
+  parts.push(`Active Index: ${state.active_red_index}`);
+
+  if (Object.keys(state.red_signals).length > 0) {
+    parts.push(`\n## Red Signals`);
+    for (const sig of Object.values(state.red_signals)) {
+      parts.push(`- ${sig.player_id}: Cards [${sig.card_ids.join(", ")}], Completed: ${sig.completed}`);
+      if (sig.brief_summary) parts.push(`  Summary: ${sig.brief_summary}`);
+      if (sig.activation_intent) parts.push(`  Intent: ${JSON.stringify(sig.activation_intent)}`);
+    }
+  }
+
+  if (state.event_log.length > 0) {
+    parts.push(`\n## Recent Events`);
+    for (const event of state.event_log.slice(-10)) {
+      parts.push(`- Turn ${event.turn} [${event.phase}]: ${event.message}`);
+    }
+  }
+
+  return parts.join("\n");
+}
+
+function printAdjudicationRequest(request: AdjudicationRequest): string {
+  const parts: string[] = [];
+  parts.push(`# Adjudication Request: ${request.id}`);
+  parts.push(`Turn: ${request.turn}, Phase: ${request.phase}`);
+  parts.push(`Requested By: ${request.requested_by ?? "None"}`);
+  parts.push(`Status: ${request.status}`);
+  parts.push(`Reason: ${request.reason}`);
+  if (request.card_id) parts.push(`Card ID: ${request.card_id}`);
+  if (request.rule_refs.length > 0) parts.push(`Rule Refs: ${request.rule_refs.join(", ")}`);
+  if (request.tags.length > 0) parts.push(`Tags: ${request.tags.join(", ")}`);
+  if (request.payload) parts.push(`Payload: ${JSON.stringify(request.payload)}`);
+  return parts.join("\n");
 }
 
 // ----------------------------------------------------------------------------
@@ -63,7 +158,10 @@ export async function generateRedSignalDecision(
         content:
           "You are the Red player in a military simulation game. Choose between 1 and 3 cards to signal. Rule: If you choose exactly 3 cards, at least one must be an Action (has '-ACT-' in ID) and at least one must be an Investment (has '-INV-' in ID). Write a brief summary of your intent, and declare activation intents.",
       },
-      { role: "user", content: JSON.stringify({ state, playerId, options }) },
+      {
+        role: "user",
+        content: `Player ID: ${playerId}\n\nOptions (Card IDs):\n${options.map((o) => `- ${o}`).join("\n")}\n\n${printGameState(state)}`,
+      },
     ],
     text: {
       format: zodTextFormat(SignalDecisionSchema, "signal_decision"),
@@ -106,15 +204,18 @@ export async function generateRedPlayDecision(
         content:
           "You are the Red player. Decide whether to play a signaled card or skip based on the current game state.",
       },
-      { role: "user", content: JSON.stringify({ state, playerId }) },
+      {
+        role: "user",
+        content: `Player ID: ${playerId}\n\n${printGameState(state)}`
+      },
     ],
     text: {
-      format: zodTextFormat(PlayDecisionSchema, "play_decision"),
+      format: zodTextFormat(z.object({ decision: PlayDecisionSchema }), "play_decision"),
     },
   });
-  const parsed = response.output_parsed as z.infer<typeof PlayDecisionSchema>;
-  if (parsed.kind === "play" && parsed.cardId) {
-    return { kind: "play", cardId: parsed.cardId };
+  const parsed = response.output_parsed!;
+  if (parsed.decision.kind === "play" && parsed.decision.cardId) {
+    return { kind: "play", cardId: parsed.decision.cardId };
   } else {
     return { kind: "skip" };
   }
@@ -135,7 +236,7 @@ export async function generateRedSequenceDecision(
         content:
           "You are the White Cell. Decide the turn sequence for the Red players based on the current game state.",
       },
-      { role: "user", content: JSON.stringify({ state }) },
+      { role: "user", content: printGameState(state) },
     ],
     text: {
       format: zodTextFormat(SequenceDecisionSchema, "sequence_decision"),
@@ -158,7 +259,10 @@ export async function generateWhiteCellSummary(
         role: "system",
         content: `You are the White Cell. Summarize the ${kind} for turn ${turn}.`,
       },
-      { role: "user", content: JSON.stringify({ state, kind, turn }) },
+      {
+        role: "user",
+        content: `Summary Kind: ${kind}\nTurn: ${turn}\n\n${printGameState(state)}`
+      },
     ],
     text: {
       format: zodTextFormat(SummarySchema, "summary"),
@@ -181,7 +285,10 @@ export async function generateWhiteCellAdjudicationResolution(
         content:
           "You are the White Cell. Resolve the adjudication request in rules-engine-compatible terms.",
       },
-      { role: "user", content: JSON.stringify({ state, request }) },
+      {
+        role: "user",
+        content: `${printAdjudicationRequest(request)}\n\n${printGameState(state)}`
+      },
     ],
     text: {
       format: zodTextFormat(ResolutionSchema, "resolution"),
@@ -204,7 +311,10 @@ export async function generateWhiteCellEventNote(
         content:
           "You are the White Cell. Decide why and how to inject a scenario event for the given card ID.",
       },
-      { role: "user", content: JSON.stringify({ state, cardId }) },
+      {
+        role: "user",
+        content: `Card ID for Event: ${cardId}\n\n${printGameState(state)}`
+      },
     ],
     text: {
       format: zodTextFormat(EventNoteSchema, "event_note"),
@@ -226,7 +336,7 @@ export async function generateWhiteCellEventDecision(
         content:
           "You are the White Cell. Decide whether to inject an event and which event to use.",
       },
-      { role: "user", content: JSON.stringify({ state }) },
+      { role: "user", content: printGameState(state) },
     ],
     text: {
       format: zodTextFormat(EventDecisionSchema, "event_decision"),

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import defaultScenario from "../src/data/defaultScenario.json";
 import { canViewLog, canViewRoll } from "../src/components/visibility";
 import {
@@ -240,69 +240,66 @@ describe("scenario loading and validation", () => {
 });
 
 describe("turn sequence and Red signaling", () => {
-  it(
-    "feeds Red and White Cell placeholder decisions through existing rules-engine interfaces",
-    async () => {
-      let state = recordGameStartSummary(
-        freshState(),
-        await generateWhiteCellSummary("game_start", 1, freshState()),
-      );
-      for (const player of getPlayersBySide(state, "Red")) {
-        const decision = await generateRedSignalDecision(state, player.id);
-        const result = signalRedCards(
-          state,
-          player.id,
-          decision.cardIds,
-          decision.briefSummary,
-          decision.activationIntent,
+  // You must use `LLM_TESTS=true` in order to run this test
+  test.skipIf(
+    process.env.LLM_TESTS !== "true")(
+      "feeds Red and White Cell genereated decisions through existing rules-engine interfaces",
+      async () => {
+        let state = recordGameStartSummary(
+          freshState(),
+          await generateWhiteCellSummary("game_start", 1, freshState()),
         );
-        expect(result.issues).toEqual([]);
-        state = result.state;
-      }
-      expect(beginBlueReadinessBill(state).issues).toHaveLength(0);
+        for (const player of getPlayersBySide(state, "Red")) {
+          const decision = await generateRedSignalDecision(state, player.id);
+          const result = signalRedCards(
+            state,
+            player.id,
+            decision.cardIds,
+            decision.briefSummary,
+            decision.activationIntent,
+          );
+          expect(result.issues).toEqual([]);
+          state = result.state;
+        }
+        expect(beginBlueReadinessBill(state).issues).toHaveLength(0);
 
-      const paid = payUsReadinessBill(
-        beginBlueReadinessBill(state).state,
-      ).state;
-      const actionPhase = advanceBlueToActions(paid).state;
-      const redPhase = beginRedInvestmentsAndActions(
-        actionPhase,
-        await generateRedSequenceDecision(actionPhase),
-        new SequenceDiceRoller([5]),
-      );
-      expect(redPhase.issues).toHaveLength(0);
-      const playDecision = await generateRedPlayDecision(
-        redPhase.state,
-        redPhase.state.active_player_id ?? "RU",
-      );
-      expect(playDecision.kind).toBe("play");
-      expect(
-        await generateWhiteCellAdjudicationResolution(
-          {
-            id: "adj-test",
-            turn: 1,
-            phase: "BlueReadinessBill",
-            reason: "table",
-            rule_refs: ["test"],
-            tags: ["WHITE_CELL_ADJUDICATION"],
-            status: "pending",
-            payload: {
-              kind: "table_extension",
-              table: "T",
-              row: "R",
-              column: "C",
-            },
-          },
+        const paid = payUsReadinessBill(
+          beginBlueReadinessBill(state).state,
+        ).state;
+        const actionPhase = advanceBlueToActions(paid).state;
+        const redPhase = beginRedInvestmentsAndActions(
           actionPhase,
-        ),
-      ).toEqual(expect.any(String));
-    },
-    {
-      timeout: 30000,
-      // We are skipping this test for now since calling the LLM in tests is expensive.
-      skip: true,
-    },
-  );
+          await generateRedSequenceDecision(actionPhase),
+          new SequenceDiceRoller([5]),
+        );
+        expect(redPhase.issues).toHaveLength(0);
+        await generateRedPlayDecision(
+          redPhase.state,
+          redPhase.state.active_player_id ?? "RU",
+        );
+        expect(
+          await generateWhiteCellAdjudicationResolution(
+            {
+              id: "adj-test",
+              turn: 1,
+              phase: "BlueReadinessBill",
+              reason: "table",
+              rule_refs: ["test"],
+              tags: ["WHITE_CELL_ADJUDICATION"],
+              status: "pending",
+              payload: {
+                kind: "table_extension",
+                table: "T",
+                row: "R",
+                column: "C",
+              },
+            },
+            actionPhase,
+          ),
+        ).toEqual(expect.any(String));
+      },
+      30000
+    );
 
   it("keeps each Red player's revealed cards separate and exposes remaining choices plus skip", () => {
     let state = recordGameStartSummary(freshState(), "Opening summary.");
