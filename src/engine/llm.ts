@@ -1,6 +1,6 @@
 import OpenAI from "openai";
-import z from "zod";
 import { zodTextFormat } from "openai/helpers/zod";
+import z from "zod";
 import { getPlayerDeck } from "./rules";
 import {
   CardIdSchema,
@@ -11,6 +11,7 @@ import {
   type PlayerId,
   type RedSignalState,
 } from "./types";
+import type { ReviewItem } from "../components/diff";
 
 // ----------------------------------------------------------------------------
 
@@ -20,7 +21,7 @@ const openai = new OpenAI({
   apiKey: import.meta.env.VITE_OPENAI_API_KEY,
 });
 
-const medium_model = import.meta.env.TEST ? "gpt-5.4-nano" : "gpt-5.4-mini";
+const medium_model = "gpt-5.4-mini";
 
 // ----------------------------------------------------------------------------
 
@@ -257,7 +258,7 @@ export async function generateWhiteCellSummary(
     input: [
       {
         role: "system",
-        content: `You are the White Cell. Summarize the ${kind} for turn ${turn}.`,
+        content: `You are the White Cell. Summarize the ${kind} for turn ${turn}. Your summary must be an organized details executive summary.`,
       },
       {
         role: "user",
@@ -269,6 +270,49 @@ export async function generateWhiteCellSummary(
     },
   });
   return response.output_parsed!.summary;
+}
+
+/**
+ * Based on a natural-language summary, generate a few thematic newspaper articles and intel reports.
+ */
+export async function generateReviewItems(state: GameState, summary: string): Promise<ReviewItem[]> {
+  const ReviewItemSchema = z.union([
+    z.object({
+      kind: z.enum(["world_newspapers"]),
+      summary: z.string().describe("A concise one-paragraph summary of a newspaper article."),
+      label: z.string().describe("The newspaper publisher."),
+    }),
+    z.object({
+      kind: z.enum(["world_intel"]),
+      summary: z.string().describe("A concise one-paragraph summary of an intel briefing."),
+      label: z.string().describe("The intel report publisher."),
+    })
+  ]);
+
+  const ReviewItemsListSchema = z.object({ items: z.array(ReviewItemSchema) });
+
+  const response = await openai.responses.parse({
+    model: medium_model,
+    input: [
+      {
+        role: "system",
+        content:
+          "You are the White Cell. Based on the provided summary and game state, generate a few thematic newspaper articles and intel reports.",
+      },
+      {
+        role: "user",
+        content: `Summary:\n${summary}\n\nGame State:\n${printGameState(state)}`,
+      },
+    ],
+    text: {
+      format: zodTextFormat(ReviewItemsListSchema, "review_items"),
+    },
+  });
+
+  return response.output_parsed!.items.map((item) => ({
+    ...item,
+    turn: state.turn,
+  }));
 }
 
 const ResolutionSchema = z.object({ resolution: z.string() });
