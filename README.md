@@ -1,3 +1,12 @@
+Our team name is Cenedril.
+Our track is Wargaming.
+Our members are:
+-Alex Ditzel
+-Henry Blanchette
+-Chaoqian Huang
+
+
+
 # Hedgemony-Sim
 
 Digital war game simulator based on RAND Corporation's "Hedgemony". This project translates complex tabletop rules into an automated engine powered by large language models.
