@@ -48,7 +48,8 @@ import {
 import { PlayerCard } from "./Card";
 import { CardModal } from "./CardModal";
 import { DiceResult, DiceResultList } from "./Dice";
-import { diffStates, ReviewItem, takeSnapshot, type Snapshot } from "./diff";
+import type { ReviewItem} from "./diff";
+import { diffStates, takeSnapshot, type Snapshot } from "./diff";
 import { EffectsSummary } from "./Effects";
 import { EventLogPanel, LogEntryModal } from "./EventLog";
 import { phaseLabel, playerLabel, sideToTone } from "./factions";
