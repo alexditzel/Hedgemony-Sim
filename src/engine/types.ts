@@ -1121,5 +1121,12 @@ export function getPlayerDeck(state: GameState, playerId: PlayerId): Card[] {
   ];
   return ids
     .map((id) => entryValue(state.cards, id))
-    .filter((c): c is Card => Boolean(c));
+    .filter((c): c is Card => {
+      if (!c) return false;
+      // Filter out cards already played
+      const alreadyPlayed = state.card_play_history.some(
+        (h) => h.player_id === playerId && h.card_id === c.id
+      );
+      return !alreadyPlayed;
+    });
 }

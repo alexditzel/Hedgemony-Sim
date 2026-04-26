@@ -531,8 +531,8 @@ function redSignalMixIssue(cards: Card[]): RuleIssue | undefined {
   if (cards.length !== 3) {
     return undefined;
   }
-  const hasAction = cards.some((card) => card.type === "Action");
-  const hasInvestment = cards.some((card) => card.type === "Investment");
+  const hasAction = cards.some((card) => card.type.toLowerCase() === "action");
+  const hasInvestment = cards.some((card) => card.type.toLowerCase() === "investment");
   if (!hasAction || !hasInvestment) {
     return makeIssue(
       "When three Red cards are signaled, at least one must be Action and at least one must be Investment.",
