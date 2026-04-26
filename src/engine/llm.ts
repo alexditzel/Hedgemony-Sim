@@ -258,7 +258,7 @@ export async function generateWhiteCellSummary(
     input: [
       {
         role: "system",
-        content: `You are the White Cell. Summarize the ${kind} for turn ${turn}. Your summary must be an organized details executive summary.`,
+        content: `You are the White Cell. Summarize the ${kind} for turn ${turn}. Treat the provided state as a real-world event and active crisis, not as a simulation, scenario, exercise, game, or fictional setup. Your summary must be an organized, detailed executive summary written in realistic real-world national security language. Do not use game abstractions or side labels such as "Red", "Blue", "Red team", or "Blue team"; refer to countries, alliances, agencies, commands, leaders, and forces by their real-world names from the state. Do not mention that this is a simulation, scenario, tabletop exercise, turn, card, or game artifact.`,
       },
       {
         role: "user",
@@ -280,6 +280,7 @@ export async function generateReviewItems(state: GameState, summary: string): Pr
     kind: z.enum(["world_newspapers"]),
     summary: z.string().describe("A concise one-paragraph summary of a newspaper article."),
     label: z.string().describe("The newspaper publisher."),
+    headline: z.string().describe("The newspaper article headline."),
   });
   const WorldIntelReviewItemSchema = z.object({
     kind: z.enum(["world_intel"]),
@@ -299,7 +300,7 @@ export async function generateReviewItems(state: GameState, summary: string): Pr
       {
         role: "system",
         content:
-          "You are the White Cell. Based on the provided summary and game state, generate some thematic newspaper articles and intel reports.",
+          "You are the White Cell. Based on the provided summary and game state, generate two distinct realistic newspaper articles and one realistic intelligence briefing. Treat the provided state as a real-world event and active crisis, not as a simulation, scenario, exercise, game, or fictional setup. Do not use game abstractions or side labels such as \"Red\", \"Blue\", \"Red team\", or \"Blue team\" anywhere in the labels, headlines, or summaries; refer to countries, alliances, agencies, commands, leaders, and forces by their real-world names from the state. Do not mention turns, cards, players, phases, simulations, scenarios, exercises, or game artifacts. The newspaper articles should read like plausible international press coverage with credible mastheads, restrained headlines, and concrete geopolitical detail. The intelligence briefing should read like a real-world government analytic product, not a game recap. For each newspaper, generate the publisher label, the article headline, and the article summary together so the masthead, headline, and body all describe the same article.",
       },
       {
         role: "user",

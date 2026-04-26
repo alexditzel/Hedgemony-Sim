@@ -244,6 +244,7 @@ export type ReviewItem =
     turn: number;
     summary: string;
     label: string;
+    headline?: string;
   }
   | {
     kind: "world_intel";

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { entryValue, type Card as GameCardData, type GameState, type RedSignalState } from "../engine";
+import type { ReviewItem } from "./diff";
 import { phaseLabel, playerLabel } from "./factions";
 import { Tag } from "./ui";
 
@@ -105,32 +106,31 @@ export function RedSignalIntel({ state, signals }: SignaledIntelProps) {
 
 interface NewspaperPairProps {
   state: GameState;
-  summary: string;
   edition: string;
+  newspapers: Extract<ReviewItem, { kind: "world_newspapers" }>[];
 }
 
-export function WorldStateNewspapers({ state, summary, edition }: NewspaperPairProps) {
-  const usPlayer = entryValue(state.players, "US");
-  const naPlayer = entryValue(state.players, "NATO_EU");
+function fallbackHeadline(index: number, turn: number): string {
+  return index === 0
+    ? `World Leaders Weigh Risks as Turn ${turn} Opens`
+    : "Regional Signals Draw Fresh Scrutiny";
+}
+
+export function WorldStateNewspapers({ state, edition, newspapers }: NewspaperPairProps) {
   const turnLabel = `Turn ${state.turn} · ${phaseLabel(state.phase)}`;
   return (
     <div className="newspaper-wrap">
-      <Newspaper
-        name="The Atlantic Tribune"
-        edition={`Vol. III · ${edition}`}
-        kicker="World"
-        headline={"Analysts Watch Posture Shifts as Turn Opens"}
-        lede={`${summary} Capitals from ${usPlayer?.label ?? "Washington"} to ${naPlayer?.label ?? "Brussels"} weigh competing pressures as the new cycle begins. Markets and ministries reread their playbooks.`}
-        byline={`${turnLabel} · Front Page`}
-      />
-      <Newspaper
-        name="Global Wire Daily"
-        edition={`No. ${1000 + state.turn} · ${edition}`}
-        kicker="Security"
-        headline="Allies Recalibrate as Adversaries Signal Intent"
-        lede={`Open-source watchers note movement of forces and shifting tones from ${ /* abstract */ "Moscow, Beijing, Tehran, and Pyongyang"}. Public statements remain vague; analysts caution against reading them as final.`}
-        byline={`${turnLabel} · Wire Desk`}
-      />
+      {newspapers.slice(0, 2).map((newspaper, index) => (
+        <Newspaper
+          key={`${newspaper.turn}-${newspaper.label}-${index}`}
+          name={newspaper.label}
+          edition={`${index === 0 ? "Vol. III" : `No. ${1000 + state.turn}`} · ${edition}`}
+          kicker={index === 0 ? "World" : "Security"}
+          headline={newspaper.headline?.trim() || fallbackHeadline(index, newspaper.turn)}
+          lede={newspaper.summary}
+          byline={`${turnLabel} · ${index === 0 ? "Front Page" : "Wire Desk"}`}
+        />
+      ))}
     </div>
   );
 }

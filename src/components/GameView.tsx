@@ -173,6 +173,31 @@ function openingSummaryFromReviews(reviewItems: ReviewItem[], fallback: string):
   return paragraphs.length > 0 ? paragraphs.join("\n\n") : fallback.trim();
 }
 
+function fallbackOpeningReviews(summary: string, turn: number, label: string): ReviewItem[] {
+  return [
+    {
+      kind: "world_newspapers",
+      turn,
+      summary,
+      label,
+      headline: `World Leaders Weigh Risks as Turn ${turn} Opens`
+    },
+    {
+      kind: "world_newspapers",
+      turn,
+      summary,
+      label: "International Desk",
+      headline: "Regional Signals Draw Fresh Scrutiny"
+    },
+    {
+      kind: "world_intel",
+      turn,
+      summary,
+      label
+    }
+  ];
+}
+
 function SummaryParagraphs({ text }: { text: string }) {
   const paragraphs = text
     .split(/\n\s*\n/)
@@ -349,10 +374,8 @@ export function GameView({ scenario }: GameViewProps) {
             turnReviewsSeeded.current.add(state.turn);
             const summary = turnSummary(state, state.turn);
             const label = state.turn === 1 ? "Opening Bell" : `Turn ${state.turn} Opens`;
-            setReviewQueue([
-              { kind: "world_newspapers", turn: state.turn, summary, label },
-              { kind: "world_intel", turn: state.turn, summary, label }
-            ]);
+            const reviewItems = await generateReviewItems(state, summary);
+            setReviewQueue(reviewItems.length > 0 ? reviewItems : fallbackOpeningReviews(summary, state.turn, label));
             return;
           }
 
@@ -535,14 +558,21 @@ export function GameView({ scenario }: GameViewProps) {
     setPendingFreePlay(undefined);
   }
 
-  function popReview(): void {
-    setReviewQueue((queue) => queue.slice(1));
+  function popReview(count = 1): void {
+    setReviewQueue((queue) => queue.slice(count));
   }
 
   // ------------------------------------------------------------------
   // Rendering helpers
   // ------------------------------------------------------------------
   const currentReview = reviewQueue[0];
+  const currentNewspaperReviews = currentReview?.kind === "world_newspapers"
+    ? reviewQueue
+      .slice(0, 2)
+      .filter((review): review is Extract<ReviewItem, { kind: "world_newspapers" }> =>
+        review.kind === "world_newspapers" && review.turn === currentReview.turn
+      )
+    : [];
 
   return (
     <div className="app-shell">
@@ -581,7 +611,8 @@ export function GameView({ scenario }: GameViewProps) {
 						<ReviewStage
 							state={state}
 							review={currentReview}
-							onContinue={popReview}
+							newspaperReviews={currentNewspaperReviews}
+							onContinue={() => popReview(currentNewspaperReviews.length || 1)}
 							onOpenCard={setCardModal}
 						/>
 					) : (
@@ -893,6 +924,7 @@ function describePhase(state: GameState, review?: ReviewItem): DescribedPhase {
 interface ReviewStageProps {
   state: GameState;
   review: ReviewItem;
+  newspaperReviews: Extract<ReviewItem, { kind: "world_newspapers" }>[];
   onContinue: () => void;
   onOpenCard: (card: Card) => void;
 }
@@ -1033,8 +1065,9 @@ function ChangePill({ change }: { change: ScalarChange }) {
   );
 }
 
-function ReviewStage({ state, review, onContinue, onOpenCard }: ReviewStageProps) {
+function ReviewStage({ state, review, newspaperReviews, onContinue, onOpenCard }: ReviewStageProps) {
   if (review.kind === "world_newspapers") {
+    const newspapers = newspaperReviews.length > 0 ? newspaperReviews : [review];
     return (
       <div className="stack-lg fade-in">
         <header>
@@ -1047,7 +1080,7 @@ function ReviewStage({ state, review, onContinue, onOpenCard }: ReviewStageProps
             What the world is reading this morning. Headlines color how leaders frame their next moves.
           </p>
         </header>
-        <WorldStateNewspapers state={state} summary={review.summary} edition={`Day ${review.turn * 30}`} />
+        <WorldStateNewspapers state={state} newspapers={newspapers} edition={`Day ${review.turn * 30}`} />
         <div className="row gap-md">
           <Button variant="primary" onClick={onContinue}>Continue to Intel Briefing →</Button>
           <span className="muted" style={{ fontFamily: "var(--font-mono)", fontSize: "0.74rem", letterSpacing: "0.1em" }}>
