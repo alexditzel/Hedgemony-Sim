@@ -720,7 +720,6 @@ export const ForceInitializationSchema = z.object({
 export type Scenario = {
   title: string;
   learning_objectives: string[];
-  security_environment: string;
   players: PlayerState[];
   map: {
     locations: Location[];
@@ -750,7 +749,6 @@ export type Scenario = {
 export const ScenarioSchema = z.object({
   title: z.string(),
   learning_objectives: z.array(z.string()),
-  security_environment: z.string(),
   players: z.array(PlayerStateSchema),
   map: z.object({
     locations: z.array(LocationSchema),

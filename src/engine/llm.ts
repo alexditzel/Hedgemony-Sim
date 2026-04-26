@@ -5,6 +5,7 @@ import { getPlayerDeck } from "./rules";
 import {
   CardIdSchema,
   PlayerIdSchema,
+  Scenario,
   type AdjudicationRequest,
   type CardId,
   type GameState,
@@ -387,4 +388,27 @@ export async function generateWhiteCellEventDecision(
     },
   });
   return response.output_parsed!.cardId ?? undefined;
+}
+
+
+type ScenarioPrompt = {
+  /**
+   * Learing objects that should be explored by simulating this scenario.
+   */
+  learning_objectives: string[],
+  players: { label: string, side: "Blue" | "Red" }[],
+  max_turns: number,
+  /**
+   * Important events that should inspire investment and action cards.
+   */
+  events: string[],
+}
+
+/**
+ * Generate a scenario based on a prompt.
+ * 
+ * To make the scenario interesting, make sure to first design a few different major arcs that the simulation could follow, and then design cards that make sense for each of those arcs. To make sure that each player has important roles, use a points system that allocated number of cards and importance of cards to different players. To make sure cards are balanced and demonstrate interesting trade-offs for players to consider, each card should have points budget for how much it supports or harms the player who plays the card, and how  uch it suports or harms other players.
+ */
+export async function generateScenario(prompt: ScenarioPrompt): Promise<Scenario> {
+  throw new Error("TODO: use several rounds of LLM structured outputs to generate interesting scenario based on the given prompt. Reference the Zod schemas such as ScenarioSchema and the schemas it references.")
 }

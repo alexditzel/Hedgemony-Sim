@@ -5,7 +5,6 @@
     "Exercise Blue free-play adjudication and Red signaled-card sequencing.",
     "Demonstrate deterministic tables, card-defined outcomes, and White Cell pauses."
   ],
-  "security_environment": "A compact example scenario based on the default Hedgemony starting conditions. Values are for game demonstration only and are not real-world assessments.",
   "players": [
     {
       "id": "US",
