@@ -1,0 +1,1543 @@
+{
+    "title": "Levant-Iran Escalation Chain: From Damascus to Hormuz",
+    "learning_objectives": [
+        "Practice crisis escalation management across direct state-on-state and proxy warfare.",
+        "Evaluate how air defense, coalition cohesion, legitimacy, and nuclear risk interact in a multi-theater conflict.",
+        "Understand how maritime chokepoint coercion can internationalize a regional war.",
+        "Assess the limits of decapitation strikes and the strategic tradeoffs of regime-change campaigns."
+    ],
+    "players": [
+        {
+            "id": "US",
+            "label": "United State of America",
+            "side": "Blue",
+            "resource_points": 34,
+            "influence_points": 5,
+            "national_tech_level": 5,
+            "critical_capabilities": [
+                {
+                    "id": "airpower_projection",
+                    "value": 5
+                },
+                {
+                    "id": "bmd_interoperability",
+                    "value": 5
+                },
+                {
+                    "id": "intel_surveillance_recce",
+                    "value": 5
+                },
+                {
+                    "id": "maritime_control",
+                    "value": 4
+                }
+            ],
+            "victory_condition": "Prevent Iranian nuclear breakout, preserve coalition credibility, keep regional trade flowing, and avoid uncontrolled escalation or regime-collapse blowback.",
+            "card_decks": {
+                "action_investment": [
+                    "US"
+                ],
+                "domestic_event": [
+                    "US"
+                ]
+            },
+            "notes": "Core crisis manager and primary escalatory backstop for Israel.",
+            "allow_deficit": false
+        },
+        {
+            "id": "NATO_EU",
+            "label": "NATO and European Union",
+            "side": "Blue",
+            "resource_points": 28,
+            "influence_points": 4,
+            "national_tech_level": 4,
+            "critical_capabilities": [
+                {
+                    "id": "air_and_missile_defense",
+                    "value": 4
+                },
+                {
+                    "id": "sanctions_coordination",
+                    "value": 5
+                },
+                {
+                    "id": "diplomatic_legitimacy",
+                    "value": 5
+                },
+                {
+                    "id": "maritime_security",
+                    "value": 4
+                }
+            ],
+            "victory_condition": "Sustain coalition unity, blunt Iranian retaliation, limit humanitarian/legal fallout, and support de-escalation or ceasefire terms favorable to Blue.",
+            "card_decks": {
+                "action_investment": [
+                    "NATO_EU"
+                ],
+                "domestic_event": [
+                    "NATO_EU"
+                ]
+            },
+            "notes": "Represents European coalition discipline, sanctions, and defensive support.",
+            "allow_deficit": false
+        },
+        {
+            "id": "IS",
+            "label": "Israel",
+            "side": "Blue",
+            "resource_points": 34,
+            "influence_points": 5,
+            "national_tech_level": 5,
+            "critical_capabilities": [
+                {
+                    "id": "air_superiority",
+                    "value": 5
+                },
+                {
+                    "id": "integrated_defense",
+                    "value": 5
+                },
+                {
+                    "id": "deep_strike",
+                    "value": 5
+                },
+                {
+                    "id": "human_intelligence",
+                    "value": 4
+                }
+            ],
+            "victory_condition": "Degrade Iranian nuclear, missile, and proxy capabilities while preventing a successful retaliatory campaign or northern-front collapse.",
+            "card_decks": {
+                "action_investment": [
+                    "IS"
+                ],
+                "domestic_event": [
+                    "IS"
+                ]
+            },
+            "notes": "Can act decisively but creates backlash and broader escalation risk.",
+            "allow_deficit": false
+        },
+        {
+            "id": "IR",
+            "label": "Iran",
+            "side": "Red",
+            "resource_points": 36,
+            "influence_points": 5,
+            "national_tech_level": 4,
+            "critical_capabilities": [
+                {
+                    "id": "ballistic_missiles",
+                    "value": 5
+                },
+                {
+                    "id": "proxy_network",
+                    "value": 5
+                },
+                {
+                    "id": "regime_repression",
+                    "value": 5
+                },
+                {
+                    "id": "maritime_irregular_warfare",
+                    "value": 4
+                }
+            ],
+            "victory_condition": "Survive intact, preserve regime control, restore deterrence, maintain proxy leverage, and force a ceasefire or sanctions relief.",
+            "card_decks": {
+                "action_investment": [
+                    "IR"
+                ],
+                "domestic_event": [
+                    "IR"
+                ]
+            },
+            "notes": "Can trade conventional weakness for asymmetric coercion and domestic repression.",
+            "allow_deficit": false
+        },
+        {
+            "id": "PRC",
+            "label": "China",
+            "side": "Red",
+            "resource_points": 30,
+            "influence_points": 4,
+            "national_tech_level": 4,
+            "critical_capabilities": [
+                {
+                    "id": "energy_demand",
+                    "value": 5
+                },
+                {
+                    "id": "diplomatic_cover",
+                    "value": 4
+                },
+                {
+                    "id": "economic_leverage",
+                    "value": 5
+                },
+                {
+                    "id": "strategic_patience",
+                    "value": 4
+                }
+            ],
+            "victory_condition": "Protect energy access, expand diplomatic leverage, constrain US freedom of action, and preserve channels to Tehran.",
+            "card_decks": {
+                "action_investment": [
+                    "PRC"
+                ],
+                "domestic_event": [
+                    "PRC"
+                ]
+            },
+            "notes": "Seeks to shape ceasefire language, energy flows, and sanctions outcomes rather than direct combat.",
+            "allow_deficit": false
+        },
+        {
+            "id": "RU",
+            "label": "Russia",
+            "side": "Red",
+            "resource_points": 26,
+            "influence_points": 3,
+            "national_tech_level": 4,
+            "critical_capabilities": [
+                {
+                    "id": "arms_exports",
+                    "value": 4
+                },
+                {
+                    "id": "veto_diplomacy",
+                    "value": 4
+                },
+                {
+                    "id": "information_ops",
+                    "value": 4
+                },
+                {
+                    "id": "energy_leverage",
+                    "value": 4
+                }
+            ],
+            "victory_condition": "Exploit the crisis to weaken US/EU influence, preserve residual Iranian alignment, and gain diplomatic or energy-market advantage.",
+            "card_decks": {
+                "action_investment": [
+                    "RU"
+                ],
+                "domestic_event": [
+                    "RU"
+                ]
+            },
+            "notes": "Uses diplomacy, obstruction, and limited matériel support rather than direct battlefield intervention.",
+            "allow_deficit": false
+        }
+    ],
+    "map": {
+        "locations": [
+            {
+                "id": "WORLD",
+                "label": "Global System",
+                "aor_id": null,
+                "parent_location_id": null,
+                "country_owner": null,
+                "home_for": null,
+                "coordinates": null
+            },
+            {
+                "id": "MIDEAST",
+                "label": "Middle East",
+                "aor_id": "AOR_ME",
+                "parent_location_id": "WORLD",
+                "country_owner": null,
+                "home_for": null,
+                "coordinates": null
+            },
+            {
+                "id": "LEVANT",
+                "label": "Levant",
+                "aor_id": "AOR_LEVANT",
+                "parent_location_id": "MIDEAST",
+                "country_owner": null,
+                "home_for": null,
+                "coordinates": null
+            },
+            {
+                "id": "GULF",
+                "label": "Persian Gulf and Hormuz",
+                "aor_id": "AOR_GULF",
+                "parent_location_id": "MIDEAST",
+                "country_owner": null,
+                "home_for": null,
+                "coordinates": null
+            },
+            {
+                "id": "ISRAEL",
+                "label": "Israel",
+                "aor_id": "AOR_LEVANT",
+                "parent_location_id": "LEVANT",
+                "country_owner": "IS",
+                "home_for": [
+                    "IS"
+                ],
+                "coordinates": {
+                    "lat": 31.0461,
+                    "lng": 34.8516
+                }
+            },
+            {
+                "id": "IRAN",
+                "label": "Iran",
+                "aor_id": "AOR_IRAN",
+                "parent_location_id": "MIDEAST",
+                "country_owner": "IR",
+                "home_for": [
+                    "IR"
+                ],
+                "coordinates": {
+                    "lat": 32.4279,
+                    "lng": 53.688
+                }
+            },
+            {
+                "id": "DAMASCUS",
+                "label": "Damascus",
+                "aor_id": "AOR_LEVANT",
+                "parent_location_id": "LEVANT",
+                "country_owner": "SYRIA",
+                "home_for": null,
+                "coordinates": {
+                    "lat": 33.5138,
+                    "lng": 36.2765
+                }
+            },
+            {
+                "id": "BEIRUT",
+                "label": "Beirut",
+                "aor_id": "AOR_LEVANT",
+                "parent_location_id": "LEVANT",
+                "country_owner": "LEBANON",
+                "home_for": null,
+                "coordinates": {
+                    "lat": 33.8938,
+                    "lng": 35.5018
+                }
+            },
+            {
+                "id": "TEHRAN",
+                "label": "Tehran",
+                "aor_id": "AOR_IRAN",
+                "parent_location_id": "IRAN",
+                "country_owner": "IR",
+                "home_for": [
+                    "IR"
+                ],
+                "coordinates": {
+                    "lat": 35.6892,
+                    "lng": 51.389
+                }
+            },
+            {
+                "id": "NATANZ",
+                "label": "Natanz",
+                "aor_id": "AOR_IRAN",
+                "parent_location_id": "IRAN",
+                "country_owner": "IR",
+                "home_for": null,
+                "coordinates": {
+                    "lat": 33.731,
+                    "lng": 51.726
+                }
+            },
+            {
+                "id": "FORDOW",
+                "label": "Fordow",
+                "aor_id": "AOR_IRAN",
+                "parent_location_id": "IRAN",
+                "country_owner": "IR",
+                "home_for": null,
+                "coordinates": {
+                    "lat": 34.884,
+                    "lng": 50.995
+                }
+            },
+            {
+                "id": "ISFAHAN",
+                "label": "Isfahan",
+                "aor_id": "AOR_IRAN",
+                "parent_location_id": "IRAN",
+                "country_owner": "IR",
+                "home_for": null,
+                "coordinates": {
+                    "lat": 32.6546,
+                    "lng": 51.668
+                }
+            },
+            {
+                "id": "QATAR",
+                "label": "Qatar",
+                "aor_id": "AOR_GULF",
+                "parent_location_id": "GULF",
+                "country_owner": "QATAR",
+                "home_for": null,
+                "coordinates": {
+                    "lat": 25.3548,
+                    "lng": 51.1839
+                }
+            },
+            {
+                "id": "HORMUZ",
+                "label": "Strait of Hormuz",
+                "aor_id": "AOR_GULF",
+                "parent_location_id": "GULF",
+                "country_owner": null,
+                "home_for": null,
+                "coordinates": {
+                    "lat": 26.5,
+                    "lng": 56.25
+                }
+            },
+            {
+                "id": "LEBANON",
+                "label": "Lebanon",
+                "aor_id": "AOR_LEVANT",
+                "parent_location_id": "LEVANT",
+                "country_owner": "LEBANON",
+                "home_for": null,
+                "coordinates": {
+                    "lat": 33.8547,
+                    "lng": 35.8623
+                }
+            },
+            {
+                "id": "SYRIA",
+                "label": "Syria",
+                "aor_id": "AOR_LEVANT",
+                "parent_location_id": "LEVANT",
+                "country_owner": "SYRIA",
+                "home_for": null,
+                "coordinates": {
+                    "lat": 34.8021,
+                    "lng": 38.9968
+                }
+            },
+            {
+                "id": "IRAQ",
+                "label": "Iraq",
+                "aor_id": "AOR_MESO",
+                "parent_location_id": "MIDEAST",
+                "country_owner": "IRAQ",
+                "home_for": null,
+                "coordinates": {
+                    "lat": 33.2232,
+                    "lng": 43.6793
+                }
+            },
+            {
+                "id": "JORDAN",
+                "label": "Jordan",
+                "aor_id": "AOR_LEVANT",
+                "parent_location_id": "LEVANT",
+                "country_owner": "JORDAN",
+                "home_for": null,
+                "coordinates": {
+                    "lat": 30.5852,
+                    "lng": 36.2384
+                }
+            }
+        ],
+        "movement_edges": [
+            {
+                "from": "ISRAEL",
+                "to": "LEVANT",
+                "type": "adjacent"
+            },
+            {
+                "from": "LEVANT",
+                "to": "DAMASCUS",
+                "type": "adjacent"
+            },
+            {
+                "from": "LEVANT",
+                "to": "BEIRUT",
+                "type": "adjacent"
+            },
+            {
+                "from": "MIDEAST",
+                "to": "GULF",
+                "type": "adjacent"
+            },
+            {
+                "from": "GULF",
+                "to": "HORMUZ",
+                "type": "same_aor"
+            },
+            {
+                "from": "IRAN",
+                "to": "TEHRAN",
+                "type": "same_aor"
+            },
+            {
+                "from": "IRAN",
+                "to": "NATANZ",
+                "type": "same_aor"
+            },
+            {
+                "from": "IRAN",
+                "to": "FORDOW",
+                "type": "same_aor"
+            },
+            {
+                "from": "IRAN",
+                "to": "ISFAHAN",
+                "type": "same_aor"
+            },
+            {
+                "from": "GULF",
+                "to": "QATAR",
+                "type": "adjacent"
+            },
+            {
+                "from": "LEVANT",
+                "to": "SYRIA",
+                "type": "adjacent"
+            },
+            {
+                "from": "LEVANT",
+                "to": "JORDAN",
+                "type": "adjacent"
+            },
+            {
+                "from": "LEVANT",
+                "to": "IRAQ",
+                "type": "adjacent"
+            }
+        ],
+        "aor_boundaries": [
+            {
+                "id": "AOR_ME",
+                "description": "Middle East theater including the Gulf and Levant."
+            },
+            {
+                "id": "AOR_LEVANT",
+                "description": "Israel, Lebanon, Syria, Jordan, and nearby cross-border operating areas."
+            },
+            {
+                "id": "AOR_GULF",
+                "description": "Persian Gulf maritime chokepoint and regional energy routes."
+            },
+            {
+                "id": "AOR_IRAN",
+                "description": "Iranian sovereign territory and strategic depth."
+            }
+        ]
+    },
+    "starting_conditions": {
+        "resources": [
+            {
+                "id": "US",
+                "value": 34
+            },
+            {
+                "id": "NATO_EU",
+                "value": 28
+            },
+            {
+                "id": "IS",
+                "value": 34
+            },
+            {
+                "id": "IR",
+                "value": 36
+            },
+            {
+                "id": "PRC",
+                "value": 30
+            },
+            {
+                "id": "RU",
+                "value": 26
+            }
+        ],
+        "per_turn_resources": [
+            {
+                "id": "US",
+                "value": 6
+            },
+            {
+                "id": "NATO_EU",
+                "value": 5
+            },
+            {
+                "id": "IS",
+                "value": 6
+            },
+            {
+                "id": "IR",
+                "value": 6
+            },
+            {
+                "id": "PRC",
+                "value": 5
+            },
+            {
+                "id": "RU",
+                "value": 4
+            }
+        ],
+        "influence": [
+            {
+                "id": "US",
+                "value": 5
+            },
+            {
+                "id": "NATO_EU",
+                "value": 4
+            },
+            {
+                "id": "IS",
+                "value": 5
+            },
+            {
+                "id": "IR",
+                "value": 5
+            },
+            {
+                "id": "PRC",
+                "value": 4
+            },
+            {
+                "id": "RU",
+                "value": 3
+            }
+        ],
+        "national_tech_levels": [
+            {
+                "id": "US",
+                "value": 5
+            },
+            {
+                "id": "NATO_EU",
+                "value": 4
+            },
+            {
+                "id": "IS",
+                "value": 5
+            },
+            {
+                "id": "IR",
+                "value": 4
+            },
+            {
+                "id": "PRC",
+                "value": 4
+            },
+            {
+                "id": "RU",
+                "value": 4
+            }
+        ],
+        "critical_capabilities": [
+            {
+                "id": "US",
+                "value": [
+                    {
+                        "id": "airpower_projection",
+                        "value": 5
+                    },
+                    {
+                        "id": "bmd_interoperability",
+                        "value": 5
+                    },
+                    {
+                        "id": "intel_surveillance_recce",
+                        "value": 5
+                    },
+                    {
+                        "id": "maritime_control",
+                        "value": 4
+                    }
+                ]
+            },
+            {
+                "id": "NATO_EU",
+                "value": [
+                    {
+                        "id": "air_and_missile_defense",
+                        "value": 4
+                    },
+                    {
+                        "id": "sanctions_coordination",
+                        "value": 5
+                    },
+                    {
+                        "id": "diplomatic_legitimacy",
+                        "value": 5
+                    },
+                    {
+                        "id": "maritime_security",
+                        "value": 4
+                    }
+                ]
+            },
+            {
+                "id": "IS",
+                "value": [
+                    {
+                        "id": "air_superiority",
+                        "value": 5
+                    },
+                    {
+                        "id": "integrated_defense",
+                        "value": 5
+                    },
+                    {
+                        "id": "deep_strike",
+                        "value": 5
+                    },
+                    {
+                        "id": "human_intelligence",
+                        "value": 4
+                    }
+                ]
+            },
+            {
+                "id": "IR",
+                "value": [
+                    {
+                        "id": "ballistic_missiles",
+                        "value": 5
+                    },
+                    {
+                        "id": "proxy_network",
+                        "value": 5
+                    },
+                    {
+                        "id": "regime_repression",
+                        "value": 5
+                    },
+                    {
+                        "id": "maritime_irregular_warfare",
+                        "value": 4
+                    }
+                ]
+            },
+            {
+                "id": "PRC",
+                "value": [
+                    {
+                        "id": "energy_demand",
+                        "value": 5
+                    },
+                    {
+                        "id": "diplomatic_cover",
+                        "value": 4
+                    },
+                    {
+                        "id": "economic_leverage",
+                        "value": 5
+                    },
+                    {
+                        "id": "strategic_patience",
+                        "value": 4
+                    }
+                ]
+            },
+            {
+                "id": "RU",
+                "value": [
+                    {
+                        "id": "arms_exports",
+                        "value": 4
+                    },
+                    {
+                        "id": "veto_diplomacy",
+                        "value": 4
+                    },
+                    {
+                        "id": "information_ops",
+                        "value": 4
+                    },
+                    {
+                        "id": "energy_leverage",
+                        "value": 4
+                    }
+                ]
+            }
+        ],
+        "force_laydown": [
+            {
+                "id": "US_CENTCOM_AIR",
+                "owner": "US",
+                "force_factors": 6,
+                "modernization_level": 5,
+                "location_id": "QATAR",
+                "home_base_id": "QATAR_BASE",
+                "readiness_level": 90,
+                "proxy": false
+            },
+            {
+                "id": "US_NAVAL_FORCE",
+                "owner": "US",
+                "force_factors": 5,
+                "modernization_level": 5,
+                "location_id": "HORMUZ",
+                "home_base_id": "QATAR_BASE",
+                "readiness_level": 80,
+                "proxy": false
+            },
+            {
+                "id": "IS_AIR_FORCE",
+                "owner": "IS",
+                "force_factors": 6,
+                "modernization_level": 5,
+                "location_id": "ISRAEL",
+                "home_base_id": "TEL_AVIV_BASE",
+                "readiness_level": 90,
+                "proxy": false
+            },
+            {
+                "id": "IS_DEFENSE_GRID",
+                "owner": "IS",
+                "force_factors": 5,
+                "modernization_level": 5,
+                "location_id": "ISRAEL",
+                "home_base_id": "TEL_AVIV_BASE",
+                "readiness_level": 90,
+                "proxy": false
+            },
+            {
+                "id": "IR_MISSILE_FORCE",
+                "owner": "IR",
+                "force_factors": 6,
+                "modernization_level": 4,
+                "location_id": "TEHRAN",
+                "home_base_id": "TEHRAN_BASE",
+                "readiness_level": 80,
+                "proxy": false
+            },
+            {
+                "id": "IR_NAVAL_IRREGULARS",
+                "owner": "IR",
+                "force_factors": 3,
+                "modernization_level": 3,
+                "location_id": "HORMUZ",
+                "home_base_id": "BANDARABBAS_BASE",
+                "readiness_level": 70,
+                "proxy": false
+            },
+            {
+                "id": "HEZBOLLAH_PROXY",
+                "owner": "IR",
+                "force_factors": 5,
+                "modernization_level": 4,
+                "location_id": "LEBANON",
+                "home_base_id": "BEIRUT_PROXY",
+                "readiness_level": 80,
+                "proxy": true
+            },
+            {
+                "id": "HOUTHI_PROXY",
+                "owner": "IR",
+                "force_factors": 3,
+                "modernization_level": 3,
+                "location_id": "GULF",
+                "home_base_id": "TEHRAN_BASE",
+                "readiness_level": 70,
+                "proxy": true
+            },
+            {
+                "id": "PRC_DIPLOMATIC_FOOTPRINT",
+                "owner": "PRC",
+                "force_factors": 1,
+                "modernization_level": 2,
+                "location_id": "TEHRAN",
+                "home_base_id": "BEIJING_BASE",
+                "readiness_level": 60,
+                "proxy": false
+            },
+            {
+                "id": "RU_AIR_DEFENSE_ADVISORS",
+                "owner": "RU",
+                "force_factors": 2,
+                "modernization_level": 3,
+                "location_id": "SYRIA",
+                "home_base_id": "MOSCOW_BASE",
+                "readiness_level": 60,
+                "proxy": false
+            }
+        ],
+        "bases": [
+            {
+                "id": "QATAR_BASE",
+                "owner": "US",
+                "location_id": "QATAR",
+                "aor_id": "AOR_GULF",
+                "out_of_area_discount": null,
+                "notes": "Primary regional air and maritime hub."
+            },
+            {
+                "id": "TEL_AVIV_BASE",
+                "owner": "IS",
+                "location_id": "ISRAEL",
+                "aor_id": "AOR_LEVANT",
+                "out_of_area_discount": null,
+                "notes": "National command and air defense center."
+            },
+            {
+                "id": "TEHRAN_BASE",
+                "owner": "IR",
+                "location_id": "TEHRAN",
+                "aor_id": "AOR_IRAN",
+                "out_of_area_discount": null,
+                "notes": "Regime command node and repression hub."
+            },
+            {
+                "id": "BEIRUT_PROXY",
+                "owner": "IR",
+                "location_id": "BEIRUT",
+                "aor_id": "AOR_LEVANT",
+                "out_of_area_discount": null,
+                "notes": "Proxy logistics and political access point."
+            },
+            {
+                "id": "BANDARABBAS_BASE",
+                "owner": "IR",
+                "location_id": "HORMUZ",
+                "aor_id": "AOR_GULF",
+                "out_of_area_discount": null,
+                "notes": "Maritime coercion and blockade support."
+            },
+            {
+                "id": "BEIJING_BASE",
+                "owner": "PRC",
+                "location_id": "WORLD",
+                "aor_id": null,
+                "out_of_area_discount": null,
+                "notes": "External diplomatic support and economic signaling."
+            },
+            {
+                "id": "MOSCOW_BASE",
+                "owner": "RU",
+                "location_id": "WORLD",
+                "aor_id": null,
+                "out_of_area_discount": null,
+                "notes": "External support, information, and veto leverage."
+            }
+        ],
+        "proxy_forces": [
+            {
+                "id": "HEZBOLLAH",
+                "sponsor": "IR",
+                "label": "Hezbollah",
+                "force_factors": 5,
+                "modernization_level": 4,
+                "location_id": "LEBANON",
+                "reliability": "High",
+                "scope": "Northern deterrence and cross-border rocket force"
+            },
+            {
+                "id": "HOUTHI_NETWORK",
+                "sponsor": "IR",
+                "label": "Ansar Allah / Houthi network",
+                "force_factors": 3,
+                "modernization_level": 3,
+                "location_id": "GULF",
+                "reliability": "Medium",
+                "scope": "Maritime disruption and long-range harassment"
+            },
+            {
+                "id": "IRAQ_RESISTANCE",
+                "sponsor": "IR",
+                "label": "Iraqi militia network",
+                "force_factors": 3,
+                "modernization_level": 3,
+                "location_id": "IRAQ",
+                "reliability": "Medium",
+                "scope": "Diversionary strikes and US base harassment"
+            }
+        ]
+    },
+    "victory_conditions": [
+        {
+            "id": "VC1",
+            "value": "Blue wins if Iran's nuclear risk is reduced to low, proxy network is degraded, coalition cohesion remains intact, and the Strait of Hormuz is reopened by the end of turn 5."
+        },
+        {
+            "id": "VC2",
+            "value": "Red wins if Iran survives with regime cohesion, keeps at least partial proxy and maritime leverage, and forces a ceasefire or sanctions relief without losing core command authority."
+        },
+        {
+            "id": "VC3",
+            "value": "PRC wins if it preserves energy access, avoids severe supply disruption, and gains measurable diplomatic leverage over ceasefire terms or sanctions relief."
+        },
+        {
+            "id": "VC4",
+            "value": "RU wins if it expands diplomatic obstruction or energy-market advantage while preventing a unified Western settlement against its interests."
+        }
+    ],
+    "card_decks": {
+        "action_investment": [
+            {
+                "id": "US",
+                "value": [
+                    {
+                        "id": "US_AI_1",
+                        "type": "Action",
+                        "subtype": "AirDefenseCoalition",
+                        "owner": "US",
+                        "public_private": "Public",
+                        "private_conditions": [
+                            {
+                                "id": "US_AI_1_PC1",
+                                "description": "Only playable after a major Iranian missile or drone strike.",
+                                "tag": "DETERMINISTIC",
+                                "expression": "requires Iranian direct strike this turn or previous turn"
+                            }
+                        ],
+                        "title": "Integrated Air Defense Coalition",
+                        "description": "Deploy US sensors, interceptors, and command links to reinforce Israeli and regional air defense against Iranian salvos.",
+                        "aor": "AOR_GULF",
+                        "players_involved": [
+                            "US",
+                            "IS",
+                            "NATO_EU"
+                        ],
+                        "cost": {
+                            "resource_points": 4,
+                            "additional_red_card_cost_applies": false
+                        },
+                        "play_constraints": {
+                            "frequency": "Once per turn",
+                            "phase_restrictions": [
+                                "BlueInvestmentsAndActions",
+                                "RedInvestmentsAndActions"
+                            ],
+                            "prerequisites": [],
+                            "unopposed_rule": {
+                                "description": "If unopposed, improve coalition defense but consume interceptors and raise Iranian retaliation intent.",
+                                "effects": [
+                                    {
+                                        "type": "adjust_scenario_flag_number",
+                                        "target": "coalition_cohesion",
+                                        "value": 1,
+                                        "timing": "immediate",
+                                        "visibility": "public",
+                                        "source_card_id": "US_AI_1",
+                                        "requires_adjudication": false
+                                    },
+                                    {
+                                        "type": "adjust_scenario_flag_number",
+                                        "target": "air_defense_interceptors",
+                                        "value": -1,
+                                        "timing": "immediate",
+                                        "visibility": "public",
+                                        "source_card_id": "US_AI_1",
+                                        "requires_adjudication": false
+                                    },
+                                    {
+                                        "type": "adjust_scenario_flag_number",
+                                        "target": "escalation",
+                                        "value": 1,
+                                        "timing": "immediate",
+                                        "visibility": "public",
+                                        "source_card_id": "US_AI_1",
+                                        "requires_adjudication": false
+                                    }
+                                ],
+                                "requires_adjudication": false
+                            }
+                        },
+                        "response": {
+                            "allowed_responders": [
+                                "IR"
+                            ],
+                            "response_window": "same_phase",
+                            "force_commitment_allowed": false,
+                            "cost_rule": "Red may respond with saturation strike or deception."
+                        },
+                        "resolution": {
+                            "method": [
+                                "fixed_effect"
+                            ],
+                            "table_reference": null,
+                            "die": null,
+                            "modifiers": [],
+                            "critical_capabilities": [],
+                            "outcome_map": [],
+                            "reset_rules_apply": false,
+                            "pinning": null
+                        },
+                        "effects": [
+                            {
+                                "type": "adjust_scenario_flag_number",
+                                "target": "coalition_cohesion",
+                                "value": 1,
+                                "timing": "immediate",
+                                "visibility": "public",
+                                "source_card_id": "US_AI_1",
+                                "requires_adjudication": false
+                            },
+                            {
+                                "type": "adjust_scenario_flag_number",
+                                "target": "air_defense_interceptors",
+                                "value": -1,
+                                "timing": "immediate",
+                                "visibility": "public",
+                                "source_card_id": "US_AI_1",
+                                "requires_adjudication": false
+                            }
+                        ],
+                        "future_effects": [],
+                        "notes": "Defensive support with a political cost; helps credibility but not for free."
+                    },
+                    {
+                        "id": "US_AI_2",
+                        "type": "Action",
+                        "subtype": "BunkerBusterStrike",
+                        "owner": "US",
+                        "public_private": "Public",
+                        "private_conditions": [
+                            {
+                                "id": "US_AI_2_PC1",
+                                "description": "Requires heightened nuclear risk or evidence of breakout.",
+                                "tag": "SCENARIO_DEFINED",
+                                "expression": "nuclear_risk >= 3"
+                            }
+                        ],
+                        "title": "B-2 Penetrating Strike",
+                        "description": "Conduct a US long-range strike on buried Iranian nuclear facilities.",
+                        "aor": "AOR_IRAN",
+                        "players_involved": [
+                            "US",
+                            "IR"
+                        ],
+                        "cost": {
+                            "resource_points": 6,
+                            "additional_red_card_cost_applies": false
+                        },
+                        "play_constraints": {
+                            "frequency": "Once per game",
+                            "phase_restrictions": [
+                                "BlueInvestmentsAndActions"
+                            ],
+                            "prerequisites": [],
+                            "unopposed_rule": {
+                                "description": "If unopposed, devastate nuclear infrastructure but sharply increase regional blowback and legal pressure.",
+                                "effects": [
+                                    {
+                                        "type": "adjust_scenario_flag_number",
+                                        "target": "nuclear_risk",
+                                        "value": -2,
+                                        "timing": "immediate",
+                                        "visibility": "public",
+                                        "source_card_id": "US_AI_2",
+                                        "requires_adjudication": false
+                                    },
+                                    {
+                                        "type": "adjust_scenario_flag_number",
+                                        "target": "legal_pressure",
+                                        "value": 2,
+                                        "timing": "immediate",
+                                        "visibility": "public",
+                                        "source_card_id": "US_AI_2",
+                                        "requires_adjudication": false
+                                    },
+                                    {
+                                        "type": "adjust_scenario_flag_number",
+                                        "target": "escalation",
+                                        "value": 2,
+                                        "timing": "immediate",
+                                        "visibility": "public",
+                                        "source_card_id": "US_AI_2",
+                                        "requires_adjudication": false
+                                    }
+                                ],
+                                "requires_adjudication": false
+                            }
+                        },
+                        "response": {
+                            "allowed_responders": [
+                                "IR",
+                                "PRC",
+                                "RU"
+                            ],
+                            "response_window": "same_phase",
+                            "force_commitment_allowed": false,
+                            "cost_rule": "Red may trigger retaliation or diplomatic condemnation."
+                        },
+                        "resolution": {
+                            "method": [
+                                "fixed_effect"
+                            ],
+                            "table_reference": null,
+                            "die": null,
+                            "modifiers": [],
+                            "critical_capabilities": [],
+                            "outcome_map": [],
+                            "reset_rules_apply": false,
+                            "pinning": null
+                        },
+                        "effects": [
+                            {
+                                "type": "adjust_scenario_flag_number",
+                                "target": "nuclear_risk",
+                                "value": -2,
+                                "timing": "immediate",
+                                "visibility": "public",
+                                "source_card_id": "US_AI_2",
+                                "requires_adjudication": false
+                            },
+                            {
+                                "type": "adjust_scenario_flag_number",
+                                "target": "legal_pressure",
+                                "value": 2,
+                                "timing": "immediate",
+                                "visibility": "public",
+                                "source_card_id": "US_AI_2",
+                                "requires_adjudication": false
+                            },
+                            {
+                                "type": "adjust_scenario_flag_number",
+                                "target": "escalation",
+                                "value": 2,
+                                "timing": "immediate",
+                                "visibility": "public",
+                                "source_card_id": "US_AI_2",
+                                "requires_adjudication": false
+                            }
+                        ],
+                        "future_effects": [],
+                        "notes": "High payoff, high backlash."
+                    },
+                    {
+                        "id": "US_AI_3",
+                        "type": "Investment",
+                        "subtype": "MaritimePressure",
+                        "owner": "US",
+                        "public_private": "Public",
+                        "private_conditions": [],
+                        "title": "Naval Quarantine of Iranian Ports",
+                        "description": "Apply maritime pressure to reduce Iran's ability to use sea lanes for revenue or coercion.",
+                        "aor": "AOR_GULF",
+                        "players_involved": [
+                            "US",
+                            "IR",
+                            "PRC"
+                        ],
+                        "cost": {
+                            "resource_points": 3,
+                            "additional_red_card_cost_applies": false
+                        },
+                        "play_constraints": {
+                            "frequency": "Once per turn",
+                            "phase_restrictions": [
+                                "BlueInvestmentsAndActions"
+                            ],
+                            "prerequisites": [],
+                            "unopposed_rule": {
+                                "description": "If unopposed, improve maritime stability for Blue but raise global energy shock.",
+                                "effects": [
+                                    {
+                                        "type": "adjust_scenario_flag_number",
+                                        "target": "maritime_energy_stability",
+                                        "value": 1,
+                                        "timing": "immediate",
+                                        "visibility": "public",
+                                        "source_card_id": "US_AI_3",
+                                        "requires_adjudication": false
+                                    },
+                                    {
+                                        "type": "adjust_scenario_flag_number",
+                                        "target": "global_energy_price",
+                                        "value": 1,
+                                        "timing": "immediate",
+                                        "visibility": "public",
+                                        "source_card_id": "US_AI_3",
+                                        "requires_adjudication": false
+                                    }
+                                ],
+                                "requires_adjudication": false
+                            }
+                        },
+                        "response": {
+                            "allowed_responders": [
+                                "IR",
+                                "PRC",
+                                "RU"
+                            ],
+                            "response_window": "same_phase",
+                            "force_commitment_allowed": false,
+                            "cost_rule": "Red may challenge with blockade, sanctions evasion, or diplomatic pushback."
+                        },
+                        "resolution": {
+                            "method": [
+                                "fixed_effect"
+                            ],
+                            "table_reference": null,
+                            "die": null,
+                            "modifiers": [],
+                            "critical_capabilities": [],
+                            "outcome_map": [],
+                            "reset_rules_apply": false,
+                            "pinning": null
+                        },
+                        "effects": [
+                            {
+                                "type": "adjust_scenario_flag_number",
+                                "target": "maritime_energy_stability",
+                                "value": 1,
+                                "timing": "immediate",
+                                "visibility": "public",
+                                "source_card_id": "US_AI_3",
+                                "requires_adjudication": false
+                            },
+                            {
+                                "type": "adjust_scenario_flag_number",
+                                "target": "global_energy_price",
+                                "value": 1,
+                                "timing": "immediate",
+                                "visibility": "public",
+                                "source_card_id": "US_AI_3",
+                                "requires_adjudication": false
+                            }
+                        ],
+                        "future_effects": [],
+                        "notes": "Secures sea lanes but can worsen prices."
+                    }
+                ]
+            }
+        ],
+        "domestic_event": [
+            {
+                "id": "US",
+                "value": [
+                    {
+                        "id": "US_DE_1",
+                        "type": "DomesticEvent",
+                        "subtype": "WarPowers",
+                        "owner": "US",
+                        "public_private": "Public",
+                        "private_conditions": [],
+                        "title": "War Powers Backlash",
+                        "description": "Congressional and media scrutiny of open-ended war measures raises political costs for sustained escalation.",
+                        "aor": "WORLD",
+                        "players_involved": [
+                            "US"
+                        ],
+                        "cost": {
+                            "resource_points": 0,
+                            "additional_red_card_cost_applies": false
+                        },
+                        "play_constraints": {
+                            "frequency": "Triggered by US major strike",
+                            "phase_restrictions": [
+                                "StateOfWorldSummary"
+                            ],
+                            "prerequisites": [],
+                            "unopposed_rule": {
+                                "description": "If unopposed, reduce US freedom of action next turn.",
+                                "effects": [
+                                    {
+                                        "type": "adjust_scenario_flag_number",
+                                        "target": "us_domestic_pressure",
+                                        "value": 1,
+                                        "timing": "immediate",
+                                        "visibility": "public",
+                                        "source_card_id": "US_DE_1",
+                                        "requires_adjudication": false
+                                    }
+                                ],
+                                "requires_adjudication": false
+                            }
+                        },
+                        "response": {
+                            "allowed_responders": [
+                                "NATO_EU",
+                                "RU",
+                                "PRC"
+                            ],
+                            "response_window": "same_phase",
+                            "force_commitment_allowed": false,
+                            "cost_rule": "Narrative contest only."
+                        },
+                        "resolution": {
+                            "method": [
+                                "fixed_effect"
+                            ],
+                            "table_reference": null,
+                            "die": null,
+                            "modifiers": [],
+                            "critical_capabilities": [],
+                            "outcome_map": [],
+                            "reset_rules_apply": false,
+                            "pinning": null
+                        },
+                        "effects": [
+                            {
+                                "type": "adjust_scenario_flag_number",
+                                "target": "us_domestic_pressure",
+                                "value": 1,
+                                "timing": "immediate",
+                                "visibility": "public",
+                                "source_card_id": "US_DE_1",
+                                "requires_adjudication": false
+                            }
+                        ],
+                        "future_effects": [],
+                        "notes": "Models legal and political limits."
+                    }
+                ]
+            }
+        ],
+        "international_event": [
+            {
+                "id": "US",
+                "type": "InternationalEvent",
+                "subtype": "CeasefireBroker",
+                "owner": "US",
+                "public_private": "Public",
+                "private_conditions": [],
+                "title": "Two-Week Temporary Ceasefire Proposal",
+                "description": "Broker a fragile ceasefire imposing stand-downs, humanitarian access, and maritime pause measures.",
+                "aor": "WORLD",
+                "players_involved": [
+                    "US",
+                    "IS",
+                    "IR",
+                    "NATO_EU",
+                    "PRC",
+                    "RU"
+                ],
+                "cost": {
+                    "resource_points": 2,
+                    "additional_red_card_cost_applies": false
+                },
+                "play_constraints": {
+                    "frequency": "Once per game",
+                    "phase_restrictions": [
+                        "StateOfWorldSummary"
+                    ],
+                    "prerequisites": [],
+                    "unopposed_rule": {
+                        "description": "If unopposed, reduce escalation and stabilize trade briefly.",
+                        "effects": [
+                            {
+                                "type": "adjust_scenario_flag_number",
+                                "target": "escalation",
+                                "value": -2,
+                                "timing": "immediate",
+                                "visibility": "public",
+                                "source_card_id": "US",
+                                "requires_adjudication": false
+                            },
+                            {
+                                "type": "adjust_scenario_flag_number",
+                                "target": "humanitarian_pressure",
+                                "value": -1,
+                                "timing": "immediate",
+                                "visibility": "public",
+                                "source_card_id": "US",
+                                "requires_adjudication": false
+                            }
+                        ],
+                        "requires_adjudication": false
+                    }
+                },
+                "response": {
+                    "allowed_responders": [
+                        "IR",
+                        "IS",
+                        "NATO_EU",
+                        "PRC",
+                        "RU"
+                    ],
+                    "response_window": "same_phase",
+                    "force_commitment_allowed": false,
+                    "cost_rule": "Opponents may demand terms or attach conditions."
+                },
+                "resolution": {
+                    "method": [
+                        "fixed_effect"
+                    ],
+                    "table_reference": null,
+                    "die": null,
+                    "modifiers": [],
+                    "critical_capabilities": [],
+                    "outcome_map": [],
+                    "reset_rules_apply": false,
+                    "pinning": null
+                },
+                "effects": [
+                    {
+                        "type": "adjust_scenario_flag_number",
+                        "target": "escalation",
+                        "value": -2,
+                        "timing": "immediate",
+                        "visibility": "public",
+                        "source_card_id": "US",
+                        "requires_adjudication": false
+                    },
+                    {
+                        "type": "adjust_scenario_flag_number",
+                        "target": "humanitarian_pressure",
+                        "value": -1,
+                        "timing": "immediate",
+                        "visibility": "public",
+                        "source_card_id": "US",
+                        "requires_adjudication": false
+                    }
+                ],
+                "future_effects": [],
+                "notes": "Represents ceasefire enforcement and diplomacy."
+            }
+        ]
+    },
+    "rules_in_effect": {
+        "optional_pace_of_play": {
+            "additional_cost_starts_after_card_number": 4,
+            "additional_cost_per_card": 1
+        },
+        "activation_markers": true,
+        "random_events": {
+            "enabled": false,
+            "timing": null,
+            "threshold": null
+        },
+        "random_red_sequence": false,
+        "random_red_sequence_order": null,
+        "random_red_sequence_tie_rule": null,
+        "table_extensions": [],
+        "allow_us_emergency_deficit": false
+    },
+    "marker_chits": [
+        {
+            "id": "M1",
+            "label": "Escalation",
+            "description": "Tracks intensity of direct and indirect conflict."
+        },
+        {
+            "id": "M2",
+            "label": "Coalition Cohesion",
+            "description": "Tracks political unity among Blue partners."
+        },
+        {
+            "id": "M3",
+            "label": "Nuclear Risk",
+            "description": "Tracks perceived breakout and weaponization danger."
+        },
+        {
+            "id": "M4",
+            "label": "Proxy Network",
+            "description": "Tracks Iranian proxy cohesion and reach."
+        },
+        {
+            "id": "M5",
+            "label": "Maritime/Energy Stability",
+            "description": "Tracks chokepoint access and oil/gas continuity."
+        },
+        {
+            "id": "M6",
+            "label": "Humanitarian/Legal Pressure",
+            "description": "Tracks civilian harm, legitimacy, and lawfare."
+        }
+    ],
+    "max_turns": 5
+}
