@@ -18,8 +18,7 @@ import {
 const openai = new OpenAI({
   // This is OK since this web app will only ever be ran locally.
   dangerouslyAllowBrowser: true,
-  // apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  apiKey: process.env.VITE_OPENAI_API_KEY,
+  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
 });
 
 const medium_model = "gpt-5.4-mini";

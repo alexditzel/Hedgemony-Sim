@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "verify": "npm run typecheck && npm run lint && npm run test",
-    "generate-scenario": "tsx generate-scenario.ts"
+    "generate-scenario": "npx tsx generate-scenario.ts"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.4",
