@@ -20,7 +20,7 @@ const openai = new OpenAI({
   apiKey: import.meta.env.VITE_OPENAI_API_KEY,
 });
 
-const medium_model = import.meta.env.TEST ? "gpt-5.4-nano" : "gpt-5.4-mini";
+const medium_model = "gpt-5.4-mini";
 
 // ----------------------------------------------------------------------------
 
@@ -270,6 +270,8 @@ export async function generateWhiteCellSummary(
   });
   return response.output_parsed!.summary;
 }
+
+// export async function generate
 
 const ResolutionSchema = z.object({ resolution: z.string() });
 
