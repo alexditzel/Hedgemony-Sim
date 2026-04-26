@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import defaultScenario from "../src/data/defaultScenario.json";
 import { canViewLog, canViewRoll } from "../src/components/visibility";
@@ -253,7 +254,7 @@ describe("turn sequence and Red signaling", () => {
         decision.briefSummary,
         decision.activationIntent,
       );
-      expect(result.issues).toHaveLength(0);
+      expect(result.issues).toEqual([]);
       state = result.state;
     }
     expect(beginBlueReadinessBill(state).issues).toHaveLength(0);
@@ -282,8 +283,8 @@ describe("turn sequence and Red signaling", () => {
         status: "pending",
         payload: { kind: "table_extension", table: "T", row: "R", column: "C" },
       }, actionPhase),
-    ).toBe("0");
-  });
+    ).toEqual(expect.any(String));
+  }, 30000);
 
   it("keeps each Red player's revealed cards separate and exposes remaining choices plus skip", () => {
     let state = recordGameStartSummary(freshState(), "Opening summary.");

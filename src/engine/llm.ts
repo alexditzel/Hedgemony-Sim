@@ -26,7 +26,10 @@ export interface PlaceholderRedSignalDecision {
 const SignalDecisionSchema = z.object({
   cardIds: z.array(CardIdSchema),
   briefSummary: z.string(),
-  activationIntent: z.record(CardIdSchema, z.enum(["Yes", "No", "Undeclared"])),
+  activationIntent: z.array(z.object({
+    cardId: CardIdSchema,
+    intent: z.enum(["Yes", "No", "Undeclared"])
+  })),
 });
 
 export async function placeholderRedSignalDecision(
@@ -37,24 +40,36 @@ export async function placeholderRedSignalDecision(
   const response = await openai.responses.parse({
     model: "gpt-5.4-nano",
     input: [
-      { role: "system", content: "You are the Red player in a military simulation game. Choose your signaled cards, write a brief summary of your intent, and declare activation intents." },
+      { role: "system", content: "You are the Red player in a military simulation game. Choose between 1 and 3 cards to signal. Rule: If you choose exactly 3 cards, at least one must be an Action (has '-ACT-' in ID) and at least one must be an Investment (has '-INV-' in ID). Write a brief summary of your intent, and declare activation intents." },
       { role: "user", content: JSON.stringify({ state, playerId, options }) },
     ],
     text: {
       format: zodTextFormat(SignalDecisionSchema, "signal_decision"),
     },
   });
-  return response.output_parsed as PlaceholderRedSignalDecision;
+
+  const parsed = response.output_parsed as z.infer<typeof SignalDecisionSchema>;
+  
+  const activationIntentRecord: Record<CardId, "Yes" | "No" | "Undeclared"> = {};
+  for (const { cardId, intent } of parsed.activationIntent) {
+    activationIntentRecord[cardId] = intent;
+  }
+
+  return {
+    cardIds: parsed.cardIds,
+    briefSummary: parsed.briefSummary,
+    activationIntent: activationIntentRecord,
+  };
 }
 
 export type PlaceholderRedPlayDecision =
   | { kind: "play"; cardId: CardId }
   | { kind: "skip" };
 
-const PlayDecisionSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("play"), cardId: CardIdSchema }),
-  z.object({ kind: z.literal("skip") }),
-]);
+const PlayDecisionSchema = z.object({
+  kind: z.enum(["play", "skip"]),
+  cardId: z.nullable(CardIdSchema),
+});
 
 export async function placeholderRedPlayDecision(
   state: GameState,
@@ -70,7 +85,12 @@ export async function placeholderRedPlayDecision(
       format: zodTextFormat(PlayDecisionSchema, "play_decision"),
     },
   });
-  return response.output_parsed as PlaceholderRedPlayDecision;
+  const parsed = response.output_parsed as z.infer<typeof PlayDecisionSchema>;
+  if (parsed.kind === "play" && parsed.cardId) {
+    return { kind: "play", cardId: parsed.cardId };
+  } else {
+    return { kind: "skip" };
+  }
 }
 
 const SequenceDecisionSchema = z.object({
@@ -146,7 +166,7 @@ export async function placeholderWhiteCellEventNote(cardId: CardId, state: GameS
   return response.output_parsed!.note;
 }
 
-const EventDecisionSchema = z.object({ cardId: CardIdSchema.optional() });
+const EventDecisionSchema = z.object({ cardId: z.nullable(CardIdSchema) });
 
 export async function placeholderWhiteCellEventDecision(
   state: GameState,
@@ -161,5 +181,5 @@ export async function placeholderWhiteCellEventDecision(
       format: zodTextFormat(EventDecisionSchema, "event_decision"),
     },
   });
-  return response.output_parsed!.cardId;
+  return response.output_parsed!.cardId ?? undefined;
 }
