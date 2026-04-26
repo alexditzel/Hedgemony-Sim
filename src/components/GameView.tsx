@@ -56,22 +56,11 @@ import {
   RedSignalIntel,
   WorldStateNewspapers
 } from "./Briefings";
-import { PlayerCard } from "./Card";
-import { CardModal } from "./CardModal";
-import { DiceResult, DiceResultList } from "./Dice";
-import type { ReviewItem} from "./diff";
+import type { ReviewItem } from "./diff";
 import { diffStates, takeSnapshot, type Snapshot } from "./diff";
-import { EffectsSummary } from "./Effects";
-import { EventLogPanel, LogEntryModal } from "./EventLog";
-import { phaseLabel, playerLabel, sideToTone } from "./factions";
-import { HandStrip } from "./HandStrip";
-import { PlayerSwitcher } from "./PlayerSwitcher";
 import { ReadinessSlider } from "./ReadinessSlider";
 import { RedSignalReveal } from "./Reveal";
-import { CurrentTaskPanel, RedSignalDeckTrigger, StatPanel } from "./Sidebars";
 import { TheaterMap } from "./TheaterMap";
-import { COLOR_SCHEMES, TopBar, type ColorSchemeId } from "./TopBar";
-import { Banner, Button, EmptyState, Modal, Section, Tag } from "./ui";
 
 interface GameViewProps {
   scenario: Scenario;
