@@ -76,10 +76,10 @@ export type RedPlayDecision =
   | { kind: "play"; cardId: CardId }
   | { kind: "skip" };
 
-const PlayDecisionSchema = z.object({
-  kind: z.enum(["play", "skip"]),
-  cardId: z.nullable(CardIdSchema),
-});
+const PlayDecisionSchema = z.union([
+  z.object({ kind: z.enum(["play"]), cardId: CardIdSchema }),
+  z.object({ kind: z.enum(["skip"]) }),
+]);
 
 export async function generateRedPlayDecision(
   state: GameState,
@@ -200,7 +200,7 @@ export async function generateWhiteCellEventNote(
   return response.output_parsed!.note;
 }
 
-const EventDecisionSchema = z.object({ cardId: z.nullable(CardIdSchema) });
+const EventDecisionSchema = z.object({ cardId: z.optional(CardIdSchema) });
 
 export async function generateWhiteCellEventDecision(
   state: GameState,
