@@ -21,7 +21,7 @@
       },
       "victory_condition": "IPs > IPs of everyone, and DPRK does not win",
       "card_decks": {
-        "action_investment": ["US-INV-01", "US-INV-02", "US-ACT-01", "US-ACT-02"],
+        "action_investment": ["US-INV-01", "US-INV-02", "US-ACT-01", "US-ACT-02", "BLUE-01", "UAC-1", "US-10", "US-11"],
         "domestic_event": ["US-DOM-01"]
       },
       "notes": "U.S. readiness is deliberately split by readiness level so printed readiness tables apply without interpolation."
@@ -39,8 +39,8 @@
       },
       "victory_condition": "IPs > IPs of RU, and RU does not win",
       "card_decks": {
-        "action_investment": ["NATO-INV-01", "NATO-ACT-01"],
-        "domestic_event": []
+        "action_investment": ["NATO-INV-01", "NATO-ACT-01", "BLUE-01", "UAC-1"],
+        "domestic_event": ["EVT-NATO-18"]
       },
       "notes": ""
     },
@@ -57,8 +57,8 @@
       },
       "victory_condition": "IPs >= US IPs - 5",
       "card_decks": {
-        "action_investment": ["RU-ACT-01", "RU-ACT-02", "RU-INV-01", "RU-INV-PROC"],
-        "domestic_event": ["RU-DOM-01"]
+        "action_investment": ["RU-ACT-01", "RU-ACT-02", "RU-INV-01", "RU-INV-PROC", "RU-27", "RU-28", "RU-29", "UAC-1"],
+        "domestic_event": ["RU-DOM-01", "EVT-RU-22"]
       },
       "notes": ""
     },
@@ -75,7 +75,7 @@
       },
       "victory_condition": "IPs >= US IPs - 3, and DPRK neither wins nor loses",
       "card_decks": {
-        "action_investment": ["PRC-ACT-01", "PRC-ACT-02", "PRC-INV-01", "PRC-INV-PROC"],
+        "action_investment": ["PRC-ACT-01", "PRC-ACT-02", "PRC-INV-01", "PRC-INV-PROC", "PRC-30", "UAC-1"],
         "domestic_event": ["PRC-DOM-01"]
       },
       "notes": ""
@@ -93,7 +93,7 @@
       },
       "victory_condition": "IPs > 15, or U.S. leaves Korean Peninsula; lose if IPs = 0",
       "card_decks": {
-        "action_investment": ["DPRK-ACT-01", "DPRK-ACT-02", "DPRK-INV-01"],
+        "action_investment": ["DPRK-ACT-01", "DPRK-ACT-02", "DPRK-INV-01", "DPRK-29", "DPRK-30", "DPRK-31", "DPRK-32", "UAC-1"],
         "domestic_event": ["DPRK-DOM-01"]
       },
       "notes": ""
@@ -111,8 +111,8 @@
       },
       "victory_condition": "IPs > 20",
       "card_decks": {
-        "action_investment": ["IR-ACT-01", "IR-ACT-02", "IR-INV-01"],
-        "domestic_event": ["IR-DOM-01"]
+        "action_investment": ["IR-ACT-01", "IR-ACT-02", "IR-INV-01", "UAC-1"],
+        "domestic_event": ["IR-DOM-01", "EVT-IR-11"]
       },
       "notes": ""
     }
@@ -338,6 +338,123 @@
           "effects": [],
           "future_effects": [],
           "notes": "Use requestBlueFreePlayAdjudication."
+        },
+        {
+          "id": "BLUE-01",
+          "type": "Action",
+          "subtype": "Ukraine Support",
+          "owner": null,
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Procure Weapons to Ukraine",
+          "description": "Blue procures weapons to Ukraine, increasing Russia's chance to lose the war starting next turn.",
+          "players_involved": ["US", "NATO_EU", "RU"],
+          "cost": { "resource_points": 1, "additional_red_card_cost_applies": false },
+          "play_constraints": { "frequency": "Can be played each turn", "phase_restrictions": ["BlueInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": [], "response_window": "card_defined", "force_commitment_allowed": false },
+          "resolution": { "method": ["fixed_effect"], "table_reference": null, "die": "D10", "modifiers": [], "critical_capabilities": [], "outcome_map": [], "reset_rules_apply": false },
+          "effects": [],
+          "future_effects": [
+            { "trigger_turn": 2, "effect": { "type": "adjust_scenario_flag_number", "target": "RU_UKRAINE_LOSS_CHANCE_MODIFIER", "value": 1, "timing": "start_of_turn", "visibility": "public", "requires_adjudication": false } }
+          ],
+          "notes": "If one Blue player procures weapons, Russia loses the Ukraine war on 8-9. If both Blue players procure weapons, Russia loses on 7-9."
+        },
+        {
+          "id": "UAC-1",
+          "type": "Action",
+          "subtype": "Critical Infrastructure Attack",
+          "owner": null,
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Attack on Critical Infrastructure",
+          "description": "A player attacks critical infrastructure. Targets are assigned by the White Cell.",
+          "players_involved": ["US", "NATO_EU", "RU", "PRC", "DPRK", "IR"],
+          "cost": { "resource_points": 2, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "May play once per game", "phase_restrictions": ["BlueInvestmentsAndActions", "RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": ["WhiteCell"], "response_window": "white_cell", "force_commitment_allowed": false },
+          "resolution": {
+            "method": ["card_d10_table"],
+            "table_reference": null,
+            "die": "D10",
+            "modifiers": [],
+            "critical_capabilities": ["C4ISR", "SOF", "IAMD_BMD"],
+            "outcome_map": [
+              { "roll_min": 0, "roll_max": 0, "label": "Attacker major gain", "effects": [
+                { "type": "adjust_influence_points", "target": "ACTOR", "value": 2, "timing": "immediate", "visibility": "public", "requires_adjudication": false },
+                { "type": "set_or_adjust_per_turn_resource_allocation", "target": "AFFECTED_PLAYER", "value": { "mode": "adjust", "amount": -2 }, "timing": "start_of_turn", "visibility": "public", "requires_adjudication": true }
+              ] },
+              { "roll_min": 1, "roll_max": 3, "label": "Attacker minor gain", "effects": [
+                { "type": "adjust_influence_points", "target": "ACTOR", "value": 1, "timing": "immediate", "visibility": "public", "requires_adjudication": false },
+                { "type": "set_or_adjust_per_turn_resource_allocation", "target": "AFFECTED_PLAYER", "value": { "mode": "adjust", "amount": -1 }, "timing": "start_of_turn", "visibility": "public", "requires_adjudication": true }
+              ] },
+              { "roll_min": 4, "roll_max": 5, "label": "Status quo", "effects": [] },
+              { "roll_min": 6, "roll_max": 8, "label": "Defender minor gain", "effects": [{ "type": "adjust_influence_points", "target": "ACTOR", "value": -1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "roll_min": 9, "roll_max": 9, "label": "Defender major gain", "effects": [{ "type": "adjust_influence_points", "target": "ACTOR", "value": -2, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] }
+            ],
+            "reset_rules_apply": false
+          },
+          "effects": [],
+          "future_effects": [],
+          "notes": "White Cell applies target IP and RP-per-turn effects after targets are selected."
+        },
+        {
+          "id": "US-10",
+          "type": "Action",
+          "subtype": "Missile Defense Test",
+          "owner": "US",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Test SM-3 IIA on ICBM Target",
+          "description": "The U.S. tests SM-3 Block IIA against an ICBM target.",
+          "players_involved": ["US", "RU", "PRC", "DPRK", "IR"],
+          "cost": { "resource_points": 6, "additional_red_card_cost_applies": false },
+          "play_constraints": { "frequency": "May play once per game", "phase_restrictions": ["BlueInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": ["RU", "PRC"], "response_window": "immediate", "force_commitment_allowed": true },
+          "resolution": {
+            "method": ["card_d10_table"],
+            "table_reference": null,
+            "die": "D10",
+            "modifiers": [],
+            "critical_capabilities": ["IAMD_BMD", "LRF"],
+            "outcome_map": [
+              { "roll_min": 0, "roll_max": 3, "label": "Success", "effects": [
+                { "type": "adjust_influence_points", "target": "RU", "value": -2, "timing": "immediate", "visibility": "public", "requires_adjudication": false },
+                { "type": "adjust_influence_points", "target": "PRC", "value": -2, "timing": "immediate", "visibility": "public", "requires_adjudication": false },
+                { "type": "adjust_influence_points", "target": "DPRK", "value": -2, "timing": "immediate", "visibility": "public", "requires_adjudication": false },
+                { "type": "adjust_influence_points", "target": "IR", "value": -2, "timing": "immediate", "visibility": "public", "requires_adjudication": false }
+              ] },
+              { "roll_min": 4, "roll_max": 9, "label": "Status quo", "effects": [] }
+            ],
+            "reset_rules_apply": false
+          },
+          "effects": [],
+          "future_effects": [],
+          "notes": "RU or PRC response testing is handled as a follow-on RT B or White Cell adjudication."
+        },
+        {
+          "id": "US-11",
+          "type": "Action",
+          "subtype": "Sanctions",
+          "owner": "US",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Unilateral Iran Sanctions",
+          "description": "The United States sanctions Iran unilaterally and breaks the JCPOA treaty.",
+          "players_involved": ["US", "IR"],
+          "cost": { "resource_points": 0, "additional_red_card_cost_applies": false },
+          "play_constraints": { "frequency": "May play once per game", "phase_restrictions": ["BlueInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": [], "response_window": "card_defined", "force_commitment_allowed": false },
+          "resolution": { "method": ["fixed_effect"], "table_reference": null, "die": "D10", "modifiers": [], "critical_capabilities": [], "outcome_map": [], "reset_rules_apply": false },
+          "effects": [
+            { "type": "adjust_influence_points", "target": "IR", "value": 1, "timing": "immediate", "visibility": "public", "requires_adjudication": false },
+            { "type": "adjust_influence_points", "target": "US", "value": -2, "timing": "immediate", "visibility": "public", "requires_adjudication": false },
+            { "type": "create_scenario_flag", "target": "IR_JCPOA_BLOCKED", "value": true, "timing": "immediate", "visibility": "public", "requires_adjudication": false }
+          ],
+          "future_effects": [
+            { "trigger_turn": 2, "effect": { "type": "set_or_adjust_per_turn_resource_allocation", "target": "IR", "value": { "mode": "adjust", "amount": -1 }, "timing": "start_of_turn", "visibility": "public", "requires_adjudication": false } },
+            { "trigger_turn": 2, "effect": { "type": "adjust_influence_points", "target": "US", "value": -1, "timing": "start_of_turn", "visibility": "public", "requires_adjudication": false } }
+          ],
+          "notes": "Continuing every-other-turn sanctions effects are tracked for White Cell timing."
         }
       ],
       "NATO_EU": [
@@ -500,6 +617,92 @@
           "effects": [{ "type": "procure_forces", "target": "RU", "value": { "note": "Use procureForces command." }, "timing": "card_defined", "visibility": "public", "requires_adjudication": true }],
           "future_effects": [],
           "notes": ""
+        },
+        {
+          "id": "RU-27",
+          "type": "Action",
+          "subtype": "Information Operation",
+          "owner": "RU",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Send Resources to Propaganda in the US",
+          "description": "Russia supports a pro-Russian news network in the United States.",
+          "players_involved": ["RU", "US"],
+          "cost": { "resource_points": 2, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "May play once per game", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": ["US"], "response_window": "immediate", "force_commitment_allowed": true },
+          "resolution": {
+            "method": ["rt_b_then_card_outcome"],
+            "table_reference": "RT_B",
+            "die": "D10",
+            "modifiers": [],
+            "critical_capabilities": ["C4ISR", "SOF"],
+            "outcome_map": [
+              { "outcome": "RMG", "effects": [{ "type": "adjust_influence_points", "target": "RU", "value": 1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }, { "type": "adjust_influence_points", "target": "US", "value": -2, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "RmG", "effects": [{ "type": "adjust_influence_points", "target": "US", "value": -1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "SQ", "effects": [] },
+              { "outcome": "BmG", "effects": [{ "type": "adjust_influence_points", "target": "RU", "value": -1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "BMG", "effects": [{ "type": "adjust_influence_points", "target": "RU", "value": -1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }, { "type": "adjust_influence_points", "target": "US", "value": 1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] }
+            ],
+            "reset_rules_apply": false
+          },
+          "effects": [],
+          "future_effects": [],
+          "notes": ""
+        },
+        {
+          "id": "RU-28",
+          "type": "Action",
+          "subtype": "Arms Purchase",
+          "owner": "RU",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Procure Weapons from a Rogue State",
+          "description": "Russia may buy drones from Iran, ammunition from DPRK, or both.",
+          "players_involved": ["RU", "IR", "DPRK"],
+          "cost": { "resource_points": 2, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "May play once per game", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": ["IR", "DPRK", "WhiteCell"], "response_window": "white_cell", "force_commitment_allowed": false },
+          "resolution": { "method": ["white_cell_adjudication"], "table_reference": null, "die": "D10", "modifiers": [], "critical_capabilities": [], "outcome_map": [], "reset_rules_apply": false },
+          "effects": [
+            { "type": "adjust_influence_points", "target": "RU", "value": -1, "timing": "immediate", "visibility": "public", "requires_adjudication": true }
+          ],
+          "future_effects": [],
+          "notes": "White Cell records the chosen seller, extra 3 RP payment, transferred FFs, and next Ukraine-war roll modifier."
+        },
+        {
+          "id": "RU-29",
+          "type": "Action",
+          "subtype": "Ukraine War",
+          "owner": "RU",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Use Human Waves",
+          "description": "Russia uses human waves to capture a town.",
+          "players_involved": ["RU", "US", "NATO_EU"],
+          "cost": { "resource_points": 1, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": ["Blue"], "response_window": "immediate", "force_commitment_allowed": true },
+          "resolution": {
+            "method": ["rt_b_then_card_outcome"],
+            "table_reference": "RT_B",
+            "die": "D10",
+            "modifiers": [],
+            "critical_capabilities": [],
+            "outcome_map": [
+              { "outcome": "RMG", "effects": [{ "type": "adjust_influence_points", "target": "RU", "value": 1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "RmG", "effects": [{ "type": "adjust_influence_points", "target": "RU", "value": 1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "SQ", "effects": [] },
+              { "outcome": "BmG", "effects": [{ "type": "adjust_influence_points", "target": "RU", "value": -1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] },
+              { "outcome": "BMG", "effects": [{ "type": "adjust_influence_points", "target": "RU", "value": -1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }] }
+            ],
+            "reset_rules_apply": false
+          },
+          "effects": [
+            { "type": "procure_forces", "target": "RU", "value": { "id": "RU-HUMAN-WAVES-1", "owner": "RU", "force_factors": 1, "modernization_level": 1, "location_id": "EUCOM_RU", "home_base_id": "EUCOM_RU" }, "timing": "immediate", "visibility": "public", "requires_adjudication": false }
+          ],
+          "future_effects": [],
+          "notes": "Use equal FF commitments to resolve this as RT B Parity."
         }
       ],
       "PRC": [
@@ -605,6 +808,42 @@
           "effects": [{ "type": "procure_forces", "target": "PRC", "value": { "note": "Use procureForces command." }, "timing": "card_defined", "visibility": "public", "requires_adjudication": true }],
           "future_effects": [],
           "notes": ""
+        },
+        {
+          "id": "PRC-30",
+          "type": "Action",
+          "subtype": "Response",
+          "owner": "PRC",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Sell US Foreign Reserves",
+          "description": "China sells U.S. foreign reserves in response to U.S. pressure.",
+          "players_involved": ["PRC", "US"],
+          "cost": { "resource_points": 2, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "May play once per game", "phase_restrictions": [], "prerequisites": [{ "description": "May be used as a response to U.S. action or pressure against PRC." }] },
+          "response": { "allowed_responders": ["US"], "response_window": "immediate", "force_commitment_allowed": false },
+          "resolution": {
+            "method": ["card_d10_table"],
+            "table_reference": null,
+            "die": "D10",
+            "modifiers": [],
+            "critical_capabilities": [],
+            "outcome_map": [
+              { "roll_min": 0, "roll_max": 4, "label": "Status quo", "effects": [] },
+              { "roll_min": 5, "roll_max": 8, "label": "China minor gain", "effects": [
+                { "type": "adjust_influence_points", "target": "US", "value": -1, "timing": "immediate", "visibility": "public", "requires_adjudication": false },
+                { "type": "adjust_resource_points", "target": "US", "value": -1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }
+              ] },
+              { "roll_min": 9, "roll_max": 9, "label": "China major gain", "effects": [
+                { "type": "adjust_influence_points", "target": "US", "value": -2, "timing": "immediate", "visibility": "public", "requires_adjudication": false },
+                { "type": "adjust_resource_points", "target": "US", "value": -1, "timing": "immediate", "visibility": "public", "requires_adjudication": false }
+              ] }
+            ],
+            "reset_rules_apply": false
+          },
+          "effects": [],
+          "future_effects": [],
+          "notes": "The response trigger is a prerequisite recorded for White Cell confirmation."
         }
       ],
       "DPRK": [
@@ -674,6 +913,120 @@
           "effects": [{ "type": "adjust_critical_capability_mod_level", "target": "DPRK", "value": { "capability": "NUCLEAR", "amount": 1 }, "timing": "immediate", "visibility": "private_to_player_and_white_cell", "requires_adjudication": false }],
           "future_effects": [],
           "notes": ""
+        },
+        {
+          "id": "DPRK-29",
+          "type": "Action",
+          "subtype": "Ransomware Attack",
+          "owner": "DPRK",
+          "public_private": "Private",
+          "private_conditions": [],
+          "title": "DPRK Ransomware Attack (Minor)",
+          "description": "DPRK performs a cyber attack on infrastructure; targets and recovery are adjudicated by the White Cell.",
+          "players_involved": ["DPRK"],
+          "cost": { "resource_points": 2, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "May play once per two turns", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": ["WhiteCell"], "response_window": "white_cell", "force_commitment_allowed": false },
+          "resolution": {
+            "method": ["card_d10_table"],
+            "table_reference": null,
+            "die": "D10",
+            "modifiers": [],
+            "critical_capabilities": [],
+            "outcome_map": [
+              { "roll_min": 0, "roll_max": 5, "label": "Attack fail", "effects": [{ "type": "adjust_influence_points", "target": "DPRK", "value": -1, "timing": "immediate", "visibility": "private_to_player_and_white_cell", "requires_adjudication": false }] },
+              { "roll_min": 6, "roll_max": 9, "label": "Attack success", "effects": [
+                { "type": "adjust_influence_points", "target": "DPRK", "value": 1, "timing": "immediate", "visibility": "private_to_player_and_white_cell", "requires_adjudication": false },
+                { "type": "create_scenario_flag", "target": "DPRK_RANSOMWARE_ACTIVE", "value": "minor", "timing": "immediate", "visibility": "private_to_player_and_white_cell", "requires_adjudication": true }
+              ] }
+            ],
+            "reset_rules_apply": false
+          },
+          "effects": [],
+          "future_effects": [],
+          "notes": "White Cell adjudicates affected target(s), ransom, recovery roll, and maintenance."
+        },
+        {
+          "id": "DPRK-30",
+          "type": "Action",
+          "subtype": "Ransomware Attack",
+          "owner": "DPRK",
+          "public_private": "Private",
+          "private_conditions": [],
+          "title": "DPRK Ransomware Attack (Major)",
+          "description": "DPRK performs a major cyber attack on infrastructure-related IT systems.",
+          "players_involved": ["DPRK"],
+          "cost": { "resource_points": 2, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "May play once per two turns", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": ["WhiteCell"], "response_window": "white_cell", "force_commitment_allowed": false },
+          "resolution": {
+            "method": ["card_d10_table"],
+            "table_reference": null,
+            "die": "D10",
+            "modifiers": [],
+            "critical_capabilities": [],
+            "outcome_map": [
+              { "roll_min": 0, "roll_max": 3, "label": "Attack fail", "effects": [{ "type": "adjust_influence_points", "target": "DPRK", "value": -1, "timing": "immediate", "visibility": "private_to_player_and_white_cell", "requires_adjudication": false }] },
+              { "roll_min": 4, "roll_max": 9, "label": "Attack success", "effects": [
+                { "type": "adjust_influence_points", "target": "DPRK", "value": 1, "timing": "immediate", "visibility": "private_to_player_and_white_cell", "requires_adjudication": false },
+                { "type": "create_scenario_flag", "target": "DPRK_RANSOMWARE_ACTIVE", "value": "major", "timing": "immediate", "visibility": "private_to_player_and_white_cell", "requires_adjudication": true }
+              ] }
+            ],
+            "reset_rules_apply": false
+          },
+          "effects": [],
+          "future_effects": [],
+          "notes": "White Cell adjudicates affected target(s), ransom, recovery roll, and maintenance."
+        },
+        {
+          "id": "DPRK-31",
+          "type": "Investment",
+          "subtype": "Cyber Capability",
+          "owner": "DPRK",
+          "public_private": "Private",
+          "private_conditions": [],
+          "title": "Malware Injection Army",
+          "description": "DPRK invests in malware support for its next ransomware attack.",
+          "players_involved": ["DPRK"],
+          "cost": { "resource_points": 1, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": [], "response_window": "card_defined", "force_commitment_allowed": false },
+          "resolution": {
+            "method": ["card_d10_table"],
+            "table_reference": null,
+            "die": "D10",
+            "modifiers": [],
+            "critical_capabilities": [],
+            "outcome_map": [
+              { "roll_min": 0, "roll_max": 3, "label": "Investment fail", "effects": [] },
+              { "roll_min": 4, "roll_max": 9, "label": "Investment success", "effects": [{ "type": "adjust_scenario_flag_number", "target": "DPRK_NEXT_RANSOMWARE_MODIFIER", "value": 2, "timing": "immediate", "visibility": "private_to_player_and_white_cell", "requires_adjudication": false }] }
+            ],
+            "reset_rules_apply": false
+          },
+          "effects": [],
+          "future_effects": [],
+          "notes": ""
+        },
+        {
+          "id": "DPRK-32",
+          "type": "Investment",
+          "subtype": "Cyber Trade",
+          "owner": "DPRK",
+          "public_private": "Private",
+          "private_conditions": [],
+          "title": "Ransomware as a Service",
+          "description": "DPRK offers another player a ransomware attack opportunity.",
+          "players_involved": ["DPRK"],
+          "cost": { "resource_points": 0, "additional_red_card_cost_applies": true },
+          "play_constraints": { "frequency": "May play every turn", "phase_restrictions": ["RedInvestmentsAndActions"], "prerequisites": [] },
+          "response": { "allowed_responders": ["WhiteCell"], "response_window": "white_cell", "force_commitment_allowed": false },
+          "resolution": { "method": ["white_cell_adjudication"], "table_reference": null, "die": "D10", "modifiers": [], "critical_capabilities": [], "outcome_map": [], "reset_rules_apply": false },
+          "effects": [
+            { "type": "adjust_resource_points", "target": "DPRK", "value": 2, "timing": "immediate", "visibility": "private_to_player_and_white_cell", "requires_adjudication": false },
+            { "type": "create_scenario_flag", "target": "DPRK_RANSOMWARE_TRADE_AVAILABLE", "value": true, "timing": "immediate", "visibility": "private_to_player_and_white_cell", "requires_adjudication": true }
+          ],
+          "future_effects": [],
+          "notes": "White Cell selects the buyer, records DPRK's 1 FF loss, and blocks DPRK ransomware attacks this turn."
         }
       ],
       "IR": [
@@ -810,11 +1163,79 @@
           "effects": [{ "type": "adjust_resource_points", "target": "RU", "value": -1, "timing": "immediate", "visibility": "private_to_player_and_white_cell", "requires_adjudication": false }],
           "future_effects": [],
           "notes": ""
+        },
+        {
+          "id": "EVT-RU-22",
+          "type": "DomesticEvent",
+          "subtype": "Domestic Event",
+          "owner": "WhiteCell",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Prigozhin Starts His Mutiny",
+          "description": "The Wagner leader has started his rebellion.",
+          "players_involved": ["RU"],
+          "cost": { "resource_points": 0, "additional_red_card_cost_applies": false },
+          "play_constraints": { "phase_restrictions": [], "prerequisites": [] },
+          "response": { "allowed_responders": ["RU"], "response_window": "card_defined", "force_commitment_allowed": false },
+          "resolution": { "method": ["fixed_effect"], "table_reference": null, "die": "D10", "modifiers": [], "critical_capabilities": [], "outcome_map": [], "reset_rules_apply": false },
+          "effects": [
+            { "type": "adjust_influence_points", "target": "RU", "value": -2, "timing": "immediate", "visibility": "public", "requires_adjudication": false }
+          ],
+          "future_effects": [
+            { "trigger_turn": 2, "effect": { "type": "adjust_scenario_flag_number", "target": "RU_UKRAINE_LOSS_CHANCE_MODIFIER", "value": 1, "timing": "start_of_turn", "visibility": "public", "requires_adjudication": false } }
+          ],
+          "notes": ""
         }
       ],
       "PRC": [],
       "DPRK": [],
-      "IR": []
+      "IR": [
+        {
+          "id": "EVT-IR-11",
+          "type": "DomesticEvent",
+          "subtype": "Domestic Event",
+          "owner": "WhiteCell",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Revolutionary Guard Coup",
+          "description": "The Revolutionary Guard starts a coup after a lack of reaction to events in Israel.",
+          "players_involved": ["IR"],
+          "cost": { "resource_points": 0, "additional_red_card_cost_applies": false },
+          "play_constraints": { "phase_restrictions": [], "prerequisites": [] },
+          "response": { "allowed_responders": ["IR"], "response_window": "card_defined", "force_commitment_allowed": false },
+          "resolution": { "method": ["fixed_effect"], "table_reference": null, "die": "D10", "modifiers": [], "critical_capabilities": [], "outcome_map": [], "reset_rules_apply": false },
+          "effects": [
+            { "type": "adjust_resource_points", "target": "IR", "value": -2, "timing": "immediate", "visibility": "public", "requires_adjudication": false },
+            { "type": "create_scenario_flag", "target": "IR_NO_ABROAD_ACTIONS_THIS_TURN", "value": true, "timing": "immediate", "visibility": "public", "requires_adjudication": false }
+          ],
+          "future_effects": [],
+          "notes": ""
+        }
+      ],
+      "NATO_EU": [
+        {
+          "id": "EVT-NATO-18",
+          "type": "DomesticEvent",
+          "subtype": "Domestic Event",
+          "owner": "WhiteCell",
+          "public_private": "Public",
+          "private_conditions": [],
+          "title": "Sweden and Finland Join NATO",
+          "description": "Finland and Sweden join NATO after Russia's invasion of Ukraine.",
+          "players_involved": ["NATO_EU"],
+          "cost": { "resource_points": 0, "additional_red_card_cost_applies": false },
+          "play_constraints": { "phase_restrictions": [], "prerequisites": [] },
+          "response": { "allowed_responders": ["NATO_EU"], "response_window": "card_defined", "force_commitment_allowed": false },
+          "resolution": { "method": ["fixed_effect"], "table_reference": null, "die": "D10", "modifiers": [], "critical_capabilities": [], "outcome_map": [], "reset_rules_apply": false },
+          "effects": [
+            { "type": "adjust_influence_points", "target": "NATO_EU", "value": 1, "timing": "immediate", "visibility": "public", "requires_adjudication": false },
+            { "type": "adjust_resource_points", "target": "NATO_EU", "value": 1, "timing": "immediate", "visibility": "public", "requires_adjudication": false },
+            { "type": "procure_forces", "target": "NATO_EU", "value": { "id": "NATO-NORDIC-1-M2", "owner": "NATO_EU", "force_factors": 1, "modernization_level": 2, "location_id": "EUCOM_NATO", "home_base_id": "EUCOM_NATO" }, "timing": "immediate", "visibility": "public", "requires_adjudication": false }
+          ],
+          "future_effects": [],
+          "notes": ""
+        }
+      ]
     },
     "international_event": [
       {
@@ -855,6 +1276,49 @@
         "effects": [],
         "future_effects": [],
         "notes": ""
+      },
+      {
+        "id": "EVT-CON-40",
+        "type": "InternationalEvent",
+        "subtype": "Critical Infrastructure",
+        "owner": "WhiteCell",
+        "public_private": "Public",
+        "private_conditions": [],
+        "title": "Attack on Critical Infrastructure",
+        "description": "Critical infrastructure has been disabled under strange circumstances and appears sabotaged.",
+        "players_involved": ["US", "NATO_EU", "RU", "PRC", "DPRK", "IR"],
+        "cost": { "resource_points": 0, "additional_red_card_cost_applies": false },
+        "play_constraints": { "phase_restrictions": [], "prerequisites": [] },
+        "response": { "allowed_responders": ["WhiteCell"], "response_window": "white_cell", "force_commitment_allowed": false },
+        "resolution": { "method": ["white_cell_adjudication"], "table_reference": null, "die": "D10", "modifiers": [], "critical_capabilities": [], "outcome_map": [], "reset_rules_apply": false },
+        "effects": [
+          { "type": "set_or_adjust_per_turn_resource_allocation", "target": "AFFECTED_PLAYER", "value": { "mode": "adjust", "amount": -1 }, "timing": "start_of_turn", "visibility": "public", "requires_adjudication": true }
+        ],
+        "future_effects": [],
+        "notes": "White Cell identifies affected player(s) and may resolve the optional shaming D10 table."
+      },
+      {
+        "id": "EVT-CON-41",
+        "type": "InternationalEvent",
+        "subtype": "CENTCOM Conflict",
+        "owner": "WhiteCell",
+        "public_private": "Public",
+        "private_conditions": [],
+        "title": "Hamas-Israel Conflict",
+        "description": "Hamas launches a surprise attack on Israel from Gaza. Israel seeks retaliation.",
+        "aor": "USCENTCOM",
+        "players_involved": ["IR", "NATO_EU", "US", "PRC", "RU"],
+        "cost": { "resource_points": 0, "additional_red_card_cost_applies": false },
+        "play_constraints": { "phase_restrictions": [], "prerequisites": [] },
+        "response": { "allowed_responders": ["US", "NATO_EU", "IR", "RU", "WhiteCell"], "response_window": "white_cell", "force_commitment_allowed": true },
+        "resolution": { "method": ["white_cell_adjudication"], "table_reference": null, "die": "D10", "modifiers": [], "critical_capabilities": [], "outcome_map": [], "reset_rules_apply": false },
+        "effects": [
+          { "type": "create_proxy_force", "target": "ISRAEL-PROXY", "value": { "id": "ISRAEL-PROXY", "sponsor": "US", "label": "Israel Proxy", "force_factors": 2, "modernization_level": 3, "location_id": "CENTCOM_IRAN", "reliability": "High", "scope": "EVT-CON-41" }, "timing": "immediate", "visibility": "public", "requires_adjudication": false },
+          { "type": "create_proxy_force", "target": "HAMAS-PROXY", "value": { "id": "HAMAS-PROXY", "sponsor": "IR", "label": "Hamas Proxy", "force_factors": 1, "modernization_level": 1, "location_id": "CENTCOM_IRAN", "reliability": "Medium", "scope": "EVT-CON-41" }, "timing": "immediate", "visibility": "public", "requires_adjudication": false },
+          { "type": "create_proxy_force", "target": "HEZBOLLAH-PROXY", "value": { "id": "HEZBOLLAH-PROXY", "sponsor": "IR", "label": "Hezbollah Proxy", "force_factors": 2, "modernization_level": 1, "location_id": "CENTCOM_IRAN", "reliability": "Medium", "scope": "EVT-CON-41" }, "timing": "immediate", "visibility": "public", "requires_adjudication": false }
+        ],
+        "future_effects": [],
+        "notes": "White Cell handles Blue force placement, Israel brutality RT A/RT B style adjudication, optional Iran proxy activation, U.S. entry, and Russian PMC entry."
       }
     ]
   },

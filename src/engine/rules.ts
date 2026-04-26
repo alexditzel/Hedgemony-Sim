@@ -292,6 +292,7 @@ export function createInitialGameState(scenario: Scenario): GameState {
     rolls: [],
     pending_adjudications: [],
     pending_resets: [],
+    card_play_history: [],
     ground_truth: [],
     scenario_flags: {},
     summaries: {
@@ -665,7 +666,7 @@ function redAdditionalCardCost(state: GameState, playerId: PlayerId, card: Card)
   return pace.additional_cost_per_card;
 }
 
-function validateCardPhase(state: GameState, card: Card): RuleIssue | undefined {
+function validateCardPhase(state: GameState, card: Card, actorId?: PlayerId): RuleIssue | undefined {
   if (card.play_constraints.phase_restrictions.length === 0) {
     return undefined;
   }
@@ -673,7 +674,8 @@ function validateCardPhase(state: GameState, card: Card): RuleIssue | undefined 
     return makeIssue(`${card.id} cannot be played during ${state.phase}.`, ["6 Cards"]);
   }
   const owner = card.owner ? state.players[card.owner] : undefined;
-  if (state.phase === "BlueInvestmentsAndActions" && owner?.side === "Blue") {
+  const actor = actorId ? state.players[actorId] : undefined;
+  if (state.phase === "BlueInvestmentsAndActions" && (owner?.side === "Blue" || actor?.side === "Blue")) {
     if (card.type === "Investment" && state.blue_subphase !== "Investments") {
       return makeIssue(
         `${card.id} cannot be played after Blue actions have begun.`,
@@ -688,6 +690,34 @@ function validateCardPhase(state: GameState, card: Card): RuleIssue | undefined 
     }
   }
   return undefined;
+}
+
+function validateCardFrequency(state: GameState, playerId: PlayerId, card: Card): RuleIssue | undefined {
+  const frequency = card.play_constraints.frequency?.toLowerCase() ?? "";
+  if (frequency.length === 0 || frequency.includes("may play every turn") || frequency.includes("can be played each turn")) {
+    return undefined;
+  }
+  const playerHistory = state.card_play_history.filter(
+    (entry) => entry.card_id === card.id && entry.player_id === playerId
+  );
+  if (frequency.includes("once per game") && playerHistory.length > 0) {
+    return makeIssue(`${card.id} may only be played once per game by ${playerId}.`, ["6 Cards"]);
+  }
+  if (frequency.includes("once per two turns")) {
+    const lastPlayed = [...playerHistory].sort((left, right) => right.turn - left.turn)[0];
+    if (lastPlayed && state.turn - lastPlayed.turn < 2) {
+      return makeIssue(`${card.id} may only be played once per two turns by ${playerId}.`, ["6 Cards"]);
+    }
+  }
+  return undefined;
+}
+
+function recordCardPlay(state: GameState, playerId: PlayerId, cardId: CardId): void {
+  state.card_play_history.push({
+    card_id: cardId,
+    player_id: playerId,
+    turn: state.turn
+  });
 }
 
 function matchingOutcomeRows(card: Card, outcome: ProbabilityOutcome | "Success" | "Fail", rollTotal?: number): OutcomeRow[] {
@@ -746,16 +776,22 @@ function setPlayerResourceAllocation(state: GameState, playerId: PlayerId, value
   }
 }
 
-function applySingleEffect(state: GameState, effect: Effect, owner?: PlayerId): RuleIssue | undefined {
-  if (effect.visibility !== "public" || effect.timing !== "immediate") {
+function applySingleEffect(
+  state: GameState,
+  effect: Effect,
+  owner?: PlayerId,
+  trackDeferred = true
+): RuleIssue | undefined {
+  if (trackDeferred && (effect.visibility !== "public" || effect.timing !== "immediate")) {
     addGroundTruthForEffect(state, effect, owner, "Tracked due to private, future, temporary, or conditional handling.");
   }
   if (effect.requires_adjudication) {
     addAdjudication(state, `Effect ${effect.type} requires White Cell resolution.`, ["6.4 Effect Schema"], effect.value, owner);
     return undefined;
   }
-  const player = state.players[effect.target];
-  const force = state.forces[effect.target];
+  const target = effect.target === "ACTOR" && owner ? owner : effect.target;
+  const player = state.players[target];
+  const force = state.forces[target];
   switch (effect.type) {
     case "adjust_resource_points":
       if (player) {
@@ -914,8 +950,41 @@ function applySingleEffect(state: GameState, effect: Effect, owner?: PlayerId): 
         state.proxy_forces[proxy.id] = proxy;
       }
       break;
+    case "procure_forces":
+      if (isRecord(effect.value)) {
+        const owner = stringFrom(effect.value.owner, effect.target);
+        const id = stringFrom(effect.value.id, `${owner}-F-${Object.keys(state.forces).length + 1}`);
+        state.forces[id] = {
+          id,
+          owner,
+          force_factors: numberFrom(effect.value.force_factors),
+          modernization_level: numberFrom(effect.value.modernization_level),
+          location_id: stringFrom(effect.value.location_id),
+          home_base_id: stringFrom(effect.value.home_base_id, stringFrom(effect.value.location_id)),
+          readiness_level:
+            owner === "US" && typeof effect.value.readiness_level === "number"
+              ? (effect.value.readiness_level as ReadinessLevel)
+              : undefined,
+          pinned: { active: false, remaining_turns: null },
+          reset_required: false,
+          procured_turn: state.turn,
+          proxy: false
+        };
+      } else {
+        addAdjudication(
+          state,
+          "Effect procure_forces is represented by a dedicated rules command or card-specific procedure.",
+          ["6.4 Effect Schema"],
+          effect.value,
+          owner
+        );
+      }
+      break;
     case "create_scenario_flag":
-      state.scenario_flags[effect.target] = effect.value;
+      state.scenario_flags[target] = effect.value;
+      break;
+    case "adjust_scenario_flag_number":
+      state.scenario_flags[target] = numberFrom(state.scenario_flags[target]) + numberFrom(effect.value);
       break;
     case "schedule_future_effect":
       addGroundTruthForEffect(state, effect, owner, "Future effect scheduled.");
@@ -927,7 +996,6 @@ function applySingleEffect(state: GameState, effect: Effect, owner?: PlayerId): 
       break;
     case "pay_readiness_sustainment":
     case "buy_back_readiness":
-    case "procure_forces":
     case "modernize_forces":
     case "retire_forces":
     case "develop_proxy_force":
@@ -1255,7 +1323,7 @@ function applyCardOutcome(
 ): RuleIssue[] {
   const issues: RuleIssue[] = [];
   const rows = outcome ? matchingOutcomeRows(card, outcome, rollTotal) : [];
-  const effects = rows.length > 0 ? rows.flatMap((row) => row.effects) : card.effects;
+  const effects = rows.length > 0 ? [...card.effects, ...rows.flatMap((row) => row.effects)] : card.effects;
   for (const effect of effects) {
     const issue = applySingleEffect(draft, { ...effect, source_card_id: effect.source_card_id ?? card.id }, actor);
     if (issue) {
@@ -1293,9 +1361,13 @@ export function resolveCard(state: GameState, args: ResolveCardArgs, roller: Dic
       adjudications: []
     };
   }
-  const phase = validateCardPhase(draft, card);
+  const phase = validateCardPhase(draft, card, args.acting_player_id);
   if (phase) {
     issues.push(phase);
+  }
+  const frequency = validateCardFrequency(draft, args.acting_player_id, card);
+  if (frequency) {
+    issues.push(frequency);
   }
   const cost = cardBaseCost(card);
   if (!cost.ok) {
@@ -1368,6 +1440,7 @@ export function resolveCard(state: GameState, args: ResolveCardArgs, roller: Dic
       });
     }
   } else {
+    issues.push(...applyCardOutcome(draft, card, args.acting_player_id));
     const request = addAdjudication(
       draft,
       `${card.id} resolution is White Cell adjudicated.`,
@@ -1376,6 +1449,11 @@ export function resolveCard(state: GameState, args: ResolveCardArgs, roller: Dic
       args.acting_player_id,
       card.id
     );
+    recordCardPlay(draft, args.acting_player_id, card.id);
+    appendLog(draft, `${args.acting_player_id} played ${card.id}: ${card.title}.`, ["CARD_DEFINED"], visibilityForCard(card), {
+      player_id: args.acting_player_id,
+      card_id: card.id
+    });
     return { state: draft, issues, adjudications: [request] };
   }
 
@@ -1430,6 +1508,7 @@ export function resolveCard(state: GameState, args: ResolveCardArgs, roller: Dic
     player_id: args.acting_player_id,
     card_id: card.id
   });
+  recordCardPlay(draft, args.acting_player_id, card.id);
   return {
     state: draft,
     outcome,
@@ -1437,6 +1516,44 @@ export function resolveCard(state: GameState, args: ResolveCardArgs, roller: Dic
     issues,
     adjudications: draft.pending_adjudications.filter((entry) => entry.status === "pending")
   };
+}
+
+const RED_PLAY_MIX_RULE_REFS = ["5.4 Red Investments and Actions Phase"];
+const RED_PLAY_MIX_MESSAGE =
+  "A Red player who plays more than one card must have at least one Action and one Investment card among played cards.";
+
+function redPlayedMixIssueForCardIds(state: GameState, playedIds: CardId[]): RuleIssue | undefined {
+  if (playedIds.length <= 1) {
+    return undefined;
+  }
+  const cards = playedIds.map((id) => state.cards[id]).filter((card): card is Card => Boolean(card));
+  const hasAction = cards.some((card) => card.type === "Action");
+  const hasInvestment = cards.some((card) => card.type === "Investment");
+  if (hasAction && hasInvestment) {
+    return undefined;
+  }
+  return makeIssue(RED_PLAY_MIX_MESSAGE, RED_PLAY_MIX_RULE_REFS);
+}
+
+function redPlayDeadEndIssue(state: GameState, playerId: PlayerId, cardId: CardId): RuleIssue | undefined {
+  const signal = state.red_signals[playerId];
+  const play = state.red_plays[playerId];
+  if (!signal || !play) {
+    return undefined;
+  }
+  const playedIds = [...play.played_card_ids, cardId];
+  if (!redPlayedMixIssueForCardIds(state, playedIds)) {
+    return undefined;
+  }
+  const remainingIds = signal.card_ids.filter((id) => !playedIds.includes(id));
+  const canStillCompleteMix = remainingIds.some((remainingId) => !redPlayedMixIssueForCardIds(state, [...playedIds, remainingId]));
+  if (canStillCompleteMix) {
+    return undefined;
+  }
+  return makeIssue(
+    `${cardId} would leave ${playerId} unable to finish with at least one Action and one Investment card among played cards.`,
+    RED_PLAY_MIX_RULE_REFS
+  );
 }
 
 export function getRedChoiceOptions(state: GameState, playerId: PlayerId): { remaining: Card[]; canSkip: boolean } {
@@ -1447,18 +1564,14 @@ export function getRedChoiceOptions(state: GameState, playerId: PlayerId): { rem
   }
   const remaining = signal.card_ids
     .filter((id) => !play.played_card_ids.includes(id))
+    .filter((id) => !redPlayDeadEndIssue(state, playerId, id))
     .map((id) => state.cards[id])
     .filter((card): card is Card => Boolean(card));
-  return { remaining, canSkip: true };
+  return { remaining, canSkip: !redPlayedMixIssueForCardIds(state, play.played_card_ids) };
 }
 
 function redPlayedMixValid(state: GameState, playerId: PlayerId): boolean {
-  const playedIds = state.red_plays[playerId]?.played_card_ids ?? [];
-  if (playedIds.length <= 1) {
-    return true;
-  }
-  const cards = playedIds.map((id) => state.cards[id]).filter((card): card is Card => Boolean(card));
-  return cards.some((card) => card.type === "Action") && cards.some((card) => card.type === "Investment");
+  return !redPlayedMixIssueForCardIds(state, state.red_plays[playerId]?.played_card_ids ?? []);
 }
 
 export function playRedSignaledCard(
@@ -1474,6 +1587,14 @@ export function playRedSignaledCard(
     return {
       state,
       issues: [makeIssue(`${cardId} is not a remaining signaled card for ${playerId}.`, ["5.4 Red Investments and Actions Phase"])],
+      adjudications: []
+    };
+  }
+  const deadEndIssue = redPlayDeadEndIssue(state, playerId, cardId);
+  if (deadEndIssue) {
+    return {
+      state,
+      issues: [deadEndIssue],
       adjudications: []
     };
   }
@@ -1494,12 +1615,7 @@ export function skipRemainingRedCards(state: GameState, playerId: PlayerId): { s
   const draft = cloneState(state);
   const issues: RuleIssue[] = [];
   if (!redPlayedMixValid(draft, playerId)) {
-    issues.push(
-      makeIssue(
-        "A Red player who plays more than one card must have at least one Action and one Investment card among played cards.",
-        ["5.4 Red Investments and Actions Phase"]
-      )
-    );
+    issues.push(makeIssue(RED_PLAY_MIX_MESSAGE, RED_PLAY_MIX_RULE_REFS));
     return { state, issues };
   }
   if (!draft.red_plays[playerId]) {
@@ -2063,7 +2179,18 @@ export function recordStateOfWorldSummary(state: GameState, summary: string): Ga
   }
   for (const item of draft.ground_truth) {
     if (item.status === "pending" && item.trigger_turn !== undefined && item.trigger_turn <= draft.turn + 1) {
-      item.status = "active";
+      const issue = applySingleEffect(draft, item.effect, undefined, false);
+      if (issue?.severity === "adjudication") {
+        addAdjudication(
+          draft,
+          issue.message,
+          issue.rule_refs,
+          item.effect.value,
+          undefined,
+          item.source === "white_cell" || item.source === "rule_id" ? undefined : item.source
+        );
+      }
+      item.status = "resolved";
     }
     if (item.expiration_turn !== undefined && item.expiration_turn <= draft.turn) {
       item.status = "expired";

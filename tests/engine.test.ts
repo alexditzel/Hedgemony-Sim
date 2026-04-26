@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readdirSync } from "node:fs";
+import { basename } from "node:path";
 import defaultScenario from "../src/data/defaultScenario.json";
 import { canViewLog, canViewRoll } from "../src/components/visibility";
 import {
@@ -134,6 +136,36 @@ describe("scenario loading and validation", () => {
     expect(state.phase).toBe("RedSignaling");
     expect(state.summaries.state_of_world[1]).toBe("Year-end summary.");
   });
+
+  it("loads every card from the cards folder into the playable scenario", () => {
+    const state = freshState();
+    const expectedCardIds = [
+      "BLUE-01",
+      "DPRK-29",
+      "DPRK-30",
+      "DPRK-31",
+      "DPRK-32",
+      "EVT-CON-40",
+      "EVT-CON-41",
+      "EVT-IR-11",
+      "EVT-NATO-18",
+      "EVT-RU-22",
+      "PRC-30",
+      "RU-27",
+      "RU-28",
+      "RU-29",
+      "UAC-1",
+      "US-10",
+      "US-11"
+    ];
+    const files = readdirSync("cards").map((file) => basename(file, ".md"));
+    expect(files).toHaveLength(expectedCardIds.length);
+    expect(Object.keys(state.cards)).toEqual(expect.arrayContaining(expectedCardIds));
+    expect(state.players.US.card_decks.action_investment).toEqual(expect.arrayContaining(["BLUE-01", "UAC-1", "US-10", "US-11"]));
+    expect(state.players.DPRK.card_decks.action_investment).toEqual(
+      expect.arrayContaining(["DPRK-29", "DPRK-30", "DPRK-31", "DPRK-32"])
+    );
+  });
 });
 
 describe("turn sequence and Red signaling", () => {
@@ -181,6 +213,47 @@ describe("turn sequence and Red signaling", () => {
     state = result.state;
     const skip = skipRemainingRedCards(state, "PRC");
     expect(skip.issues[0].message).toContain("at least one Action and one Investment");
+  });
+
+  it("prevents a Red player who signaled two Actions from playing both and getting stuck", () => {
+    let state = recordGameStartSummary(freshState(), "Opening summary.");
+    for (const [playerId, cardIds] of Object.entries({
+      RU: ["RU-ACT-01", "RU-ACT-02", "RU-INV-01"],
+      PRC: ["PRC-ACT-01", "PRC-ACT-02"],
+      DPRK: ["DPRK-ACT-01", "DPRK-ACT-02", "DPRK-INV-01"],
+      IR: ["IR-ACT-01", "IR-ACT-02", "IR-INV-01"]
+    })) {
+      const result = signalRedCards(state, playerId, cardIds, `${playerId} brief.`);
+      expect(result.issues).toHaveLength(0);
+      state = result.state;
+    }
+    const blue = beginBlueReadinessBill(state);
+    expect(blue.issues).toHaveLength(0);
+    const paid = payUsReadinessBill(blue.state);
+    expect(paid.issues).toHaveLength(0);
+    const actionPhase = advanceBlueToActions(paid.state);
+    expect(actionPhase.issues).toHaveLength(0);
+    const red = beginRedInvestmentsAndActions(actionPhase.state, ["RU", "PRC", "DPRK", "IR"]);
+    expect(red.issues).toHaveLength(0);
+    state = red.state;
+
+    const first = playRedSignaledCard(state, "PRC", "PRC-ACT-01", new SequenceDiceRoller([5]), {
+      blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater" }],
+      red_commitments: [{ force_id: "PRC-INDO-5-M3", source: "in_theater" }],
+      blue_players: ["US"],
+      red_players: ["PRC"]
+    });
+    expect(first.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+    state = first.state;
+
+    expect(getRedChoiceOptions(state, "PRC")).toMatchObject({ remaining: [], canSkip: true });
+    const second = playRedSignaledCard(state, "PRC", "PRC-ACT-02", new SequenceDiceRoller([5]));
+    expect(second.issues[0].message).toContain("unable to finish");
+    expect(second.state.red_plays.PRC.played_card_ids).toEqual(["PRC-ACT-01"]);
+
+    const skip = skipRemainingRedCards(state, "PRC");
+    expect(skip.issues).toHaveLength(0);
+    expect(skip.state.red_plays.PRC.skipped).toBe(true);
   });
 
   it("charges a flat Red additional-card cost for each card after the first", () => {
@@ -596,6 +669,101 @@ describe("combat resolution and card effects", () => {
     expect(blockedUpgrade.adjudications.length).toBeGreaterThan(0);
     expect(blockedUpgrade.state.players.US.critical_capabilities.C4ISR).toBe(4);
     expect(validateState(blockedUpgrade.state).filter((issue) => issue.severity === "error")).toHaveLength(0);
+  });
+
+  it("resolves folder cards with deterministic effects, future effects, and frequency limits", () => {
+    const paid = payUsReadinessBill(startTurnThroughBlueReadiness()).state;
+    const actionPhase = advanceBlueToActions(paid).state;
+
+    const ukraineSupport = resolveCard(actionPhase, { acting_player_id: "US", card_id: "BLUE-01" }, new SequenceDiceRoller([5]));
+    expect(ukraineSupport.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+    expect(ukraineSupport.state.players.US.resource_points).toBe(14);
+    expect(ukraineSupport.state.ground_truth).toContainEqual(
+      expect.objectContaining({
+        source: "BLUE-01",
+        status: "pending",
+        trigger_turn: 2
+      })
+    );
+    const nextTurn = recordStateOfWorldSummary(
+      { ...ukraineSupport.state, phase: "StateOfWorldSummary" },
+      "Ukraine support takes effect."
+    );
+    expect(nextTurn.scenario_flags.RU_UKRAINE_LOSS_CHANCE_MODIFIER).toBe(1);
+    expect(nextTurn.ground_truth.find((item) => item.source === "BLUE-01")?.status).toBe("resolved");
+
+    const missileTest = resolveCard(actionPhase, { acting_player_id: "US", card_id: "US-10" }, new SequenceDiceRoller([3]));
+    expect(missileTest.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+    expect(missileTest.state.players.RU.influence_points).toBe(13);
+    expect(missileTest.state.players.PRC.influence_points).toBe(38);
+    const repeatedMissileTest = resolveCard(missileTest.state, { acting_player_id: "US", card_id: "US-10" }, new SequenceDiceRoller([3]));
+    expect(repeatedMissileTest.issues[0].message).toContain("once per game");
+
+    const sanctions = resolveCard(actionPhase, { acting_player_id: "US", card_id: "US-11" }, new SequenceDiceRoller([5]));
+    expect(sanctions.state.players.IR.influence_points).toBe(6);
+    expect(sanctions.state.players.US.influence_points).toBe(48);
+    expect(sanctions.state.scenario_flags.IR_JCPOA_BLOCKED).toBe(true);
+
+    const infrastructureAttack = resolveCard(actionPhase, { acting_player_id: "US", card_id: "UAC-1" }, new SequenceDiceRoller([1]));
+    expect(infrastructureAttack.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+    expect(infrastructureAttack.state.players.US.influence_points).toBe(51);
+    expect(infrastructureAttack.adjudications.length).toBeGreaterThan(0);
+  });
+
+  it("supports Red folder cards that use RT B, ransomware tables, and card-defined limits", () => {
+    const state = startRedPhase();
+    const humanWaves = resolveCard(
+      state,
+      {
+        acting_player_id: "RU",
+        card_id: "RU-29",
+        blue_commitments: [{ force_id: "NATO-EUCOM-5", source: "in_theater" }],
+        red_commitments: [{ force_id: "RU-EUCOM-5-M2", source: "in_theater" }],
+        blue_players: ["NATO_EU"],
+        red_players: ["RU"]
+      },
+      new SequenceDiceRoller([9])
+    );
+    expect(humanWaves.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+    expect(humanWaves.outcome).toBe("BmG");
+    expect(humanWaves.state.players.RU.influence_points).toBe(14);
+    expect(humanWaves.state.forces["RU-HUMAN-WAVES-1"]).toMatchObject({
+      owner: "RU",
+      force_factors: 1,
+      modernization_level: 1
+    });
+
+    const ransomware = resolveCard(state, { acting_player_id: "DPRK", card_id: "DPRK-30" }, new SequenceDiceRoller([4]));
+    expect(ransomware.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+    expect(ransomware.state.players.DPRK.influence_points).toBe(6);
+    expect(ransomware.adjudications.length).toBeGreaterThan(0);
+    const repeatedRansomware = resolveCard(ransomware.state, { acting_player_id: "DPRK", card_id: "DPRK-30" }, new SequenceDiceRoller([4]));
+    expect(repeatedRansomware.issues[0].message).toContain("once per two turns");
+
+    const malware = resolveCard(state, { acting_player_id: "DPRK", card_id: "DPRK-31" }, new SequenceDiceRoller([4]));
+    expect(malware.state.scenario_flags.DPRK_NEXT_RANSOMWARE_MODIFIER).toBe(2);
+  });
+
+  it("injects folder event cards and applies supported event effects", () => {
+    const state = payUsReadinessBill(startTurnThroughBlueReadiness()).state;
+    const natoEvent = injectWhiteCellEvent(state, "EVT-NATO-18", "Nordic accession.", new SequenceDiceRoller([5]));
+    expect(natoEvent.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+    expect(natoEvent.state.players.NATO_EU.influence_points).toBe(51);
+    expect(natoEvent.state.players.NATO_EU.resource_points).toBe(11);
+    expect(natoEvent.state.forces["NATO-NORDIC-1-M2"]).toMatchObject({
+      owner: "NATO_EU",
+      force_factors: 1,
+      modernization_level: 2
+    });
+
+    const coup = injectWhiteCellEvent(state, "EVT-IR-11", "Coup.", new SequenceDiceRoller([5]));
+    expect(coup.state.players.IR.resource_points).toBe(6);
+    expect(coup.state.scenario_flags.IR_NO_ABROAD_ACTIONS_THIS_TURN).toBe(true);
+
+    const regionalEvent = injectWhiteCellEvent(state, "EVT-CON-41", "Regional conflict.", new SequenceDiceRoller([5]));
+    expect(regionalEvent.state.proxy_forces["ISRAEL-PROXY"]).toMatchObject({ sponsor: "US", force_factors: 2 });
+    expect(regionalEvent.state.proxy_forces["HAMAS-PROXY"]).toMatchObject({ sponsor: "IR", force_factors: 1 });
+    expect(regionalEvent.adjudications.length).toBeGreaterThan(0);
   });
 });
 

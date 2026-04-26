@@ -804,7 +804,7 @@ function RedActionPanel({
               </span>
             </button>
           ))}
-          <button type="button" onClick={onSkip}>
+          <button type="button" onClick={onSkip} disabled={!options.canSkip}>
             Skip Remaining
           </button>
         </div>

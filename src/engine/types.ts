@@ -286,6 +286,7 @@ export type EffectType =
   | "create_proxy_force"
   | "develop_proxy_force"
   | "employ_proxy_force"
+  | "adjust_scenario_flag_number"
   | "set_visibility"
   | "create_scenario_flag"
   | "schedule_future_effect"
@@ -423,6 +424,12 @@ export interface PendingReset {
   status: "pending_after_pinning" | "resolved";
 }
 
+export interface CardPlayRecord {
+  card_id: CardId;
+  player_id: PlayerId;
+  turn: number;
+}
+
 export interface GameState {
   scenario_title: string;
   turn: number;
@@ -447,6 +454,7 @@ export interface GameState {
   rolls: RollRecord[];
   pending_adjudications: AdjudicationRequest[];
   pending_resets: PendingReset[];
+  card_play_history: CardPlayRecord[];
   ground_truth: GroundTruthItem[];
   scenario_flags: Record<string, JsonValue>;
   summaries: {
