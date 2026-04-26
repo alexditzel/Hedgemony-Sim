@@ -262,7 +262,7 @@ export async function generateWhiteCellSummary(
       },
       {
         role: "user",
-        content: `Summary Kind: ${kind}\nTurn: ${turn}\n\n${printGameState(state)}`
+        content: `${printGameState(state)}\n\nSummary Kind: ${kind}\nTurn: ${turn}`
       },
     ],
     text: {

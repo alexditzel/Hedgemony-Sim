@@ -3351,12 +3351,12 @@ export function recordStateOfWorldSummary(
   return draft;
 }
 
-export function resolveWhiteCellAdjudication(
+export async function resolveWhiteCellAdjudication(
   state: GameState,
   adjudicationId: string,
   resolutionNote: string,
   effects: Effect[] = [],
-): { state: GameState; issues: RuleIssue[] } {
+): Promise<{ state: GameState; issues: RuleIssue[] }> {
   const draft = cloneState(state);
   const request = draft.pending_adjudications.find(
     (entry) => entry.id === adjudicationId,
