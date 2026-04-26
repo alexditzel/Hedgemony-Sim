@@ -3,7 +3,7 @@ import z from "zod";
 export type PlayerSide = "Blue" | "Red" | "Other";
 export const PlayerSideSchema = z.enum(["Blue", "Red", "Other"]);
 
-export type PlayerId = string;
+export type PlayerId = z.infer<typeof PlayerIdSchema>;
 export const PlayerIdSchema = z.string().brand<"PlayerId">();
 
 export type ForceId = string;
@@ -153,7 +153,7 @@ export type Location = {
   aor_id?: LocationId;
   parent_location_id?: LocationId;
   country_owner?: PlayerId;
-  home_for?: string[];
+  home_for?: PlayerId[];
   coordinates?: [number, number];
 };
 export const LocationSchema = z.object({
@@ -162,7 +162,7 @@ export const LocationSchema = z.object({
   aor_id: z.optional(LocationIdSchema),
   parent_location_id: z.optional(LocationIdSchema),
   country_owner: z.optional(PlayerIdSchema),
-  home_for: z.optional(z.array(z.string())),
+  home_for: z.optional(z.array(PlayerIdSchema)),
   coordinates: z.optional(z.tuple([z.number(), z.number()])),
 });
 
@@ -618,7 +618,7 @@ export const EffectTypeSchema = z.enum([
 
 export type Effect = {
   type: EffectType;
-  target: string;
+  target: PlayerId;
   value: JsonValue;
   timing:
     | "immediate"
@@ -633,7 +633,7 @@ export type Effect = {
 export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
   z.object({
     type: EffectTypeSchema,
-    target: z.string(),
+    target: PlayerIdSchema,
     value: JsonValueSchema,
     timing: z.enum([
       "immediate",
@@ -811,7 +811,7 @@ export type EventLogItem = {
   message: string;
   tags: RuleTag[];
   visibility: Visibility;
-  player_id?: PlayerId;
+  player_id?: PlayerId | "WhiteCell";
   card_id?: CardId;
   roll_id?: string;
 };
@@ -822,7 +822,7 @@ export const EventLogItemSchema = z.object({
   message: z.string(),
   tags: z.array(RuleTagSchema),
   visibility: VisibilitySchema,
-  player_id: z.optional(PlayerIdSchema),
+  player_id: z.optional(z.union([PlayerIdSchema, z.enum(["WhiteCell"])])),
   card_id: z.optional(CardIdSchema),
   roll_id: z.optional(z.string()),
 });
@@ -835,7 +835,7 @@ export type AdjudicationRequest = {
   rule_refs: string[];
   tags: RuleTag[];
   status: "pending" | "resolved";
-  requested_by?: PlayerId;
+  requested_by?: PlayerId | "WhiteCell";
   card_id?: CardId;
   payload?: JsonValue;
   resolution_note?: string;
