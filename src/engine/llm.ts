@@ -205,7 +205,7 @@ export async function generateRedPlayDecision(
       {
         role: "system",
         content:
-          "You are the Red player. Decide whether to play a signaled card or skip based on the current game state.",
+          "You are the Red player. Decide whether to play a signaled card or skip based on the current game state. Very critically, you must choose AT LEAST 1 investment and AT LEAST one action.",
       },
       {
         role: "user",
@@ -237,7 +237,7 @@ export async function generateRedSequenceDecision(
       {
         role: "system",
         content:
-          "You are the White Cell. Decide the turn sequence for the Red players based on the current game state.",
+          "You are the White Cell. Decide the turn sequence for the Red players based on the current game state. Very critically each player must appear in the sequence exactly once.",
       },
       { role: "user", content: printGameState(state) },
     ],
