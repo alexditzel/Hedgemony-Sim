@@ -3,6 +3,7 @@ import defaultScenario from "../src/data/defaultScenario.json";
 import { canViewLog, canViewRoll } from "../src/components/visibility";
 import {
   SequenceDiceRoller,
+  READINESS_LEVELS,
   advanceBlueToActions,
   annualResourceAllocation,
   beginBlueReadinessBill,
@@ -21,6 +22,7 @@ import {
   getProcurementCost,
   getProxyReliabilityChance,
   getProxyReliabilityResult,
+  getPlayersBySide,
   getReadinessBuyBackCost,
   getReadinessSustainmentCost,
   getRedChoiceOptions,
@@ -29,14 +31,19 @@ import {
   modernizeForces,
   payUsReadinessBill,
   playRedSignaledCard,
+  placeholderRedPlayDecision,
+  placeholderRedSequenceDecision,
+  placeholderRedSignalDecision,
+  placeholderWhiteCellAdjudicationResolution,
+  placeholderWhiteCellSummary,
   procureForces,
   recordGameStartSummary,
   recordStateOfWorldSummary,
   requestBlueFreePlayAdjudication,
   resolveCard,
   resolveProxyParticipation,
-  resolveWhiteCellAdjudication,
   setActiveBluePlayer,
+  setUsForceReadiness,
   restoreResetRedForces,
   retireUsForces,
   selectCrtAColumn,
@@ -200,6 +207,35 @@ describe("scenario loading and validation", () => {
 });
 
 describe("turn sequence and Red signaling", () => {
+  it("feeds Red and White Cell placeholder decisions through existing rules-engine interfaces", () => {
+    let state = recordGameStartSummary(freshState(), placeholderWhiteCellSummary("game_start", 1));
+    for (const player of getPlayersBySide(state, "Red")) {
+      const decision = placeholderRedSignalDecision(state, player.id);
+      const result = signalRedCards(state, player.id, decision.cardIds, decision.briefSummary, decision.activationIntent);
+      expect(result.issues).toHaveLength(0);
+      state = result.state;
+    }
+    expect(beginBlueReadinessBill(state).issues).toHaveLength(0);
+
+    const paid = payUsReadinessBill(beginBlueReadinessBill(state).state).state;
+    const actionPhase = advanceBlueToActions(paid).state;
+    const redPhase = beginRedInvestmentsAndActions(actionPhase, placeholderRedSequenceDecision(actionPhase), new SequenceDiceRoller([5]));
+    expect(redPhase.issues).toHaveLength(0);
+    expect(placeholderRedPlayDecision(redPhase.state, redPhase.state.active_player_id ?? "RU").kind).toBe("play");
+    expect(
+      placeholderWhiteCellAdjudicationResolution({
+        id: "adj-test",
+        turn: 1,
+        phase: "BlueReadinessBill",
+        reason: "table",
+        rule_refs: ["test"],
+        tags: ["WHITE_CELL_ADJUDICATION"],
+        status: "pending",
+        payload: { kind: "table_extension", table: "T", row: "R", column: "C" }
+      })
+    ).toBe("0");
+  });
+
   it("keeps each Red player's revealed cards separate and exposes remaining choices plus skip", () => {
     let state = recordGameStartSummary(freshState(), "Opening summary.");
     let result = signalRedCards(state, "RU", ["RU-ACT-01", "RU-ACT-02", "RU-INV-01"], "RU brief.");
@@ -338,6 +374,55 @@ describe("readiness, resources, and movement", () => {
     expect(paid.state.phase).toBe("BlueInvestmentsAndActions");
   });
 
+  it("lets the U.S. choose readiness levels before paying the readiness bill", () => {
+    const state = startTurnThroughBlueReadiness();
+    expect(READINESS_LEVELS).toEqual([50, 60, 70, 80, 90, 100]);
+
+    const configured = setUsForceReadiness(state, "US-CONUS-10", 50);
+    expect(configured.issues).toHaveLength(0);
+    expect(configured.state.forces["US-CONUS-10"].readiness_level).toBe(50);
+
+    const bill = calculateUsReadinessBill(configured.state);
+    expect(bill.issues).toHaveLength(0);
+    expect(bill.rows).toEqual(
+      expect.arrayContaining([
+        { location: "CONUS", readiness: 50, force_factors: 10, cost: 5 }
+      ])
+    );
+    expect(bill.total).toBe(20);
+
+    const paid = payUsReadinessBill(configured.state);
+    expect(paid.issues).toHaveLength(0);
+    expect(paid.state.players.US.resource_points).toBe(20);
+  });
+
+  it("keeps readiness bill rows stable for mixed CONUS and OCONUS readiness groups", () => {
+    let state = startTurnThroughBlueReadiness();
+    for (const [forceId, readiness] of [
+      ["US-PRC-1", 50],
+      ["US-DPRK-2", 50],
+      ["US-AFG-1", 50],
+      ["US-IRQ-1", 50],
+      ["US-EUCOM-1", 50],
+      ["US-CONUS-4", 50]
+    ] as const) {
+      const result = setUsForceReadiness(state, forceId, readiness);
+      expect(result.issues).toHaveLength(0);
+      state = result.state;
+    }
+
+    const bill = calculateUsReadinessBill(state);
+    expect(bill.issues).toHaveLength(0);
+    expect(bill.rows).toEqual(
+      expect.arrayContaining([
+        { location: "CONUS", readiness: 100, force_factors: 10, cost: 10 },
+        { location: "CONUS", readiness: 50, force_factors: 4, cost: 2 },
+        { location: "OCONUS", readiness: 50, force_factors: 6, cost: 6 }
+      ])
+    );
+    expect(bill.total).toBe(18);
+  });
+
   it("allows NATO/EU to become the active Blue player after the U.S. readiness bill", () => {
     const paid = payUsReadinessBill(startTurnThroughBlueReadiness());
     expect(paid.state.active_player_id).toBe("US");
@@ -455,7 +540,7 @@ describe("readiness, resources, and movement", () => {
     expect(bill.total).toBe(26);
   });
 
-  it("turns missing table rows into resolvable White Cell adjudications instead of dead ends", () => {
+  it("decomposes unprinted readiness sustainment totals into printed chunks", () => {
     let state = startTurnThroughBlueReadiness();
     state = {
       ...state,
@@ -480,17 +565,11 @@ describe("readiness, resources, and movement", () => {
         }
       }
     };
-    const blocked = payUsReadinessBill(state);
-    expect(blocked.issues[0].message).toContain("US_CONUS_READINESS_SUSTAINMENT_COST");
-    expect(blocked.state.pending_adjudications[0].payload).toEqual({
-      kind: "table_extension",
-      table: "US_CONUS_READINESS_SUSTAINMENT_COST",
-      row: "11",
-      column: "100"
-    });
-    const resolved = resolveWhiteCellAdjudication(blocked.state, blocked.state.pending_adjudications[0].id, "11");
-    expect(resolved.issues).toHaveLength(0);
-    const paid = payUsReadinessBill(resolved.state);
+    const bill = calculateUsReadinessBill(state);
+    expect(bill.issues).toHaveLength(0);
+    expect(bill.rows).toContainEqual({ location: "CONUS", readiness: 100, force_factors: 11, cost: 11 });
+
+    const paid = payUsReadinessBill(state);
     expect(paid.issues).toHaveLength(0);
     expect(paid.state.players.US.resource_points).toBe(14);
   });
@@ -637,7 +716,7 @@ describe("combat resolution and card effects", () => {
   it("requests White Cell adjudication for Blue free play and White Cell cards", () => {
     const paid = payUsReadinessBill(startTurnThroughBlueReadiness()).state;
     const requested = requestBlueFreePlayAdjudication(paid, "US", "Build a base with partner access.");
-    expect(requested.state.pending_adjudications.at(-1)?.reason).toContain("Blue free-play action");
+    expect(requested.state.pending_adjudications.at(-1)?.reason).toContain("Blue free-play request");
     const actionPhase = advanceBlueToActions(paid).state;
     const card = resolveCard(actionPhase, { acting_player_id: "US", card_id: "US-ACT-02" }, new SequenceDiceRoller([5]));
     expect(card.adjudications.length).toBeGreaterThan(0);

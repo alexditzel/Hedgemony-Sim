@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as L from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import {
   RandomDiceRoller,
+  READINESS_LEVELS,
   advanceBlueToActions,
   advanceRedActivePlayer,
   annualResourceAllocation,
@@ -12,10 +13,13 @@ import {
   createInitialGameState,
   getPlayerDeck,
   getPlayersBySide,
-  getRedChoiceOptions,
-  injectWhiteCellEvent,
   payUsReadinessBill,
   playRedSignaledCard,
+  placeholderRedPlayDecision,
+  placeholderRedSequenceDecision,
+  placeholderRedSignalDecision,
+  placeholderWhiteCellAdjudicationResolution,
+  placeholderWhiteCellSummary,
   procureForces,
   recordGameStartSummary,
   recordStateOfWorldSummary,
@@ -23,6 +27,7 @@ import {
   resolveCard,
   resolveWhiteCellAdjudication,
   setActiveBluePlayer,
+  setUsForceReadiness,
   signalRedCards,
   skipRemainingRedCards,
   validateState,
@@ -31,6 +36,7 @@ import {
   type ForceCommitment,
   type GameState,
   type PlayerId,
+  type ReadinessLevel,
   type Scenario
 } from "../engine";
 import { canViewLog, canViewRoll, type ViewerId } from "./visibility";
@@ -128,19 +134,14 @@ function makeTokenIcon(owner: string, count: number): L.DivIcon {
 
 export function GameView({ scenario }: GameViewProps) {
   const [state, setState] = useState<GameState>(() => createInitialGameState(scenario));
-  const [selectedSignals, setSelectedSignals] = useState<Record<PlayerId, CardId[]>>({});
-  const [summaryText, setSummaryText] = useState("");
-  const [briefText, setBriefText] = useState("");
   const [freePlayIntent, setFreePlayIntent] = useState("");
-  const [whiteCellText, setWhiteCellText] = useState("");
-  const [redSequenceDraft, setRedSequenceDraft] = useState<PlayerId[]>([]);
   const [viewer, setViewer] = useState<ViewerId>("Public");
   const [message, setMessage] = useState<UiMessage | undefined>();
   const roller = useMemo(() => new RandomDiceRoller(), []);
 
   const validationIssues = validateState(state);
-  const activeRedPlayer = state.phase === "RedInvestmentsAndActions" ? state.active_player_id : undefined;
   const activePlayer = state.active_player_id ? state.players[state.active_player_id] : undefined;
+  const activeBluePlayer = activePlayer?.side === "Blue" ? activePlayer : undefined;
   const latestRoll = state.rolls
     .slice()
     .reverse()
@@ -167,19 +168,78 @@ export function GameView({ scenario }: GameViewProps) {
     return true;
   }
 
-  function toggleSignal(playerId: PlayerId, cardId: CardId): void {
-    const current = selectedSignals[playerId] ?? [];
-    const next = current.includes(cardId) ? current.filter((id) => id !== cardId) : [...current, cardId].slice(0, 3);
-    setSelectedSignals({ ...selectedSignals, [playerId]: next });
-  }
-
-  function submitSignal(playerId: PlayerId): void {
-    const result = signalRedCards(state, playerId, selectedSignals[playerId] ?? [], briefText);
-    if (!showIssues(result.issues)) {
-      applyResult(result.state);
-      setBriefText("");
+  useEffect(() => {
+    const pendingAdjudication = state.pending_adjudications.find((entry) => entry.status === "pending");
+    if (pendingAdjudication) {
+      const result = resolveWhiteCellAdjudication(
+        state,
+        pendingAdjudication.id,
+        placeholderWhiteCellAdjudicationResolution(pendingAdjudication)
+      );
+      if (!showIssues(result.issues)) {
+        applyResult(result.state);
+      }
+      return;
     }
-  }
+
+    if (state.phase === "GameStart") {
+      applyResult(recordGameStartSummary(state, placeholderWhiteCellSummary("game_start", state.turn)));
+      return;
+    }
+
+    if (state.phase === "RedSignaling") {
+      const nextPlayer = getPlayersBySide(state, "Red").find((player) => !state.red_signals[player.id]?.completed);
+      if (nextPlayer) {
+        const decision = placeholderRedSignalDecision(state, nextPlayer.id);
+        const result = signalRedCards(state, nextPlayer.id, decision.cardIds, decision.briefSummary, decision.activationIntent);
+        if (!showIssues(result.issues)) {
+          applyResult(result.state);
+        }
+        return;
+      }
+
+      const result = beginBlueReadinessBill(state);
+      if (!showIssues(result.issues)) {
+        applyResult(result.state);
+      }
+      return;
+    }
+
+    if (state.phase === "RedInvestmentsAndActions" && state.active_player_id) {
+      const playerId = state.active_player_id;
+      if (state.red_plays[playerId]?.skipped) {
+        applyResult(advanceRedActivePlayer(state));
+        return;
+      }
+
+      const decision = placeholderRedPlayDecision(state, playerId);
+      if (decision.kind === "play") {
+        const result = playRedSignaledCard(state, playerId, decision.cardId, roller, commitmentsFor(decision.cardId));
+        if (!showIssues(result.issues.filter((issue) => issue.severity === "error"))) {
+          applyResult(result.state);
+        }
+        return;
+      }
+
+      const result = skipRemainingRedCards(state, playerId);
+      if (!showIssues(result.issues)) {
+        applyResult(result.state);
+      }
+      return;
+    }
+
+    if (state.phase === "AnnualResourcesAllocation") {
+      const result = annualResourceAllocation(state, roller);
+      if (!showIssues(result.issues)) {
+        applyResult(result.state);
+      }
+      return;
+    }
+
+    if (state.phase === "StateOfWorldSummary") {
+      applyResult(recordStateOfWorldSummary(state, placeholderWhiteCellSummary("state_of_world", state.turn)));
+    }
+  }, [state, roller]);
 
   function playBlueCard(card: Card, playerId: PlayerId): void {
     if (card.id === "US-INV-02") {
@@ -196,47 +256,9 @@ export function GameView({ scenario }: GameViewProps) {
       }
       return;
     }
-    if (card.id === "US-ACT-02") {
-      const request = requestBlueFreePlayAdjudication(state, playerId, freePlayIntent || "Blue free-play action");
-      applyResult(request.state);
-      setFreePlayIntent("");
-      return;
-    }
     const result = resolveCard(state, { acting_player_id: playerId, card_id: card.id, ...commitmentsFor(card.id) }, roller);
     if (!showIssues(result.issues.filter((issue) => issue.severity === "error"))) {
       applyResult(result.state);
-    }
-  }
-
-  function playRedCard(card: Card): void {
-    if (!activeRedPlayer) {
-      return;
-    }
-    const result = playRedSignaledCard(state, activeRedPlayer, card.id, roller, commitmentsFor(card.id));
-    if (!showIssues(result.issues.filter((issue) => issue.severity === "error"))) {
-      applyResult(result.state);
-    }
-  }
-
-  function skipRed(): void {
-    if (!activeRedPlayer) {
-      return;
-    }
-    const result = skipRemainingRedCards(state, activeRedPlayer);
-    if (!showIssues(result.issues)) {
-      applyResult(result.state);
-    }
-  }
-
-  function resolveFirstAdjudication(): void {
-    const request = state.pending_adjudications.find((entry) => entry.status === "pending");
-    if (!request) {
-      return;
-    }
-    const result = resolveWhiteCellAdjudication(state, request.id, whiteCellText || "Resolved by White Cell.");
-    if (!showIssues(result.issues)) {
-      applyResult(result.state);
-      setWhiteCellText("");
     }
   }
 
@@ -308,39 +330,13 @@ export function GameView({ scenario }: GameViewProps) {
         <section className="active-panel">
           <PanelHeader state={state} activePlayerName={activePlayer?.label} latestRollFormula={latestRoll?.formula} />
           {message && <p className={`message ${message.tone}`}>{message.text}</p>}
-          {state.pending_adjudications.some((entry) => entry.status === "pending") && (
-            <WhiteCellPanel
-              request={state.pending_adjudications.find((entry) => entry.status === "pending")}
-              value={whiteCellText}
-              onChange={setWhiteCellText}
-              onResolve={resolveFirstAdjudication}
-            />
-          )}
-          {state.phase === "GameStart" && (
-            <GameStartPanel
-              value={summaryText}
-              onChange={setSummaryText}
-              onSubmit={() => {
-                applyResult(recordGameStartSummary(state, summaryText || "White Cell summarized the opening state of the world."));
-                setSummaryText("");
-              }}
-            />
-          )}
-          {state.phase === "RedSignaling" && (
-            <RedSignalingPanel
-              state={state}
-              selectedSignals={selectedSignals}
-              briefText={briefText}
-              onBriefChange={setBriefText}
-              onToggleSignal={toggleSignal}
-              onSubmitSignal={submitSignal}
-              onBeginBlue={() => {
-                const result = beginBlueReadinessBill(state);
-                if (!showIssues(result.issues)) {
-                  applyResult(result.state);
-                }
-              }}
-            />
+          {(state.phase === "GameStart" ||
+            state.phase === "RedSignaling" ||
+            state.phase === "RedInvestmentsAndActions" ||
+            state.phase === "AnnualResourcesAllocation" ||
+            state.phase === "StateOfWorldSummary" ||
+            state.pending_adjudications.some((entry) => entry.status === "pending")) && (
+            <p className="muted">Resolving automated Red and White Cell steps.</p>
           )}
           {state.phase === "BlueReadinessBill" && (
             <ReadinessPanel
@@ -353,9 +349,15 @@ export function GameView({ scenario }: GameViewProps) {
                   if (result.issues.some((issue) => issue.severity === "adjudication")) {
                     setMessage({
                       tone: "info",
-                      text: "White Cell table adjudication is required before the readiness bill can be paid. Enter a numeric table value, resolve it, then pay again."
+                      text: "White Cell table adjudication is being resolved automatically."
                     });
                   }
+                }
+              }}
+              onSetReadiness={(forceId, readinessLevel) => {
+                const result = setUsForceReadiness(state, forceId, readinessLevel);
+                if (!showIssues(result.issues)) {
+                  applyResult(result.state);
                 }
               }}
             />
@@ -378,54 +380,18 @@ export function GameView({ scenario }: GameViewProps) {
                   applyResult(result.state);
                 }
               }}
-              onInjectEvent={(cardId) => {
-                const result = injectWhiteCellEvent(state, cardId, "Injected from White Cell panel.", roller);
-                if (!showIssues(result.issues.filter((issue) => issue.severity === "error"))) {
-                  applyResult(result.state);
-                }
+              onFreePlay={(playerId, subphase) => {
+                const fallback = `Blue free-play ${subphase.toLowerCase()}`;
+                const request = requestBlueFreePlayAdjudication(state, playerId, freePlayIntent || fallback);
+                applyResult(request.state);
+                setFreePlayIntent("");
               }}
               onEndBlue={() => {
-                const sequence = state.rules_in_effect.random_red_sequence
-                  ? undefined
-                  : redSequenceDraft.length > 0
-                    ? redSequenceDraft
-                    : getPlayersBySide(state, "Red").map((player) => player.id);
+                const sequence = state.rules_in_effect.random_red_sequence ? undefined : placeholderRedSequenceDecision(state);
                 const result = beginRedInvestmentsAndActions(state, sequence, roller);
                 if (!showIssues(result.issues.filter((issue) => issue.severity === "error"))) {
                   applyResult(result.state);
-                  setRedSequenceDraft([]);
                 }
-              }}
-              redSequenceDraft={redSequenceDraft}
-              onRedSequenceChange={setRedSequenceDraft}
-            />
-          )}
-          {state.phase === "RedInvestmentsAndActions" && activeRedPlayer && (
-            <RedActionPanel
-              state={state}
-              playerId={activeRedPlayer}
-              onPlayCard={playRedCard}
-              onSkip={skipRed}
-              onNext={() => applyResult(advanceRedActivePlayer(state))}
-            />
-          )}
-          {state.phase === "AnnualResourcesAllocation" && (
-            <AnnualResourcesPanel
-              onAllocate={() => {
-                const result = annualResourceAllocation(state, roller);
-                if (!showIssues(result.issues)) {
-                  applyResult(result.state);
-                }
-              }}
-            />
-          )}
-          {state.phase === "StateOfWorldSummary" && (
-            <StateSummaryPanel
-              value={summaryText}
-              onChange={setSummaryText}
-              onSubmit={() => {
-                applyResult(recordStateOfWorldSummary(state, summaryText || "White Cell summarized the state of the world."));
-                setSummaryText("");
               }}
             />
           )}
@@ -499,10 +465,10 @@ export function GameView({ scenario }: GameViewProps) {
       </aside>
 
       <footer className="bottom-row">
-        <strong>{activePlayer ? `${activePlayer.label} Cards` : "Active Player Cards"}</strong>
+        <strong>{activeBluePlayer ? `${activeBluePlayer.label} Cards` : "Blue Player Cards"}</strong>
         <div className="hand-strip">
-          {activePlayer ? (
-            getPlayerDeck(state, activePlayer.id).map((card) => (
+          {activeBluePlayer ? (
+            getPlayerDeck(state, activeBluePlayer.id).map((card) => (
               <span key={card.id} className="hand-card">
                 {card.id}: {card.title}
               </span>
@@ -542,87 +508,45 @@ function PanelHeader({
   );
 }
 
-function GameStartPanel({ value, onChange, onSubmit }: { value: string; onChange: (value: string) => void; onSubmit: () => void }) {
-  return (
-    <div className="control-stack">
-      <label>
-        Opening White Cell summary
-        <textarea value={value} onChange={(event) => onChange(event.target.value)} />
-      </label>
-      <button type="button" onClick={onSubmit}>
-        Record Summary
-      </button>
-    </div>
-  );
-}
-
-function RedSignalingPanel({
+function ReadinessPanel({
   state,
-  selectedSignals,
-  briefText,
-  onBriefChange,
-  onToggleSignal,
-  onSubmitSignal,
-  onBeginBlue
+  onPay,
+  onSetReadiness
 }: {
   state: GameState;
-  selectedSignals: Record<PlayerId, CardId[]>;
-  briefText: string;
-  onBriefChange: (value: string) => void;
-  onToggleSignal: (playerId: PlayerId, cardId: CardId) => void;
-  onSubmitSignal: (playerId: PlayerId) => void;
-  onBeginBlue: () => void;
+  onPay: () => void;
+  onSetReadiness: (forceId: string, readinessLevel: ReadinessLevel) => void;
 }) {
-  const redPlayers = getPlayersBySide(state, "Red");
-  const nextPlayer = redPlayers.find((player) => !state.red_signals[player.id]?.completed);
-  if (!nextPlayer) {
-    return (
-      <div className="control-stack">
-        <p>All Red players have signaled. The revealed cards remain separated by Red player in the top row.</p>
-        <button type="button" onClick={onBeginBlue}>
-          Begin Blue Readiness Bill
-        </button>
-      </div>
-    );
-  }
-  const selected = selectedSignals[nextPlayer.id] ?? [];
-  return (
-    <div className="control-stack">
-      <h2>{nextPlayer.label} Signaling</h2>
-      <p className="muted">Choose up to three. If choosing three, include at least one Action and one Investment.</p>
-      <div className="card-list">
-        {getPlayerDeck(state, nextPlayer.id).map((card) => (
-          <label key={card.id} className="card-choice">
-            <input
-              type="checkbox"
-              checked={selected.includes(card.id)}
-              onChange={() => onToggleSignal(nextPlayer.id, card.id)}
-            />
-            <span>
-              <strong>{card.title}</strong>
-              <small>
-                {card.id} · {card.type} · Cost {typeof card.cost.resource_points === "number" ? card.cost.resource_points : "card"}
-              </small>
-            </span>
-          </label>
-        ))}
-      </div>
-      <label>
-        Intelligence-style brief
-        <textarea value={briefText} onChange={(event) => onBriefChange(event.target.value)} />
-      </label>
-      <button type="button" onClick={() => onSubmitSignal(nextPlayer.id)}>
-        Signal Selected Cards
-      </button>
-    </div>
-  );
-}
-
-function ReadinessPanel({ state, onPay }: { state: GameState; onPay: () => void }) {
   const bill = calculateUsReadinessBill(state);
+  const usForces = Object.values(state.forces)
+    .filter((force) => force.owner === "US")
+    .sort((left, right) => left.id.localeCompare(right.id));
   return (
     <div className="control-stack">
       <h2>U.S. Readiness Bill</h2>
+      <div className="table-like">
+        {usForces.map((force) => {
+          const location = state.locations[force.location_id];
+          const readiness = force.readiness_level ?? 100;
+          return (
+            <div key={force.id}>
+              <span>{force.id}</span>
+              <span>{location?.label ?? force.location_id}</span>
+              <span>{force.force_factors} FF</span>
+              <select
+                value={readiness}
+                onChange={(event) => onSetReadiness(force.id, Number(event.target.value) as ReadinessLevel)}
+              >
+                {READINESS_LEVELS.map((level) => (
+                  <option value={level} key={level}>
+                    {level}%
+                  </option>
+                ))}
+              </select>
+            </div>
+          );
+        })}
+      </div>
       <div className="table-like">
         {bill.rows.map((row) => (
           <div key={`${row.location}-${row.readiness}`}>
@@ -648,10 +572,8 @@ function BlueActionPanel({
   onPlayCard,
   onSelectPlayer,
   onAdvanceToActions,
-  onInjectEvent,
-  onEndBlue,
-  redSequenceDraft,
-  onRedSequenceChange
+  onFreePlay,
+  onEndBlue
 }: {
   state: GameState;
   freePlayIntent: string;
@@ -659,18 +581,12 @@ function BlueActionPanel({
   onPlayCard: (card: Card, playerId: PlayerId) => void;
   onSelectPlayer: (playerId: PlayerId) => void;
   onAdvanceToActions: () => void;
-  onInjectEvent: (cardId: CardId) => void;
+  onFreePlay: (playerId: PlayerId, subphase: "Investments" | "Actions") => void;
   onEndBlue: () => void;
-  redSequenceDraft: PlayerId[];
-  onRedSequenceChange: (sequence: PlayerId[]) => void;
 }) {
   const bluePlayers = getPlayersBySide(state, "Blue");
-  const redPlayers = getPlayersBySide(state, "Red");
-  const currentRedSequence =
-    redSequenceDraft.length === redPlayers.length ? redSequenceDraft : redPlayers.map((player) => player.id);
   const activeBluePlayer =
     bluePlayers.find((player) => player.id === state.active_player_id) ?? bluePlayers[0];
-  const events = Object.values(state.cards).filter((card) => card.type === "InternationalEvent" || card.type === "DomesticEvent");
   const visibleCards = activeBluePlayer
     ? getPlayerDeck(state, activeBluePlayer.id).filter((card) =>
         state.blue_subphase === "Actions" ? card.type === "Action" : card.type === "Investment"
@@ -692,9 +608,14 @@ function BlueActionPanel({
         ))}
       </div>
       <label>
-        {activeBluePlayer?.label ?? "Blue"} free-play intent
+        {activeBluePlayer?.label ?? "Blue"} free-play {state.blue_subphase?.toLowerCase() ?? "request"}
         <input value={freePlayIntent} onChange={(event) => onFreePlayIntent(event.target.value)} />
       </label>
+      {activeBluePlayer && state.blue_subphase && (
+        <button type="button" onClick={() => onFreePlay(activeBluePlayer.id, state.blue_subphase ?? "Investments")}>
+          Request Free Play {state.blue_subphase === "Actions" ? "Action" : "Investment"}
+        </button>
+      )}
       {activeBluePlayer && (
         <section className="player-section">
           <h3>{activeBluePlayer.label}</h3>
@@ -713,159 +634,11 @@ function BlueActionPanel({
           Begin Blue Actions
         </button>
       )}
-      {state.blue_subphase === "Actions" && !state.rules_in_effect.random_red_sequence && (
-        <section className="player-section">
-          <h3>White Cell Red Sequence</h3>
-          <div className="sequence-list">
-            {currentRedSequence.map((playerId, index) => (
-              <div key={playerId} className="sequence-row">
-                <span>
-                  {index + 1}. {state.players[playerId]?.label ?? playerId}
-                </span>
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = [...currentRedSequence];
-                      [next[index - 1], next[index]] = [next[index], next[index - 1]];
-                      onRedSequenceChange(next);
-                    }}
-                    disabled={index === 0}
-                    aria-label={`Move ${state.players[playerId]?.label ?? playerId} earlier`}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = [...currentRedSequence];
-                      [next[index], next[index + 1]] = [next[index + 1], next[index]];
-                      onRedSequenceChange(next);
-                    }}
-                    disabled={index === currentRedSequence.length - 1}
-                    aria-label={`Move ${state.players[playerId]?.label ?? playerId} later`}
-                  >
-                    ↓
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-      <section className="player-section">
-        <h3>White Cell Event Injection</h3>
-        <div className="action-grid">
-          {events.map((card) => (
-            <button type="button" key={card.id} onClick={() => onInjectEvent(card.id)}>
-              <strong>{card.title}</strong>
-              <span>{card.type}</span>
-            </button>
-          ))}
-        </div>
-      </section>
       {state.blue_subphase === "Actions" && (
         <button type="button" onClick={onEndBlue}>
           End Blue Actions
         </button>
       )}
     </div>
-  );
-}
-
-function RedActionPanel({
-  state,
-  playerId,
-  onPlayCard,
-  onSkip,
-  onNext
-}: {
-  state: GameState;
-  playerId: PlayerId;
-  onPlayCard: (card: Card) => void;
-  onSkip: () => void;
-  onNext: () => void;
-}) {
-  const signal = state.red_signals[playerId];
-  const play = state.red_plays[playerId];
-  const options = getRedChoiceOptions(state, playerId);
-  return (
-    <div className="control-stack">
-      <h2>{state.players[playerId].label} Investments and Actions</h2>
-      <p>Chosen signal set: {signal?.card_ids.map((id) => state.cards[id]?.title ?? id).join(", ")}</p>
-      <p>Played: {play?.played_card_ids.length ? play.played_card_ids.join(", ") : "none"}</p>
-      {!play?.skipped && (
-        <div className="action-grid">
-          {options.remaining.map((card) => (
-            <button type="button" key={card.id} onClick={() => onPlayCard(card)}>
-              <strong>{card.title}</strong>
-              <span>
-                {card.type} · {card.id}
-              </span>
-            </button>
-          ))}
-          <button type="button" onClick={onSkip} disabled={!options.canSkip}>
-            Skip Remaining
-          </button>
-        </div>
-      )}
-      {play?.skipped && (
-        <button type="button" onClick={onNext}>
-          Next Red Player
-        </button>
-      )}
-    </div>
-  );
-}
-
-function AnnualResourcesPanel({ onAllocate }: { onAllocate: () => void }) {
-  return (
-    <div className="control-stack">
-      <h2>Annual Resource Allocation</h2>
-      <p>Roll the U.S. DoD budget variation and add each player’s per-turn RP allocation.</p>
-      <button type="button" onClick={onAllocate}>
-        Allocate Resources
-      </button>
-    </div>
-  );
-}
-
-function StateSummaryPanel({ value, onChange, onSubmit }: { value: string; onChange: (value: string) => void; onSubmit: () => void }) {
-  return (
-    <div className="control-stack">
-      <h2>State of the World Summary</h2>
-      <textarea value={value} onChange={(event) => onChange(event.target.value)} />
-      <button type="button" onClick={onSubmit}>
-        Record Summary and Advance
-      </button>
-    </div>
-  );
-}
-
-function WhiteCellPanel({
-  request,
-  value,
-  onChange,
-  onResolve
-}: {
-  request?: { reason: string; rule_refs: string[] };
-  value: string;
-  onChange: (value: string) => void;
-  onResolve: () => void;
-}) {
-  if (!request) {
-    return null;
-  }
-  return (
-    <section className="white-cell">
-      <h2>White Cell Evaluation</h2>
-      <p>{request.reason}</p>
-      <small>{request.rule_refs.join(", ")}</small>
-      <small>For table adjudications, enter the numeric table value to add as a scenario-defined extension.</small>
-      <textarea value={value} onChange={(event) => onChange(event.target.value)} />
-      <button type="button" onClick={onResolve}>
-        Resolve Adjudication
-      </button>
-    </section>
   );
 }

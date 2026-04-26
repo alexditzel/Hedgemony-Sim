@@ -46,7 +46,7 @@ import type {
   Visibility
 } from "./types";
 
-const READINESS_LEVELS: ReadinessLevel[] = [50, 60, 70, 80, 90, 100];
+export const READINESS_LEVELS: ReadinessLevel[] = [50, 60, 70, 80, 90, 100];
 const DEFAULT_RED_SEQUENCE: PlayerId[] = ["RU", "PRC", "DPRK", "IR"];
 
 export interface ReadinessBillRow {
@@ -542,6 +542,32 @@ export function calculateUsReadinessBill(state: GameState): ReadinessBill {
     }
   }
   return { total, rows, issues };
+}
+
+export function setUsForceReadiness(
+  state: GameState,
+  forceId: ForceId,
+  readinessLevel: ReadinessLevel
+): { state: GameState; issues: RuleIssue[] } {
+  const draft = cloneState(state);
+  const issues: RuleIssue[] = [];
+  const phase = phaseIssue(draft, "BlueReadinessBill");
+  if (phase) {
+    issues.push(phase);
+  }
+  const force = draft.forces[forceId];
+  if (!force || force.owner !== "US") {
+    issues.push(makeIssue(`${forceId} is not a U.S. force.`, ["15 U.S. Readiness"]));
+  }
+  if (!READINESS_LEVELS.includes(readinessLevel)) {
+    issues.push(makeIssue(`${readinessLevel}% is not a supported U.S. readiness level.`, ["15 U.S. Readiness"]));
+  }
+  if (issues.length > 0) {
+    return { state, issues };
+  }
+  draft.forces[forceId].readiness_level = readinessLevel;
+  appendLog(draft, `${forceId} readiness set to ${readinessLevel}%.`, ["DETERMINISTIC"], "public", { player_id: "US" });
+  return { state: draft, issues };
 }
 
 function spendResources(
@@ -2264,7 +2290,7 @@ export function requestBlueFreePlayAdjudication(
   const draft = cloneState(state);
   const request = addAdjudication(
     draft,
-    `Blue free-play action requires translation into game terms: ${intent}`,
+    `Blue free-play request requires translation into game terms: ${intent}`,
     ["5.3 Blue Investments and Actions Phase", "19 Digital Adjudication"],
     { intent },
     playerId

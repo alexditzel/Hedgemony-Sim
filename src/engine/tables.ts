@@ -68,6 +68,36 @@ function lookupNested<T>(
   return { ok: true, value: rowValues[column] as T };
 }
 
+function lookupReadinessSustainmentCost(
+  tableName: string,
+  table: Record<number, Record<ReadinessLevel, number>>,
+  ffs: number,
+  readiness: ReadinessLevel,
+  extensions?: TableExtension[]
+): RuleValue<number> {
+  const exactExtension = extensionValue<number>(extensions, tableName, ffs, readiness);
+  if (exactExtension) {
+    return exactExtension;
+  }
+  if (table[ffs]?.[readiness] !== undefined) {
+    return { ok: true, value: table[ffs][readiness] };
+  }
+  const printedRows = Object.keys(table)
+    .map(Number)
+    .sort((left, right) => right - left);
+  let remaining = ffs;
+  let total = 0;
+  while (remaining > 0) {
+    const row = printedRows.find((printedRow) => printedRow <= remaining);
+    if (!row || table[row]?.[readiness] === undefined) {
+      return { ok: false, issue: issue(tableName, remaining, readiness) };
+    }
+    total += table[row][readiness];
+    remaining -= row;
+  }
+  return { ok: true, value: total };
+}
+
 const conusDeploymentCost: Record<number, Record<DeploymentMode, number>> = {
   1: { proactive: 1, reactive: 2 },
   2: { proactive: 1, reactive: 2 },
@@ -338,11 +368,11 @@ export function getReadinessSustainmentCost(
   location: ReadinessLocation,
   extensions?: TableExtension[]
 ): RuleValue<number> {
-  return lookupNested(
+  return lookupReadinessSustainmentCost(
     `US_${location}_READINESS_SUSTAINMENT_COST`,
     location === "CONUS" ? sustainmentConus : sustainmentOconus,
     ffs,
-    String(readiness),
+    readiness,
     extensions
   );
 }
