@@ -2,13 +2,15 @@ import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import z from "zod";
 import type { ReviewItem } from "../components/diff";
-import { getPlayerDeck } from "./rules";
 import {
   CardIdSchema,
+  EffectSchema,
   entryValue,
   entryValues,
+  getPlayerDeck,
   PlayerIdSchema,
   type AdjudicationRequest,
+  type AdjudicationResolution,
   type CardId,
   type GameState,
   type PlayerId,
@@ -321,30 +323,39 @@ export async function generateReviewItems(state: GameState, summary: string): Pr
   return items;
 }
 
-const ResolutionSchema = z.object({ resolution: z.string() });
+
+
+const ResolutionSchema = z.object({
+  resolution: z.string().describe("Natural language description of the resolution."),
+  effects: z.array(EffectSchema).describe("List of game engine effects to apply."),
+});
 
 export async function generateWhiteCellAdjudicationResolution(
   request: AdjudicationRequest,
   state: GameState,
-): Promise<string> {
+): Promise<AdjudicationResolution> {
   const response = await openai.responses.parse({
     model: medium_model,
     input: [
       {
         role: "system",
         content:
-          "You are the White Cell. Resolve the adjudication request in rules-engine-compatible terms.",
+          "You are the White Cell (adjudicator) in a military/political simulation game. Your task is to resolve an adjudication request by providing a natural language summary and a list of structured game effects. " +
+          "Focus on making the resolution semantically meaningful and thematic while strictly adhering to the game's effect schema. " +
+          "Common effects include: adjust_resource_points, adjust_influence_points, adjust_national_tech_level, move_forces, set_readiness_level, pin_forces, etc. " +
+          "If the request is for a table adjustment, make sure to include the numeric result in the resolution text.",
       },
       {
         role: "user",
-        content: `${printAdjudicationRequest(request)}\n\n${printGameState(state)}\n\nMake sure to write your adjudication in natural easily-understandable language that reads well and describes semantically what's going on at a high level.`
+        content: `${printAdjudicationRequest(request)}\n\n${printGameState(state)}\n\nProvide the resolution and any applicable effects.`
       },
     ],
     text: {
-      format: zodTextFormat(ResolutionSchema, "resolution"),
+      format: zodTextFormat(ResolutionSchema, "resolution_and_effects"),
     },
   });
-  return response.output_parsed!.resolution;
+
+  return response.output_parsed!;
 }
 
 const EventNoteSchema = z.object({ note: z.string() });

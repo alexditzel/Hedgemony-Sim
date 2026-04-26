@@ -1107,3 +1107,19 @@ export const CombatFactorsResultSchema = z.object({
   breakdown: z.array(CombatFactorsBreakdownSchema),
   adjudications: z.array(RuleIssueSchema),
 });
+export type AdjudicationResolution = {
+  resolution: string;
+  effects: Effect[];
+};
+
+export function getPlayerDeck(state: GameState, playerId: PlayerId): Card[] {
+  const player = entryValue(state.players, playerId);
+  if (!player) return [];
+  const ids = [
+    ...player.card_decks.action_investment,
+    ...player.card_decks.domestic_event,
+  ];
+  return ids
+    .map((id) => entryValue(state.cards, id))
+    .filter((c): c is Card => Boolean(c));
+}

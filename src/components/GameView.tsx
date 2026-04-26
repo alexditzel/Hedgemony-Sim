@@ -14,7 +14,6 @@ import {
   generateRedSequenceDecision,
   generateRedSignalDecision,
   generateReviewItems,
-  generateWhiteCellAdjudicationResolution,
   generateWhiteCellSummary,
   getPlayerDeck,
   getPlayersBySide,
@@ -330,8 +329,7 @@ export function GameView({ scenario }: GameViewProps) {
           const snapshot = takeSnapshot(state);
           const result = await resolveWhiteCellAdjudication(
             state,
-            pendingAdj.id,
-            await generateWhiteCellAdjudicationResolution(pendingAdj, state)
+            pendingAdj.id
           );
           if (showIssues(result.issues)) return;
           const diff = diffStates(snapshot, result.state);

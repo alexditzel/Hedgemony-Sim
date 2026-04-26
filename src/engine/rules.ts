@@ -1,3 +1,4 @@
+import { generateWhiteCellAdjudicationResolution } from "./llm";
 import { rollD10Record, type DiceRoller } from "./dice";
 import {
   applyReadinessImpact,
@@ -414,13 +415,6 @@ export function getPlayersBySide(
   side: "Blue" | "Red",
 ): PlayerState[] {
   return entryValues(state.players).filter((player) => player.side === side);
-}
-
-export function getPlayerDeck(state: GameState, playerId: PlayerId): Card[] {
-  const ids = entryValue(state.players, playerId)?.card_decks.action_investment ?? [];
-  return ids
-    .map((id) => entryValue(state.cards, id))
-    .filter((card): card is Card => Boolean(card));
 }
 
 export function recordGameStartSummary(
@@ -3354,8 +3348,8 @@ export function recordStateOfWorldSummary(
 export async function resolveWhiteCellAdjudication(
   state: GameState,
   adjudicationId: string,
-  resolutionNote: string,
-  effects: Effect[] = [],
+  resolutionNote?: string,
+  effects?: Effect[],
 ): Promise<{ state: GameState; issues: RuleIssue[] }> {
   const draft = cloneState(state);
   const request = draft.pending_adjudications.find(
@@ -3371,14 +3365,29 @@ export async function resolveWhiteCellAdjudication(
       ],
     };
   }
+
+  let finalNote = resolutionNote;
+  let finalEffects = effects ?? [];
+
+  // Intelligent resolution: if note is missing or effects are missing but note is provided,
+  // we can use the LLM to assist.
+  if (finalNote === undefined || (finalNote.trim() !== "" && finalEffects.length === 0)) {
+    // We only use the LLM if specifically requested by omitting arguments,
+    // or if we have a note but no effects (inferring effects from note).
+    const aiResult = await generateWhiteCellAdjudicationResolution(request, draft);
+    finalNote = finalNote || aiResult.resolution;
+    finalEffects = [...finalEffects, ...aiResult.effects];
+  }
+
   request.status = "resolved";
-  request.resolution_note = resolutionNote;
+  request.resolution_note = finalNote;
+
   if (
     request.payload !== undefined &&
     isRecord(request.payload) &&
     request.payload.kind === "table_extension"
   ) {
-    const value = Number(resolutionNote.match(/-?\d+/)?.[0]);
+    const value = Number(finalNote.match(/-?\d+/)?.[0]);
     if (!Number.isFinite(value)) {
       return {
         state,
@@ -3400,9 +3409,10 @@ export async function resolveWhiteCellAdjudication(
       tag: "SCENARIO_DEFINED",
     });
   }
+
   appendLog(
     draft,
-    `White Cell resolved adjudication: ${resolutionNote}`,
+    `White Cell resolved adjudication: ${finalNote}`,
     ["WHITE_CELL_ADJUDICATION"],
     "public",
     {
@@ -3410,7 +3420,8 @@ export async function resolveWhiteCellAdjudication(
       card_id: request.card_id,
     },
   );
-  const applied = applyEffects(draft, effects, request.requested_by ?? undefined);
+
+  const applied = applyEffects(draft, finalEffects, request.requested_by ?? undefined);
   return { state: applied.state, issues: applied.issues };
 }
 
