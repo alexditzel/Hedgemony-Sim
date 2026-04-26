@@ -23,10 +23,7 @@ export type CapabilityId =
   | "NUCLEAR"
   | string;
 
-export const CapabilityIdSchema = z.union([
-  z.enum(["C4ISR", "LRF", "SOF", "IAMD_BMD", "NUCLEAR"]),
-  z.string(),
-]);
+export const CapabilityIdSchema = z.string();
 
 export type RuleTag =
   | "DETERMINISTIC"
@@ -130,7 +127,7 @@ export const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
   z.union([
     JsonPrimitiveSchema,
     z.array(JsonValueSchema),
-    z.record(z.string(), JsonValueSchema),
+    z.object({}).catchall(JsonValueSchema),
   ]),
 );
 

@@ -344,6 +344,7 @@ export async function generateWhiteCellAdjudicationResolution(
 
 const EventNoteSchema = z.object({ note: z.string() });
 
+// TODO: look up card by ID and then print card details in prompt
 export async function generateWhiteCellEventNote(
   cardId: CardId,
   state: GameState,
@@ -368,7 +369,7 @@ export async function generateWhiteCellEventNote(
   return response.output_parsed!.note;
 }
 
-const EventDecisionSchema = z.object({ cardId: z.optional(CardIdSchema) });
+const EventDecisionSchema = z.object({ cardId: z.nullable(CardIdSchema) });
 
 export async function generateWhiteCellEventDecision(
   state: GameState,
