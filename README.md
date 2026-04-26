@@ -2,6 +2,22 @@
 
 Digital war game simulator based on RAND Corporation's "Hedgemony". This project translates complex tabletop rules into an automated engine powered by large language models.
 
+### Running
+
+Put credentials into `.env`:
+
+```
+VITE_OPENAI_API_KEY="sk-proj-..."
+
+```
+
+Then run the project as a locally hosted web app:
+
+```
+npm install
+npm run start
+```
+
 ### Overview
 
 We implemented a digital version of the professional wargaming system Hedgemony. It automates the complex rulebook and adjudication processes.
@@ -70,3 +86,13 @@ This tool allows for rapid strategic exploration and tighter feedback loops for 
     *   Faster.
     *   Cheaper.
     *   Scalable.
+
+### Sources
+
+
+These sources informed the design of the Iran War scenario, along with general LLM-assisted deep research:
+
+- https://www.reuters.com/graphics/IRAN-CRISIS/MAPS/znpnmelervl/
+- https://www.inss.org.il/publication/lions-roar-data/
+- https://www.congress.gov/crs-product/R45281
+
