@@ -4,16 +4,16 @@ export type PlayerSide = "Blue" | "Red" | "Other";
 export const PlayerSideSchema = z.enum(["Blue", "Red", "Other"]);
 
 export type PlayerId = string;
-export const PlayerIdSchema = z.string().brand<"PlayerId">;
+export const PlayerIdSchema = z.string().brand<"PlayerId">();
 
 export type ForceId = string;
-export const ForceIdSchema = z.string().brand<"ForceId">;
+export const ForceIdSchema = z.string().brand<"ForceId">();
 
 export type CardId = string;
-export const CardIdSchema = z.string().brand<"CardId">;
+export const CardIdSchema = z.string().brand<"CardId">();
 
 export type LocationId = string;
-export const LocationIdSchema = z.string().brand<"LocationId">;
+export const LocationIdSchema = z.string().brand<"LocationId">();
 
 export type CapabilityId =
   | "C4ISR"
@@ -92,12 +92,12 @@ export type JsonValue =
   | JsonValue[]
   | { [key: string]: JsonValue };
 
-export interface Condition {
+export type Condition = {
   id?: string;
   description: string;
   tag?: RuleTag;
   expression?: string;
-}
+};
 export const ConditionSchema = z.object({
   id: z.optional(z.string()),
   description: z.string(),
@@ -105,7 +105,7 @@ export const ConditionSchema = z.object({
   expression: z.optional(z.string()),
 });
 
-export interface Location {
+export type Location = {
   id: LocationId;
   label: string;
   aor_id?: LocationId;
@@ -113,24 +113,24 @@ export interface Location {
   country_owner?: PlayerId;
   home_for?: string[];
   coordinates?: [number, number];
-}
+};
 
-export interface MovementEdge {
+export type MovementEdge = {
   from: LocationId;
   to: LocationId;
   type?: "adjacent" | "same_aor" | "scenario";
-}
+};
 
-export interface Base {
+export type Base = {
   id: string;
   owner: PlayerId;
   location_id: LocationId;
   aor_id?: LocationId;
   out_of_area_discount?: number;
   notes?: string;
-}
+};
 
-export interface ProxyForce {
+export type ProxyForce = {
   id: string;
   sponsor: PlayerId;
   label: string;
@@ -139,9 +139,9 @@ export interface ProxyForce {
   location_id: LocationId;
   reliability: ReliabilityLevel;
   scope?: string;
-}
+};
 
-export interface PlayerState {
+export type PlayerState = {
   id: PlayerId;
   label: string;
   side: PlayerSide;
@@ -156,9 +156,9 @@ export interface PlayerState {
   };
   notes?: string;
   allow_deficit?: boolean;
-}
+};
 
-export interface ForceCounter {
+export type ForceCounter = {
   id: ForceId;
   owner: PlayerId;
   force_factors: number;
@@ -175,34 +175,34 @@ export interface ForceCounter {
   reset_available_turn?: number;
   procured_turn?: number;
   proxy: boolean;
-}
+};
 
-export interface MarkerDefinition {
+export type MarkerDefinition = {
   id: string;
   label: string;
   description?: string;
-}
+};
 
-export interface PaceRule {
+export type PaceRule = {
   additional_cost_starts_after_card_number: number;
   additional_cost_per_card: number;
-}
+};
 
-export interface RandomEventRule {
+export type RandomEventRule = {
   enabled: boolean;
   timing?: PhaseId[];
   threshold?: number;
-}
+};
 
-export interface TableExtension {
+export type TableExtension = {
   table: string;
   row: string;
   column?: string;
   value: JsonValue;
   tag: "SCENARIO_DEFINED";
-}
+};
 
-export interface ScenarioRules {
+export type ScenarioRules = {
   optional_pace_of_play?: PaceRule;
   activation_markers: boolean;
   random_events?: RandomEventRule;
@@ -211,7 +211,7 @@ export interface ScenarioRules {
   random_red_sequence_tie_rule?: "player_id" | "white_cell";
   table_extensions: TableExtension[];
   allow_us_emergency_deficit?: boolean;
-}
+};
 
 export type CostValue =
   | number
@@ -222,19 +222,19 @@ export type CostValue =
       requires_adjudication?: boolean;
     };
 
-export interface CardCost {
+export type CardCost = {
   resource_points: CostValue;
   additional_red_card_cost_applies: boolean;
-}
+};
 
-export interface CardResponse {
+export type CardResponse = {
   allowed_responders: string[];
   response_window: "immediate" | "same_phase" | "card_defined" | "white_cell";
   force_commitment_allowed: boolean;
   cost_rule?: string;
-}
+};
 
-export interface ModifierDefinition {
+export type ModifierDefinition = {
   id: string;
   description: string;
   value?: number;
@@ -243,16 +243,16 @@ export interface ModifierDefinition {
     | "card"
     | "readiness"
     | "white_cell";
-}
+};
 
-export interface OutcomeRow {
+export type OutcomeRow = {
   outcome?: ProbabilityOutcome;
   roll_min?: number;
   roll_max?: number;
   label?: string;
   effects: Effect[];
   narrative?: string;
-}
+};
 
 export type ResolutionMethod =
   | "fixed_effect"
@@ -262,12 +262,12 @@ export type ResolutionMethod =
   | "proxy_reliability"
   | "white_cell_adjudication";
 
-export interface PinRule {
+export type PinRule = {
   duration_turns: number | "indefinite";
   area_of_interest_id?: LocationId;
-}
+};
 
-export interface CardResolution {
+export type CardResolution = {
   method: ResolutionMethod[];
   table_reference?:
     | "CRT_A"
@@ -281,9 +281,9 @@ export interface CardResolution {
   outcome_map: OutcomeRow[];
   reset_rules_apply: boolean;
   pinning?: PinRule;
-}
+};
 
-export interface PlayConstraints {
+export type PlayConstraints = {
   frequency?: string;
   phase_restrictions: PhaseId[];
   prerequisites: Condition[];
@@ -292,9 +292,9 @@ export interface PlayConstraints {
     effects?: Effect[];
     requires_adjudication?: boolean;
   };
-}
+};
 
-export interface Card {
+export type Card = {
   id: CardId;
   type: CardType;
   subtype?: string;
@@ -312,7 +312,7 @@ export interface Card {
   effects: Effect[];
   future_effects: ScheduledEffect[];
   notes?: string;
-}
+};
 
 export type EffectType =
   | "adjust_resource_points"
@@ -344,7 +344,7 @@ export type EffectType =
   | "schedule_future_effect"
   | "expire_effect";
 
-export interface Effect {
+export type Effect = {
   type: EffectType;
   target: string;
   value: JsonValue;
@@ -357,16 +357,16 @@ export interface Effect {
   visibility: Visibility;
   source_card_id?: CardId;
   requires_adjudication: boolean;
-}
+};
 
-export interface ScheduledEffect {
+export type ScheduledEffect = {
   effect: Effect;
   trigger_turn?: number;
   expiration_turn?: number;
   trigger_condition?: Condition;
-}
+};
 
-export interface GroundTruthItem {
+export type GroundTruthItem = {
   id: string;
   source: CardId | "rule_id" | "white_cell";
   created_turn: number;
@@ -377,9 +377,9 @@ export interface GroundTruthItem {
   trigger_condition?: Condition;
   status: "pending" | "active" | "expired" | "resolved";
   narrative_note: string;
-}
+};
 
-export interface ForceInitialization {
+export type ForceInitialization = {
   id: ForceId;
   owner: PlayerId;
   force_factors: number;
@@ -388,9 +388,9 @@ export interface ForceInitialization {
   home_base_id: LocationId;
   readiness_level?: ReadinessLevel;
   proxy?: boolean;
-}
+};
 
-export interface Scenario {
+export type Scenario = {
   title: string;
   learning_objectives: string[];
   security_environment: string;
@@ -419,9 +419,9 @@ export interface Scenario {
   rules_in_effect: ScenarioRules;
   marker_chits: MarkerDefinition[];
   max_turns: number;
-}
+};
 
-export interface RollRecord {
+export type RollRecord = {
   id: string;
   turn: number;
   phase: PhaseId;
@@ -432,9 +432,9 @@ export interface RollRecord {
   formula: string;
   purpose: string;
   visibility: Visibility;
-}
+};
 
-export interface EventLogItem {
+export type EventLogItem = {
   id: string;
   turn: number;
   phase: PhaseId;
@@ -444,9 +444,9 @@ export interface EventLogItem {
   player_id?: PlayerId;
   card_id?: CardId;
   roll_id?: string;
-}
+};
 
-export interface AdjudicationRequest {
+export type AdjudicationRequest = {
   id: string;
   turn: number;
   phase: PhaseId;
@@ -458,36 +458,36 @@ export interface AdjudicationRequest {
   card_id?: CardId;
   payload?: JsonValue;
   resolution_note?: string;
-}
+};
 
-export interface RedSignalState {
+export type RedSignalState = {
   player_id: PlayerId;
   card_ids: CardId[];
   brief_summary?: string;
   activation_intent?: Record<CardId, "Yes" | "No" | "Undeclared">;
   completed: boolean;
-}
+};
 
-export interface RedPlayState {
+export type RedPlayState = {
   player_id: PlayerId;
   played_card_ids: CardId[];
   skipped: boolean;
-}
+};
 
-export interface PendingReset {
+export type PendingReset = {
   id: string;
   force_ids: ForceId[];
   outcome: ProbabilityOutcome;
   status: "pending_after_pinning" | "resolved";
-}
+};
 
-export interface CardPlayRecord {
+export type CardPlayRecord = {
   card_id: CardId;
   player_id: PlayerId;
   turn: number;
-}
+};
 
-export interface GameState {
+export type GameState = {
   scenario_title: string;
   turn: number;
   phase: PhaseId;
@@ -518,37 +518,37 @@ export interface GameState {
     game_start?: string;
     state_of_world: Record<number, string>;
   };
-}
+};
 
 export type RuleIssueSeverity = "error" | "adjudication";
 
-export interface RuleIssue {
+export type RuleIssue = {
   id: string;
   severity: RuleIssueSeverity;
   message: string;
   rule_refs: string[];
   tags: RuleTag[];
-}
+};
 
 export type RuleValue<T> =
   | { ok: true; value: T }
   | { ok: false; issue: RuleIssue };
 
-export interface ForceCommitment {
+export type ForceCommitment = {
   force_id: ForceId;
   source: "in_theater" | "adjacent_theater" | "conus_reactive";
   out_of_area_arrival?: boolean;
-}
+};
 
-export interface CombatFactorsBreakdown {
+export type CombatFactorsBreakdown = {
   force_id: ForceId;
   base_cf: number;
   final_cf: number;
   note: string;
-}
+};
 
-export interface CombatFactorsResult {
+export type CombatFactorsResult = {
   total: number;
   breakdown: CombatFactorsBreakdown[];
   adjudications: RuleIssue[];
-}
+};
