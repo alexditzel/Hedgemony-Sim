@@ -48,8 +48,8 @@ function printGameState(state: GameState): string {
     parts.push(`National Tech Level: ${player.national_tech_level}`);
     parts.push(`Victory Condition: ${player.victory_condition}`);
     parts.push(`Critical Capabilities:`);
-    for (const [cap, val] of Object.entries(player.critical_capabilities)) {
-      parts.push(`  - ${cap}: ${val}`);
+    for (const capability of player.critical_capabilities) {
+      parts.push(`  - ${capability.id}: ${capability.value}`);
     }
   }
 
@@ -390,4 +390,3 @@ export async function generateWhiteCellEventDecision(
   });
   return response.output_parsed!.cardId ?? undefined;
 }
-

@@ -24,6 +24,14 @@ export type CapabilityId =
   | string;
 
 export const CapabilityIdSchema = z.string();
+export type CriticalCapabilityLevel = {
+  id: CapabilityId;
+  value: number;
+};
+export const CriticalCapabilityLevelSchema = z.object({
+  id: CapabilityIdSchema,
+  value: z.number(),
+});
 
 export type RuleTag =
   | "DETERMINISTIC"
@@ -153,6 +161,18 @@ export type Location = {
   home_for: PlayerId[] | null;
   coordinates: {lat:number;lng:number} | null;
 };
+const CoordinatesSchema = z.preprocess((value) => {
+  if (
+    Array.isArray(value) &&
+    value.length === 2 &&
+    typeof value[0] === "number" &&
+    typeof value[1] === "number"
+  ) {
+    return { lat: value[0], lng: value[1] };
+  }
+  return value;
+}, z.object({ lat: z.number(), lng: z.number() }));
+
 export const LocationSchema = z.object({
   id: LocationIdSchema,
   label: z.string(),
@@ -160,7 +180,7 @@ export const LocationSchema = z.object({
   parent_location_id: z.nullable(LocationIdSchema),
   country_owner: z.nullable(PlayerIdSchema),
   home_for: z.nullable(z.array(PlayerIdSchema)),
-  coordinates: z.nullable(z.object({ lat: z.number(), lng: z.number() })),
+  coordinates: z.nullable(CoordinatesSchema),
 });
 
 export type MovementEdge = {
@@ -219,7 +239,7 @@ export type PlayerState = {
   resource_points: number;
   influence_points: number;
   national_tech_level: number;
-  critical_capabilities: Record<CapabilityId, number>;
+  critical_capabilities: CriticalCapabilityLevel[];
   victory_condition: string;
   card_decks: {
     action_investment: CardId[];
@@ -235,7 +255,7 @@ export const PlayerStateSchema = z.object({
   resource_points: z.number(),
   influence_points: z.number(),
   national_tech_level: z.number(),
-  critical_capabilities: z.record(CapabilityIdSchema, z.number()),
+  critical_capabilities: z.array(CriticalCapabilityLevelSchema),
   victory_condition: z.string(),
   card_decks: z.object({
     action_investment: z.array(CardIdSchema),
@@ -724,7 +744,10 @@ export type Scenario = {
     per_turn_resources: Record<PlayerId, number>;
     influence: Record<PlayerId, number>;
     national_tech_levels: Record<PlayerId, number>;
-    critical_capabilities: Record<PlayerId, Record<CapabilityId, number>>;
+    critical_capabilities: {
+      id: PlayerId;
+      value: CriticalCapabilityLevel[];
+    }[];
     force_laydown: ForceInitialization[];
     bases: Base[];
     proxy_forces: ProxyForce[];
@@ -753,9 +776,11 @@ export const ScenarioSchema = z.object({
     per_turn_resources: z.record(PlayerIdSchema, z.number()),
     influence: z.record(PlayerIdSchema, z.number()),
     national_tech_levels: z.record(PlayerIdSchema, z.number()),
-    critical_capabilities: z.record(
-      PlayerIdSchema,
-      z.record(CapabilityIdSchema, z.number()),
+    critical_capabilities: z.array(
+      z.object({
+        id: PlayerIdSchema,
+        value: z.array(CriticalCapabilityLevelSchema),
+      }),
     ),
     force_laydown: z.array(ForceInitializationSchema),
     bases: z.array(BaseSchema),

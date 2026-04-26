@@ -13,11 +13,20 @@
       "resource_points": 40,
       "influence_points": 50,
       "national_tech_level": 4,
-      "critical_capabilities": {
-        "C4ISR": 3,
-        "IAMD_BMD": 3,
-        "SOF": 3
-      },
+      "critical_capabilities": [
+        {
+          "id": "C4ISR",
+          "value": 3
+        },
+        {
+          "id": "IAMD_BMD",
+          "value": 3
+        },
+        {
+          "id": "SOF",
+          "value": 3
+        }
+      ],
       "victory_condition": "IPs > IPs of everyone, and DPRK does not win",
       "card_decks": {
         "action_investment": [
@@ -45,10 +54,16 @@
       "resource_points": 10,
       "influence_points": 50,
       "national_tech_level": 4,
-      "critical_capabilities": {
-        "C4ISR": 3,
-        "IAMD_BMD": 3
-      },
+      "critical_capabilities": [
+        {
+          "id": "C4ISR",
+          "value": 3
+        },
+        {
+          "id": "IAMD_BMD",
+          "value": 3
+        }
+      ],
       "victory_condition": "IPs > IPs of RU, and RU does not win",
       "card_decks": {
         "action_investment": [
@@ -72,10 +87,16 @@
       "resource_points": 15,
       "influence_points": 15,
       "national_tech_level": 4,
-      "critical_capabilities": {
-        "LRF": 4,
-        "C4ISR": 3
-      },
+      "critical_capabilities": [
+        {
+          "id": "LRF",
+          "value": 4
+        },
+        {
+          "id": "C4ISR",
+          "value": 3
+        }
+      ],
       "victory_condition": "IPs >= US IPs - 5",
       "card_decks": {
         "action_investment": [
@@ -108,10 +129,16 @@
       "resource_points": 15,
       "influence_points": 40,
       "national_tech_level": 4,
-      "critical_capabilities": {
-        "LRF": 4,
-        "C4ISR": 3
-      },
+      "critical_capabilities": [
+        {
+          "id": "LRF",
+          "value": 4
+        },
+        {
+          "id": "C4ISR",
+          "value": 3
+        }
+      ],
       "victory_condition": "IPs >= US IPs - 3, and DPRK neither wins nor loses",
       "card_decks": {
         "action_investment": [
@@ -147,10 +174,16 @@
       "resource_points": 5,
       "influence_points": 5,
       "national_tech_level": 1,
-      "critical_capabilities": {
-        "LRF": 1,
-        "NUCLEAR": 0
-      },
+      "critical_capabilities": [
+        {
+          "id": "LRF",
+          "value": 1
+        },
+        {
+          "id": "NUCLEAR",
+          "value": 0
+        }
+      ],
       "victory_condition": "IPs > 15, or U.S. leaves Korean Peninsula; lose if IPs = 0",
       "card_decks": {
         "action_investment": [
@@ -178,10 +211,16 @@
       "resource_points": 8,
       "influence_points": 5,
       "national_tech_level": 2,
-      "critical_capabilities": {
-        "LRF": 2,
-        "SOF": 1
-      },
+      "critical_capabilities": [
+        {
+          "id": "LRF",
+          "value": 2
+        },
+        {
+          "id": "SOF",
+          "value": 1
+        }
+      ],
       "victory_condition": "IPs > 20",
       "card_decks": {
         "action_investment": [
@@ -393,33 +432,90 @@
       "DPRK": 1,
       "IR": 2
     },
-    "critical_capabilities": {
-      "US": {
-        "C4ISR": 3,
-        "IAMD_BMD": 3,
-        "SOF": 3
+    "critical_capabilities": [
+      {
+        "id": "US",
+        "value": [
+          {
+            "id": "C4ISR",
+            "value": 3
+          },
+          {
+            "id": "IAMD_BMD",
+            "value": 3
+          },
+          {
+            "id": "SOF",
+            "value": 3
+          }
+        ]
       },
-      "NATO_EU": {
-        "C4ISR": 3,
-        "IAMD_BMD": 3
+      {
+        "id": "NATO_EU",
+        "value": [
+          {
+            "id": "C4ISR",
+            "value": 3
+          },
+          {
+            "id": "IAMD_BMD",
+            "value": 3
+          }
+        ]
       },
-      "RU": {
-        "LRF": 4,
-        "C4ISR": 3
+      {
+        "id": "RU",
+        "value": [
+          {
+            "id": "LRF",
+            "value": 4
+          },
+          {
+            "id": "C4ISR",
+            "value": 3
+          }
+        ]
       },
-      "PRC": {
-        "LRF": 4,
-        "C4ISR": 3
+      {
+        "id": "PRC",
+        "value": [
+          {
+            "id": "LRF",
+            "value": 4
+          },
+          {
+            "id": "C4ISR",
+            "value": 3
+          }
+        ]
       },
-      "DPRK": {
-        "LRF": 1,
-        "NUCLEAR": 0
+      {
+        "id": "DPRK",
+        "value": [
+          {
+            "id": "LRF",
+            "value": 1
+          },
+          {
+            "id": "NUCLEAR",
+            "value": 0
+          }
+        ]
       },
-      "IR": {
-        "LRF": 2,
-        "SOF": 1
+      {
+        "id": "IR",
+        "value": [
+          {
+            "id": "LRF",
+            "value": 2
+          },
+          {
+            "id": "SOF",
+            "value": 1
+          }
+        ]
       }
-    },
+    ],
     "force_laydown": [
       {
         "id": "US-CONUS-10",

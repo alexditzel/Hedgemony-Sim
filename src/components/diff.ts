@@ -1,4 +1,4 @@
-import type { CardId, GameState, PlayerId, RollRecord } from "../engine";
+import type { CardId, CriticalCapabilityLevel, GameState, PlayerId, RollRecord } from "../engine";
 
 export interface ScalarChange {
   key: string;
@@ -40,14 +40,14 @@ function asNumber(value: unknown, fallback = 0): number {
 }
 
 export function snapshotPlayers(state: GameState) {
-  const snap: Record<string, { rp: number; ip: number; ntl: number; perTurn: number; capabilities: Record<string, number> }> = {};
+  const snap: Record<string, { rp: number; ip: number; ntl: number; perTurn: number; capabilities: CriticalCapabilityLevel[] }> = {};
   for (const [id, player] of Object.entries(state.players)) {
     snap[id] = {
       rp: player.resource_points,
       ip: player.influence_points,
       ntl: player.national_tech_level,
       perTurn: state.per_turn_resources[id] ?? 0,
-      capabilities: { ...player.critical_capabilities }
+      capabilities: player.critical_capabilities.map((capability) => ({ ...capability }))
     };
   }
   return snap;
@@ -105,10 +105,13 @@ export function diffStates(before: Snapshot, after: GameState): StateDiff {
         before: previous.perTurn,
         after: after.per_turn_resources[id] ?? 0
       });
-      const capKeys = new Set([...Object.keys(previous.capabilities), ...Object.keys(player.critical_capabilities)]);
+      const capKeys = new Set([
+        ...previous.capabilities.map((capability) => capability.id),
+        ...player.critical_capabilities.map((capability) => capability.id)
+      ]);
       for (const cap of capKeys) {
-        const beforeVal = previous.capabilities[cap] ?? 0;
-        const afterVal = player.critical_capabilities[cap] ?? 0;
+        const beforeVal = previous.capabilities.find((capability) => capability.id === cap)?.value ?? 0;
+        const afterVal = player.critical_capabilities.find((capability) => capability.id === cap)?.value ?? 0;
         if (beforeVal !== afterVal) {
           checks.push({ key: `cc:${id}:${cap}`, label: `${cap} Mod Level`, before: beforeVal, after: afterVal });
         }

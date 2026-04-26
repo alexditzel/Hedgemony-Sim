@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { ReactNode } from "react";
-import type { ForceCounter, GameState, PlayerId } from "../engine";
+import type { CriticalCapabilityLevel, ForceCounter, GameState, PlayerId } from "../engine";
 import { EmptyState, Section, Tag } from "./ui";
 // Section is still used by CurrentTaskPanel and RedSignalDeckTrigger consumers; keep import.
 
@@ -128,10 +128,10 @@ function summarizeReadiness(forces: ForceCounter[]): string[] {
   return summarizeByNumber(forces, (force) => force.readiness_level ?? 100, (level, ffs) => `${level}%: ${ffs} FF`);
 }
 
-function summarizeCapabilities(capabilities: Record<string, number>): string[] {
-  return Object.entries(capabilities)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([capability, level]) => `${capabilityLabel(capability)}: M${level}`);
+function summarizeCapabilities(capabilities: CriticalCapabilityLevel[]): string[] {
+  return [...capabilities]
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map((capability) => `${capabilityLabel(capability.id)}: M${capability.value}`);
 }
 
 function summarizePosture(forces: ForceCounter[], state: GameState): string[] {

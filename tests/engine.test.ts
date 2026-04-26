@@ -940,7 +940,11 @@ describe("combat resolution and card effects", () => {
       "DPRK-INV-01",
       new SequenceDiceRoller([5]),
     );
-    expect(result.state.players.DPRK.critical_capabilities.NUCLEAR).toBe(1);
+    expect(
+      result.state.players.DPRK.critical_capabilities.find(
+        (capability) => capability.id === "NUCLEAR",
+      )?.value,
+    ).toBe(1);
     expect(
       result.state.ground_truth.some(
         (item) =>
@@ -1067,7 +1071,11 @@ describe("combat resolution and card effects", () => {
     expect(
       firstUpgrade.issues.filter((issue) => issue.severity === "error"),
     ).toHaveLength(0);
-    expect(firstUpgrade.state.players.US.critical_capabilities.C4ISR).toBe(4);
+    expect(
+      firstUpgrade.state.players.US.critical_capabilities.find(
+        (capability) => capability.id === "C4ISR",
+      )?.value,
+    ).toBe(4);
 
     const blockedUpgrade = resolveCard(
       firstUpgrade.state,
@@ -1078,7 +1086,11 @@ describe("combat resolution and card effects", () => {
       "exceeds National Tech Level",
     );
     expect(blockedUpgrade.adjudications.length).toBeGreaterThan(0);
-    expect(blockedUpgrade.state.players.US.critical_capabilities.C4ISR).toBe(4);
+    expect(
+      blockedUpgrade.state.players.US.critical_capabilities.find(
+        (capability) => capability.id === "C4ISR",
+      )?.value,
+    ).toBe(4);
     expect(
       validateState(blockedUpgrade.state).filter(
         (issue) => issue.severity === "error",
@@ -1216,7 +1228,11 @@ describe("combat resolution and card effects", () => {
     expect(
       c4isrUpgrade.issues.filter((issue) => issue.severity === "error"),
     ).toHaveLength(0);
-    expect(c4isrUpgrade.state.players.PRC.critical_capabilities.C4ISR).toBe(4);
+    expect(
+      c4isrUpgrade.state.players.PRC.critical_capabilities.find(
+        (capability) => capability.id === "C4ISR",
+      )?.value,
+    ).toBe(4);
 
     const grayZone = resolveCard(
       state,

@@ -29,6 +29,7 @@ import {
   type GameState,
   type GroundTruthItem,
   type JsonValue,
+  type Location,
   type LocationId,
   type OutcomeRow,
   type PhaseId,
@@ -233,6 +234,41 @@ function cardMapFromScenario(scenario: Scenario): Record<CardId, Card> {
   return cards;
 }
 
+function normalizeCoordinates(
+  coordinates: unknown,
+): Location["coordinates"] {
+  if (
+    Array.isArray(coordinates) &&
+    coordinates.length === 2 &&
+    typeof coordinates[0] === "number" &&
+    typeof coordinates[1] === "number"
+  ) {
+    return { lat: coordinates[0], lng: coordinates[1] };
+  }
+
+  if (
+    typeof coordinates === "object" &&
+    coordinates !== null &&
+    "lat" in coordinates &&
+    "lng" in coordinates &&
+    typeof coordinates.lat === "number" &&
+    typeof coordinates.lng === "number"
+  ) {
+    return { lat: coordinates.lat, lng: coordinates.lng };
+  }
+
+  return null;
+}
+
+function normalizeLocation(location: Location): Location {
+  return {
+    ...location,
+    coordinates: normalizeCoordinates(
+      (location as { coordinates?: unknown }).coordinates,
+    ),
+  };
+}
+
 function playerMapFromScenario(
   scenario: Scenario,
 ): Record<PlayerId, PlayerState> {
@@ -251,13 +287,40 @@ function playerMapFromScenario(
           scenario.starting_conditions.national_tech_levels[player.id] ??
           player.national_tech_level,
         critical_capabilities:
-          scenario.starting_conditions.critical_capabilities[player.id] ??
+          scenario.starting_conditions.critical_capabilities.find(
+            (entry) => entry.id === player.id,
+          )?.value ??
           player.critical_capabilities,
         victory_condition:
           scenario.victory_conditions[player.id] ?? player.victory_condition,
       },
     ]),
   );
+}
+
+function getCapabilityLevel(
+  player: PlayerState | undefined,
+  capability: string,
+): number {
+  return (
+    player?.critical_capabilities.find((entry) => entry.id === capability)
+      ?.value ?? 0
+  );
+}
+
+function setCapabilityLevel(
+  player: PlayerState,
+  capability: string,
+  level: number,
+): void {
+  const existing = player.critical_capabilities.find(
+    (entry) => entry.id === capability,
+  );
+  if (existing) {
+    existing.value = level;
+  } else {
+    player.critical_capabilities.push({ id: capability, value: level });
+  }
 }
 
 function forceMapFromScenario(
@@ -297,7 +360,10 @@ export function createInitialGameState(scenario: Scenario): GameState {
     forces: forceMapFromScenario(scenario),
     cards: cardMapFromScenario(scenario),
     locations: Object.fromEntries(
-      scenario.map.locations.map((location) => [location.id, location]),
+      scenario.map.locations.map((location) => [
+        location.id,
+        normalizeLocation(location),
+      ]),
     ),
     bases: Object.fromEntries(
       scenario.starting_conditions.bases.map((base) => [base.id, base]),
@@ -382,9 +448,7 @@ export function validateState(state: GameState): RuleIssue[] {
         ),
       );
     }
-    for (const [capability, level] of Object.entries(
-      player.critical_capabilities,
-    )) {
+    for (const { id: capability, value: level } of player.critical_capabilities) {
       if (level > player.national_tech_level) {
         issues.push(
           makeIssue(
@@ -1143,9 +1207,9 @@ function applySingleEffect(
           (force) =>
             force.owner === player.id && force.modernization_level > nextLevel,
         );
-        const capabilityAboveCap = Object.entries(
-          player.critical_capabilities,
-        ).find(([, level]) => level > nextLevel);
+        const capabilityAboveCap = player.critical_capabilities.find(
+          (entry) => entry.value > nextLevel,
+        );
         if (forceAboveCap || capabilityAboveCap) {
           return makeIssue(
             `${player.id} National Tech Level ${nextLevel} would be below existing force or Critical Capability Mod Levels.`,
@@ -1164,9 +1228,9 @@ function applySingleEffect(
           (force) =>
             force.owner === player.id && force.modernization_level > nextLevel,
         );
-        const capabilityAboveCap = Object.entries(
-          player.critical_capabilities,
-        ).find(([, level]) => level > nextLevel);
+        const capabilityAboveCap = player.critical_capabilities.find(
+          (entry) => entry.value > nextLevel,
+        );
         if (forceAboveCap || capabilityAboveCap) {
           return makeIssue(
             `${player.id} National Tech Level ${nextLevel} would be below existing force or Critical Capability Mod Levels.`,
@@ -1189,15 +1253,14 @@ function applySingleEffect(
             "adjudication",
           );
         }
-        player.critical_capabilities[stringFrom(effect.value.capability)] =
-          level;
+        setCapabilityLevel(player, stringFrom(effect.value.capability), level);
       }
       break;
     case "adjust_critical_capability_mod_level":
       if (player && isRecord(effect.value)) {
         const capability = stringFrom(effect.value.capability);
         const nextLevel =
-          (player.critical_capabilities[capability] ?? 0) +
+          getCapabilityLevel(player, capability) +
           numberFrom(effect.value.amount);
         if (nextLevel > player.national_tech_level) {
           return makeIssue(
@@ -1207,7 +1270,7 @@ function applySingleEffect(
             "adjudication",
           );
         }
-        player.critical_capabilities[capability] = nextLevel;
+        setCapabilityLevel(player, capability, nextLevel);
       }
       break;
     case "move_forces":
@@ -1567,9 +1630,7 @@ function bestCapability(
 ): number {
   return Math.max(
     0,
-    ...players.map(
-      (id) => state.players[id]?.critical_capabilities[capability] ?? 0,
-    ),
+    ...players.map((id) => getCapabilityLevel(state.players[id], capability)),
   );
 }
 
