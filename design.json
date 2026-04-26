@@ -1,0 +1,45 @@
+{
+    "major_arcs": [
+        "Arc 1 — Managed escalation and deterrence restoration: Turn 1 opens with the Damascus consulate strike and Operation True Promise as the initiating crisis. Israel and Iran test new direct state-on-state red lines, while the US, NATO/EU, and regional partners try to prove that layered air defense and diplomatic pressure can contain retaliation. If this arc dominates, the game becomes a contest over signaling, coalition discipline, missile-defense credibility, and face-saving off-ramps rather than regime collapse.",
+        "Arc 2 — Proxy-system collapse and the race to replace deterrence: Turns 2–3 center on Hezbollah’s decapitation, Operation Northern Arrows, Operation Days of Repentance, and the collapse of the Assad regime. Iran’s land bridge to the Levant is severed and its forward-defense doctrine is degraded. Israel scores major security gains but inherits instability in Lebanon and Syria. Iran must decide whether to preserve remaining proxy capacity, escalate directly, or accelerate nuclear deterrence. PRC and Russia can exploit the vacuum through arms, diplomacy, energy leverage, or obstruction at international forums.",
+        "Arc 3 — Nuclear threshold and great-power intervention: Turn 3 escalates into the Twelve-Day War if Iran’s perceived nuclear breakout risk, Israeli threat perception, and US domestic pressure cross thresholds. The core dilemma is whether military action can remove an imminent strategic threat without producing a more radical, less controllable Iranian regime. Blue players gain from degrading nuclear and missile infrastructure, but each strike risks civilian harm, legal backlash, coalition strain, and Iranian retaliation against bases and cities.",
+        "Arc 4 — Regime survival versus regime-change gamble: Turn 4 uses the 2026 protests, internet blackout, and Operation Epic Fury/Roaring Lion as inspiration. Iran’s internal legitimacy, coercive capacity, elite unity, and succession politics become as important as battlefield losses. The US and Israel may attempt decisive coercion or leadership decapitation, but airpower alone may fail to collapse the state. Iran can survive by maintaining IRGC cohesion, suppressing unrest, and keeping enough asymmetric capability to impose costs. NATO/EU, PRC, and Russia shape whether the war is framed as liberation, unlawful aggression, or catastrophic overreach.",
+        "Arc 5 — Global chokepoint crisis and forced ceasefire: Turn 5 focuses on the Strait of Hormuz blockade, renewed Israel-Hezbollah fighting, global energy shock, and the April 2026 temporary ceasefire. Iran may use maritime disruption to internationalize the cost of war; the US may counter-blockade; PRC and NATO/EU face severe energy and shipping pressure; Russia may benefit from sanctions relief or energy-market leverage. The final bargaining space is not victory or defeat alone, but whether the players can freeze the conflict before global economic, humanitarian, and escalation tracks become unmanageable."
+    ],
+    "points_system": {
+        "description": "Use a 5-turn crisis-card system. Suggested turn spine: Turn 1 = Damascus strike and Operation True Promise; Turn 2 = Hezbollah decapitation, Operation Northern Arrows, Operation Days of Repentance, and Assad collapse; Turn 3 = Twelve-Day War and nuclear threshold; Turn 4 = Iranian protests, internet blackout, Epic Fury/Roaring Lion; Turn 5 = Hormuz blockade, renewed Lebanon conflict, and temporary ceasefire. Each player receives a personal deck built from Design Points. Card_budget below is the player’s Design Point allowance for a 5-turn deck. Minor cards cost 2 points, standard cards cost 4, major cards cost 6, and keystone cards cost 8. A typical player should have 6–8 cards and play one main card per turn, with limited reaction cards triggered by enemy escalation. Role_importance is on a 1–5 scale and indicates how central that player is to the scenario’s outcome; higher-importance players should receive more keystone or major cards, but also more crisis obligations and backlash risks. Scoring should use shared tracks: Military Posture, Domestic Legitimacy, Coalition Cohesion, Nuclear Risk, Proxy Network, Maritime/Energy Stability, Humanitarian/Legal Pressure, and Escalation. Blue generally scores by degrading Iranian nuclear/proxy/missile capabilities, protecting Israel, maintaining coalition legitimacy, and reopening maritime trade. Red generally scores by preserving the Iranian regime, imposing costs through proxies and chokepoints, fracturing Blue cohesion, gaining sanctions or diplomatic relief, and preventing decisive Israeli/US freedom of action. PRC and RU should not be passive observers: they score by shaping ceasefire terms, exploiting energy markets, constraining US freedom of action, and preserving or replacing influence in Iran and Syria.",
+        "players": [
+            {
+                "player_id": "US",
+                "role_importance": 5,
+                "card_budget": 34
+            },
+            {
+                "player_id": "NATO_EU",
+                "role_importance": 4,
+                "card_budget": 28
+            },
+            {
+                "player_id": "IS",
+                "role_importance": 5,
+                "card_budget": 34
+            },
+            {
+                "player_id": "IR",
+                "role_importance": 5,
+                "card_budget": 36
+            },
+            {
+                "player_id": "PRC",
+                "role_importance": 4,
+                "card_budget": 30
+            },
+            {
+                "player_id": "RU",
+                "role_importance": 3.5,
+                "card_budget": 26
+            }
+        ]
+    },
+    "card_design_guidelines": "Each card should create a real dilemma, not a simple upgrade. Define every card with timing, prerequisites, target, track effects, immediate benefit, delayed cost, and possible reaction. Use the following budget model: Minor = 2 impact points, Standard = 4, Major = 6, Keystone = 8. One impact point equals a one-step change on a scenario track, one resource token, one reaction token, or one temporary modifier. Count positive self-effects, ally support, and opponent harm as benefits. Count self-harm, ally harm, opponent blowback, escalation, humanitarian/legal cost, domestic backlash, economic shock, and resource depletion as counterweights. For balance, a card’s total benefit should roughly match its tier, and its counterweight should be at least half the benefit for standard/major cards and at least three-quarters for keystone cards. Purely offensive cards must create escalation or legitimacy costs; purely defensive cards should consume scarce munitions, political capital, or time; economic coercion cards should harm at least one friendly or neutral player as well as the target. Example structure: an Israeli 'Damascus Strike' major card might give Israel +3 Proxy Disruption and +2 Initiative, but impose -2 Legal/Coalition Pressure and grant Iran a retaliation reaction. An Iranian 'Operation True Promise' major card might give Iran +2 Domestic Legitimacy and +2 Deterrence Signaling, but spend missile inventory, raise Escalation, and allow US/NATO/Israel air-defense cards to generate Blue coalition cohesion. A US 'Integrated Air Defense Coalition' standard card might protect Israel and improve coalition credibility, but consume interceptors and expose regional partners to Iranian retaliation. An Iranian 'Hormuz Closure' keystone card should create major coercive leverage and global energy shock, but also reduce Iran’s own revenue, risk US naval escalation, hurt PRC energy security unless exemptions are negotiated, and increase international pressure for a ceasefire. A PRC or RU card should rarely destroy forces directly; instead it should modify sanctions, energy flows, diplomatic cover, arms resupply, information narratives, or ceasefire leverage. No card should solve a strategic problem without creating a new political, economic, or escalation problem elsewhere."
+}
