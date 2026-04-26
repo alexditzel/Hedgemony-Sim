@@ -1,5 +1,6 @@
 // import scenario from "./data/defaultScenario.json";
-import scenario from "./data/iran-war.json";
+// import scenario from "./data/iran-war-v1.json";
+import scenario from "./data/iran-war-v2.json";
 import { GameView } from "./components/GameView";
 import type { Scenario } from "./engine";
 
