@@ -2,13 +2,29 @@ import type { ReactNode } from "react";
 import type { GameState } from "../engine";
 import { phaseLabel, playerLabel, playerTone } from "./factions";
 
+export const COLOR_SCHEMES = [
+  { id: "stealth-green", label: "Stealth Green" },
+  { id: "deep-blue", label: "Deep Blue" },
+  { id: "desert-sand", label: "Desert Sand" },
+  { id: "charcoal-amber", label: "Charcoal & Amber" },
+  { id: "slate-gray", label: "Slate Gray" },
+  { id: "black-red", label: "Black & Red" },
+  { id: "arctic-ice", label: "Arctic Ice" },
+  { id: "night-ops", label: "Night Ops" },
+  { id: "olive-drab", label: "Olive Drab" }
+] as const;
+
+export type ColorSchemeId = (typeof COLOR_SCHEMES)[number]["id"];
+
 interface TopBarProps {
   state: GameState;
   onOpenMap?: () => void;
   advance?: ReactNode;
+  colorScheme: ColorSchemeId;
+  onColorSchemeChange: (scheme: ColorSchemeId) => void;
 }
 
-export function TopBar({ state, onOpenMap, advance }: TopBarProps) {
+export function TopBar({ state, onOpenMap, advance, colorScheme, onColorSchemeChange }: TopBarProps) {
   const tone = playerTone(state, state.active_player_id);
   const pillClass =
     tone === "red" ? "topbar__active-side-pill--red" :
@@ -53,7 +69,22 @@ export function TopBar({ state, onOpenMap, advance }: TopBarProps) {
           </button>
         ) : null}
       </div>
-      <div className="topbar__advance">{advance}</div>
+      <div className="topbar__advance">
+        <label className="topbar__scheme">
+          <span className="topbar__scheme-label">Scheme</span>
+          <select
+            className="topbar__scheme-select"
+            value={colorScheme}
+            onChange={(event) => onColorSchemeChange(event.target.value as ColorSchemeId)}
+            aria-label="Color scheme"
+          >
+            {COLOR_SCHEMES.map((scheme) => (
+              <option key={scheme.id} value={scheme.id}>{scheme.label}</option>
+            ))}
+          </select>
+        </label>
+        {advance}
+      </div>
     </header>
   );
 }
