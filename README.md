@@ -17,7 +17,6 @@ Put credentials into `.env`:
 
 ```
 VITE_OPENAI_API_KEY="sk-proj-..."
-
 ```
 
 Then run the project as a locally hosted web app:
