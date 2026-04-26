@@ -150,6 +150,37 @@ function turnSummary(state: GameState, turn: number): string {
   return state.summaries.state_of_world[turn - 1] ?? state.summaries.state_of_world[turn] ?? "Open-source picture is forming.";
 }
 
+function openingSummaryFromReviews(reviewItems: ReviewItem[], fallback: string): string {
+  const newspaperParagraphs = reviewItems
+    .filter((item) => item.kind === "world_newspapers")
+    .map((item) => item.summary.trim())
+    .filter(Boolean);
+  const intelParagraph = reviewItems
+    .find((item) => item.kind === "world_intel")
+    ?.summary
+    .trim();
+  const paragraphs = intelParagraph
+    ? [...newspaperParagraphs, intelParagraph]
+    : newspaperParagraphs;
+
+  return paragraphs.length > 0 ? paragraphs.join("\n\n") : fallback.trim();
+}
+
+function SummaryParagraphs({ text }: { text: string }) {
+  const paragraphs = text
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+
+  return (
+    <>
+      {paragraphs.map((paragraph, index) => (
+        <p className="briefing__paragraph" key={index}>{paragraph}</p>
+      ))}
+    </>
+  );
+}
+
 function metricPointFromState(state: GameState, turn: number): PlayerMetricPoint {
   return {
     turn,
@@ -296,8 +327,9 @@ export function GameView({ scenario }: GameViewProps) {
 
         if (state.phase === "GameStart") {
           const summary = await generateWhiteCellSummary("game_start", state.turn, state);
-          const reviewItems = await generateReviewItems(state, summary)
-          const next = recordGameStartSummary(state, summary);
+          const reviewItems = await generateReviewItems(state, summary);
+          const openingSummary = openingSummaryFromReviews(reviewItems, summary);
+          const next = recordGameStartSummary(state, openingSummary);
           turnReviewsSeeded.current.add(state.turn);
           setReviewQueue(reviewItems);
           applyResult(next);
@@ -644,11 +676,13 @@ export function GameView({ scenario }: GameViewProps) {
             title={summaryModal.kind === "game_start" ? "Opening Theater Picture" : `World State · Turn ${summaryModal.turn}`}
           >
             <BriefingSection title="Summary">
-              <p className="briefing__paragraph">
-                {summaryModal.kind === "game_start"
-                  ? state.summaries.game_start ?? "No summary available."
-                  : state.summaries.state_of_world[summaryModal.turn] ?? "No summary available."}
-              </p>
+              <SummaryParagraphs
+                text={
+                  summaryModal.kind === "game_start"
+                    ? state.summaries.game_start ?? "No summary available."
+                    : state.summaries.state_of_world[summaryModal.turn] ?? "No summary available."
+                }
+              />
             </BriefingSection>
           </IntelBriefing>
         ) : null}
