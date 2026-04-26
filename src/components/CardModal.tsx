@@ -1,4 +1,5 @@
 import {
+  entryValue,
   getCrtAOutcome,
   getRtBOutcome,
   type Card as GameCardData,
@@ -22,7 +23,7 @@ interface CardModalProps {
 function toneForCardOwner(card: GameCardData, state: GameState): FactionTone {
   if (!card.owner) return "neutral";
   if (card.owner === "WhiteCell") return "white";
-  return sideToTone(state.players[card.owner]?.side);
+  return sideToTone(entryValue(state.players, card.owner)?.side);
 }
 
 const OUTCOME_LABELS: Record<string, string> = {
@@ -169,7 +170,7 @@ export function CardModal({ card, state, open, onClose, footer }: CardModalProps
             <span className="section__title section__title--muted">Players Involved</span>
             <div className="row gap-sm">
               {card.players_involved.map((id) => (
-                <Tag key={id} tone={sideToTone(state.players[id]?.side)}>
+                <Tag key={id} tone={sideToTone(entryValue(state.players, id)?.side)}>
                   {playerLabel(state, id)}
                 </Tag>
               ))}

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { ReactNode } from "react";
-import type { CriticalCapabilityLevel, ForceCounter, GameState, PlayerId } from "../engine";
+import { entryValue, entryValues, type CriticalCapabilityLevel, type ForceCounter, type GameState, type PlayerId } from "../engine";
 import { EmptyState, Section, Tag } from "./ui";
 // Section is still used by CurrentTaskPanel and RedSignalDeckTrigger consumers; keep import.
 
@@ -33,11 +33,11 @@ interface StatPanelProps {
 }
 
 export function StatPanel({ state, visiblePlayers, onOpenBlueDeck }: StatPanelProps) {
-  const players = useMemo(() => Object.values(state.players), [state.players]);
+  const players = useMemo(() => entryValues(state.players), [state.players]);
   const red = players.filter((p) => p.side === "Red");
-  const usPlayer = state.players.US ?? players.find((player) => player.side === "Blue");
+  const usPlayer = entryValue(state.players, "US") ?? players.find((player) => player.side === "Blue");
   const usForces = useMemo(
-    () => Object.values(state.forces).filter((force) => force.owner === usPlayer?.id),
+    () => entryValues(state.forces).filter((force) => force.owner === usPlayer?.id),
     [state.forces, usPlayer?.id]
   );
   const totalForceFactors = usForces.reduce((sum, force) => sum + force.force_factors, 0);
@@ -137,7 +137,7 @@ function summarizeCapabilities(capabilities: CriticalCapabilityLevel[]): string[
 function summarizePosture(forces: ForceCounter[], state: GameState): string[] {
   const totals = new Map<string, number>();
   for (const force of forces) {
-    const location = state.locations[force.location_id];
+    const location = entryValue(state.locations, force.location_id);
     const label = force.location_id === "CONUS"
       ? "USNORTHCOM/CONUS"
       : `${location?.label ?? force.location_id}`;
@@ -151,7 +151,7 @@ function summarizePosture(forces: ForceCounter[], state: GameState): string[] {
 
 function summarizeActiveForces(forces: ForceCounter[], state: GameState): string[] {
   return forces.map((force) => {
-    const location = state.locations[force.location_id]?.label ?? force.location_id;
+    const location = entryValue(state.locations, force.location_id)?.label ?? force.location_id;
     const statuses = [
       force.pinned.active ? "committed/pinned" : "",
       force.reset_required ? "reset required" : ""

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { Card as GameCardData, GameState, RedSignalState } from "../engine";
+import { entryValue, type Card as GameCardData, type GameState, type RedSignalState } from "../engine";
 import { phaseLabel, playerLabel } from "./factions";
 import { Tag } from "./ui";
 
@@ -80,7 +80,7 @@ export function RedSignalIntel({ state, signals }: SignaledIntelProps) {
     <div className="briefing__signal-list">
       {signals.flatMap((signal) =>
         signal.card_ids.map((cardId) => {
-          const card = state.cards[cardId];
+          const card = entryValue(state.cards, cardId);
           if (!card) return null;
           return (
             <div className="briefing__signal-row" key={`${signal.player_id}-${cardId}`}>
@@ -110,8 +110,8 @@ interface NewspaperPairProps {
 }
 
 export function WorldStateNewspapers({ state, summary, edition }: NewspaperPairProps) {
-  const usPlayer = state.players["US"];
-  const naPlayer = state.players["NATO_EU"];
+  const usPlayer = entryValue(state.players, "US");
+  const naPlayer = entryValue(state.players, "NATO_EU");
   const turnLabel = `Turn ${state.turn} · ${phaseLabel(state.phase)}`;
   return (
     <div className="newspaper-wrap">

@@ -1,4 +1,4 @@
-import type { CardId, CriticalCapabilityLevel, GameState, PlayerId, RollRecord } from "../engine";
+import { entryPairs, entryValue, type CardId, type CriticalCapabilityLevel, type GameState, type PlayerId, type RollRecord } from "../engine";
 
 export interface ScalarChange {
   key: string;
@@ -41,12 +41,12 @@ function asNumber(value: unknown, fallback = 0): number {
 
 export function snapshotPlayers(state: GameState) {
   const snap: Record<string, { rp: number; ip: number; ntl: number; perTurn: number; capabilities: CriticalCapabilityLevel[] }> = {};
-  for (const [id, player] of Object.entries(state.players)) {
+  for (const [id, player] of entryPairs(state.players)) {
     snap[id] = {
       rp: player.resource_points,
       ip: player.influence_points,
       ntl: player.national_tech_level,
-      perTurn: state.per_turn_resources[id] ?? 0,
+      perTurn: entryValue(state.per_turn_resources, id) ?? 0,
       capabilities: player.critical_capabilities.map((capability) => ({ ...capability }))
     };
   }
@@ -55,7 +55,7 @@ export function snapshotPlayers(state: GameState) {
 
 export function snapshotForces(state: GameState) {
   const snap: Record<string, { readiness: number; location: string; pinned: boolean; modLevel: number; ffs: number; reset: boolean }> = {};
-  for (const [id, force] of Object.entries(state.forces)) {
+  for (const [id, force] of entryPairs(state.forces)) {
     snap[id] = {
       readiness: force.readiness_level ?? 100,
       location: force.location_id,
@@ -80,7 +80,7 @@ export function takeSnapshot(state: GameState): Snapshot {
   return {
     players: snapshotPlayers(state),
     forces: snapshotForces(state),
-    flags: { ...state.scenario_flags },
+    flags: Object.fromEntries(entryPairs(state.scenario_flags)),
     logLength: state.event_log.length,
     rollIds: new Set(state.rolls.map((roll) => roll.id))
   };
@@ -91,7 +91,7 @@ export function diffStates(before: Snapshot, after: GameState): StateDiff {
   const flags: FlagChange[] = [];
   const affected = new Set<PlayerId>();
 
-  for (const [id, player] of Object.entries(after.players)) {
+  for (const [id, player] of entryPairs(after.players)) {
     const previous = before.players[id];
     const label = player.label;
     const checks: { key: string; label: string; before: number; after: number }[] = [];
@@ -103,7 +103,7 @@ export function diffStates(before: Snapshot, after: GameState): StateDiff {
         key: `pt:${id}`,
         label: "Per-Turn RP",
         before: previous.perTurn,
-        after: after.per_turn_resources[id] ?? 0
+        after: entryValue(after.per_turn_resources, id) ?? 0
       });
       const capKeys = new Set([
         ...previous.capabilities.map((capability) => capability.id),
@@ -125,7 +125,7 @@ export function diffStates(before: Snapshot, after: GameState): StateDiff {
     }
   }
 
-  for (const [id, force] of Object.entries(after.forces)) {
+  for (const [id, force] of entryPairs(after.forces)) {
     const previous = before.forces[id];
     if (!previous) {
       scalars.push({
@@ -188,7 +188,7 @@ export function diffStates(before: Snapshot, after: GameState): StateDiff {
   }
 
   for (const id of Object.keys(before.forces)) {
-    if (!after.forces[id]) {
+    if (!entryValue(after.forces, id)) {
       scalars.push({
         key: `force-removed:${id}`,
         label: `${id} retired`,
@@ -201,10 +201,10 @@ export function diffStates(before: Snapshot, after: GameState): StateDiff {
     }
   }
 
-  const flagKeys = new Set([...Object.keys(before.flags), ...Object.keys(after.scenario_flags)]);
+  const flagKeys = new Set([...Object.keys(before.flags), ...after.scenario_flags.map((entry) => entry.id)]);
   for (const key of flagKeys) {
     const beforeVal = before.flags[key];
-    const afterVal = after.scenario_flags[key];
+    const afterVal = entryValue(after.scenario_flags, key);
     if (beforeVal === undefined && afterVal === undefined) continue;
     const equal = JSON.stringify(beforeVal) === JSON.stringify(afterVal);
     if (!equal) {

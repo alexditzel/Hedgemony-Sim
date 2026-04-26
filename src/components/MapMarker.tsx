@@ -1,5 +1,5 @@
 import * as L from "leaflet";
-import type { GameState, PlayerId } from "../engine";
+import { entryValue, type GameState, type PlayerId } from "../engine";
 
 export type MarkerSide = "blue" | "red" | "neutral";
 
@@ -55,7 +55,7 @@ function escape(input: string): string {
 }
 
 export function buildPopupHtml(state: GameState, locationLabel: string, owner: PlayerId, ffs: number, pinned: boolean): string {
-  const player = state.players[owner];
+  const player = entryValue(state.players, owner);
   const sideLabel = player?.side ?? "—";
   return `
     <div class="ff-popup">

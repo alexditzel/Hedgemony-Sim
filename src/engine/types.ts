@@ -1,5 +1,67 @@
 import z from "zod";
 
+export type IdValueEntry<Id extends string | number, Value> = {
+  id: Id;
+  value: Value;
+};
+
+export function entryValue<Id extends string | number, Value>(
+  entries: IdValueEntry<Id, Value>[],
+  id: Id,
+): Value | undefined {
+  return entries.find((entry) => entry.id === id)?.value;
+}
+
+export function entryValues<Id extends string | number, Value>(
+  entries: IdValueEntry<Id, Value>[],
+): Value[] {
+  return entries.map((entry) => entry.value);
+}
+
+export function entryPairs<Id extends string | number, Value>(
+  entries: IdValueEntry<Id, Value>[],
+): [Id, Value][] {
+  return entries.map((entry) => [entry.id, entry.value]);
+}
+
+export function entryKeys<Id extends string | number, Value>(
+  entries: IdValueEntry<Id, Value>[],
+): Id[] {
+  return entries.map((entry) => entry.id);
+}
+
+export function setEntryValue<Id extends string | number, Value>(
+  entries: IdValueEntry<Id, Value>[],
+  id: Id,
+  value: Value,
+): void {
+  const existing = entries.find((entry) => entry.id === id);
+  if (existing) {
+    existing.value = value;
+  } else {
+    entries.push({ id, value });
+  }
+}
+
+export function deleteEntryValue<Id extends string | number, Value>(
+  entries: IdValueEntry<Id, Value>[],
+  id: Id,
+): void {
+  const index = entries.findIndex((entry) => entry.id === id);
+  if (index >= 0) {
+    entries.splice(index, 1);
+  }
+}
+
+const idValueSchema = <Id extends z.ZodType, Value extends z.ZodType>(
+  id: Id,
+  value: Value,
+) =>
+  z.object({
+    id,
+    value,
+  });
+
 export type PlayerSide = "Blue" | "Red" | "Other";
 export const PlayerSideSchema = z.enum(["Blue", "Red", "Other"]);
 
@@ -24,14 +86,11 @@ export type CapabilityId =
   | string;
 
 export const CapabilityIdSchema = z.string();
-export type CriticalCapabilityLevel = {
-  id: CapabilityId;
-  value: number;
-};
-export const CriticalCapabilityLevelSchema = z.object({
-  id: CapabilityIdSchema,
-  value: z.number(),
-});
+export type CriticalCapabilityLevel = IdValueEntry<CapabilityId, number>;
+export const CriticalCapabilityLevelSchema = idValueSchema(
+  CapabilityIdSchema,
+  z.number(),
+);
 
 export type RuleTag =
   | "DETERMINISTIC"
@@ -740,22 +799,19 @@ export type Scenario = {
     aor_boundaries: JsonValue[];
   };
   starting_conditions: {
-    resources: Record<PlayerId, number>;
-    per_turn_resources: Record<PlayerId, number>;
-    influence: Record<PlayerId, number>;
-    national_tech_levels: Record<PlayerId, number>;
-    critical_capabilities: {
-      id: PlayerId;
-      value: CriticalCapabilityLevel[];
-    }[];
+    resources: IdValueEntry<PlayerId, number>[];
+    per_turn_resources: IdValueEntry<PlayerId, number>[];
+    influence: IdValueEntry<PlayerId, number>[];
+    national_tech_levels: IdValueEntry<PlayerId, number>[];
+    critical_capabilities: IdValueEntry<PlayerId, CriticalCapabilityLevel[]>[];
     force_laydown: ForceInitialization[];
     bases: Base[];
     proxy_forces: ProxyForce[];
   };
-  victory_conditions: Record<PlayerId, string>;
+  victory_conditions: IdValueEntry<PlayerId, string>[];
   card_decks: {
-    action_investment: Record<PlayerId, Card[]>;
-    domestic_event: Record<PlayerId, Card[]>;
+    action_investment: IdValueEntry<PlayerId, Card[]>[];
+    domestic_event: IdValueEntry<PlayerId, Card[]>[];
     international_event: Card[];
   };
   rules_in_effect: ScenarioRules;
@@ -772,24 +828,23 @@ export const ScenarioSchema = z.object({
     aor_boundaries: z.array(JsonValueSchema),
   }),
   starting_conditions: z.object({
-    resources: z.record(PlayerIdSchema, z.number()),
-    per_turn_resources: z.record(PlayerIdSchema, z.number()),
-    influence: z.record(PlayerIdSchema, z.number()),
-    national_tech_levels: z.record(PlayerIdSchema, z.number()),
+    resources: z.array(idValueSchema(PlayerIdSchema, z.number())),
+    per_turn_resources: z.array(idValueSchema(PlayerIdSchema, z.number())),
+    influence: z.array(idValueSchema(PlayerIdSchema, z.number())),
+    national_tech_levels: z.array(idValueSchema(PlayerIdSchema, z.number())),
     critical_capabilities: z.array(
-      z.object({
-        id: PlayerIdSchema,
-        value: z.array(CriticalCapabilityLevelSchema),
-      }),
+      idValueSchema(PlayerIdSchema, z.array(CriticalCapabilityLevelSchema)),
     ),
     force_laydown: z.array(ForceInitializationSchema),
     bases: z.array(BaseSchema),
     proxy_forces: z.array(ProxyForceSchema),
   }),
-  victory_conditions: z.record(PlayerIdSchema, z.string()),
+  victory_conditions: z.array(idValueSchema(PlayerIdSchema, z.string())),
   card_decks: z.object({
-    action_investment: z.record(PlayerIdSchema, z.array(CardSchema)),
-    domestic_event: z.record(PlayerIdSchema, z.array(CardSchema)),
+    action_investment: z.array(
+      idValueSchema(PlayerIdSchema, z.array(CardSchema)),
+    ),
+    domestic_event: z.array(idValueSchema(PlayerIdSchema, z.array(CardSchema))),
     international_event: z.array(CardSchema),
   }),
   rules_in_effect: ScenarioRulesSchema,
@@ -876,7 +931,7 @@ export type RedSignalState = {
   player_id: PlayerId;
   card_ids: CardId[];
   brief_summary: string | null;
-  activation_intent: Record<CardId, "Yes" | "No" | "Undeclared"> | null;
+  activation_intent: IdValueEntry<CardId, "Yes" | "No" | "Undeclared">[] | null;
   completed: boolean;
 };
 export const RedSignalStateSchema = z.object({
@@ -884,7 +939,9 @@ export const RedSignalStateSchema = z.object({
   card_ids: z.array(CardIdSchema),
   brief_summary: z.nullable(z.string()),
   activation_intent: z.nullable(
-    z.record(CardIdSchema, z.enum(["Yes", "No", "Undeclared"])),
+    z.array(
+      idValueSchema(CardIdSchema, z.enum(["Yes", "No", "Undeclared"])),
+    ),
   ),
   completed: z.boolean(),
 });
@@ -928,20 +985,20 @@ export type GameState = {
   scenario_title: string;
   turn: number;
   phase: PhaseId;
-  players: Record<PlayerId, PlayerState>;
-  forces: Record<ForceId, ForceCounter>;
-  cards: Record<CardId, Card>;
-  locations: Record<LocationId, Location>;
-  bases: Record<string, Base>;
-  proxy_forces: Record<string, ProxyForce>;
-  per_turn_resources: Record<PlayerId, number>;
+  players: IdValueEntry<PlayerId, PlayerState>[];
+  forces: IdValueEntry<ForceId, ForceCounter>[];
+  cards: IdValueEntry<CardId, Card>[];
+  locations: IdValueEntry<LocationId, Location>[];
+  bases: IdValueEntry<string, Base>[];
+  proxy_forces: IdValueEntry<string, ProxyForce>[];
+  per_turn_resources: IdValueEntry<PlayerId, number>[];
   rules_in_effect: ScenarioRules;
   max_turns: number;
   active_player_id: PlayerId | null;
   blue_subphase: "Investments" | "Actions" | null;
   red_sequence: PlayerId[];
-  red_signals: Record<PlayerId, RedSignalState>;
-  red_plays: Record<PlayerId, RedPlayState>;
+  red_signals: IdValueEntry<PlayerId, RedSignalState>[];
+  red_plays: IdValueEntry<PlayerId, RedPlayState>[];
   active_red_index: number;
   readiness_paid_turns: number[];
   event_log: EventLogItem[];
@@ -950,30 +1007,30 @@ export type GameState = {
   pending_resets: PendingReset[];
   card_play_history: CardPlayRecord[];
   ground_truth: GroundTruthItem[];
-  scenario_flags: Record<string, JsonValue>;
+  scenario_flags: IdValueEntry<string, JsonValue>[];
   summaries: {
     game_start: string | null;
-    state_of_world: Record<number, string>;
+    state_of_world: IdValueEntry<number, string>[];
   };
 };
 export const GameStateSchema = z.object({
   scenario_title: z.string(),
   turn: z.number(),
   phase: PhaseIdSchema,
-  players: z.record(PlayerIdSchema, PlayerStateSchema),
-  forces: z.record(ForceIdSchema, ForceCounterSchema),
-  cards: z.record(CardIdSchema, CardSchema),
-  locations: z.record(LocationIdSchema, LocationSchema),
-  bases: z.record(z.string(), BaseSchema),
-  proxy_forces: z.record(z.string(), ProxyForceSchema),
-  per_turn_resources: z.record(PlayerIdSchema, z.number()),
+  players: z.array(idValueSchema(PlayerIdSchema, PlayerStateSchema)),
+  forces: z.array(idValueSchema(ForceIdSchema, ForceCounterSchema)),
+  cards: z.array(idValueSchema(CardIdSchema, CardSchema)),
+  locations: z.array(idValueSchema(LocationIdSchema, LocationSchema)),
+  bases: z.array(idValueSchema(z.string(), BaseSchema)),
+  proxy_forces: z.array(idValueSchema(z.string(), ProxyForceSchema)),
+  per_turn_resources: z.array(idValueSchema(PlayerIdSchema, z.number())),
   rules_in_effect: ScenarioRulesSchema,
   max_turns: z.number(),
   active_player_id: z.nullable(PlayerIdSchema),
   blue_subphase: z.nullable(z.enum(["Investments", "Actions"])),
   red_sequence: z.array(PlayerIdSchema),
-  red_signals: z.record(PlayerIdSchema, RedSignalStateSchema),
-  red_plays: z.record(PlayerIdSchema, RedPlayStateSchema),
+  red_signals: z.array(idValueSchema(PlayerIdSchema, RedSignalStateSchema)),
+  red_plays: z.array(idValueSchema(PlayerIdSchema, RedPlayStateSchema)),
   active_red_index: z.number(),
   readiness_paid_turns: z.array(z.number()),
   event_log: z.array(EventLogItemSchema),
@@ -982,10 +1039,10 @@ export const GameStateSchema = z.object({
   pending_resets: z.array(PendingResetSchema),
   card_play_history: z.array(CardPlayRecordSchema),
   ground_truth: z.array(GroundTruthItemSchema),
-  scenario_flags: z.record(z.string(), JsonValueSchema),
+  scenario_flags: z.array(idValueSchema(z.string(), JsonValueSchema)),
   summaries: z.object({
     game_start: z.nullable(z.string()),
-    state_of_world: z.record(z.coerce.number(), z.string()),
+    state_of_world: z.array(idValueSchema(z.coerce.number(), z.string())),
   }),
 });
 

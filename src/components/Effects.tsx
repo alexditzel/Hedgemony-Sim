@@ -1,4 +1,4 @@
-import type { Card as GameCardData, GameState, RollRecord } from "../engine";
+import { entryValue, type Card as GameCardData, type GameState, type RollRecord } from "../engine";
 import type { ScalarChange, StateDiff } from "./diff";
 import { DiceResult } from "./Dice";
 import { Tag } from "./ui";
@@ -15,7 +15,7 @@ interface EffectsSummaryProps {
 
 export function EffectsSummary({ title, diff, state, card, outcome, rolls = [], narrative }: EffectsSummaryProps) {
   const players = diff.affectedPlayers
-    .map((id) => state.players[id]?.label ?? id)
+    .map((id) => entryValue(state.players, id)?.label ?? id)
     .filter((value, index, list) => list.indexOf(value) === index);
 
   const hasContent = diff.scalars.length > 0 || diff.flags.length > 0 || rolls.length > 0;

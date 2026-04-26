@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
-import type { GameState, PlayerId } from "../engine";
+import { entryValue, entryValues, type GameState, type PlayerId } from "../engine";
 import { sideToTone } from "./factions";
 import { resolveMapCoordinates } from "./mapCoordinates";
 import { buildFfMarkerIcon, buildPopupHtml, type MarkerSide } from "./MapMarker";
@@ -27,9 +27,9 @@ function toneToSide(tone: ReturnType<typeof sideToTone>): MarkerSide {
 export function TheaterMap({ state }: TheaterMapProps) {
   const tokens: AggregatedToken[] = useMemo(() => {
     const map = new Map<string, AggregatedToken>();
-    for (const force of Object.values(state.forces)) {
+    for (const force of entryValues(state.forces)) {
       const key = `${force.location_id}:${force.owner}`;
-      const owner = state.players[force.owner];
+      const owner = entryValue(state.players, force.owner);
       const side = toneToSide(sideToTone(owner?.side));
       const existing = map.get(key);
       if (existing) {
@@ -64,7 +64,7 @@ export function TheaterMap({ state }: TheaterMapProps) {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         {tokens.map((token, index) => {
-          const location = state.locations[token.locationId];
+          const location = entryValue(state.locations, token.locationId);
           const coords = resolveMapCoordinates(token, location);
           if (!coords) return null;
           // small offset within a location so multiple owners don't overlap exactly

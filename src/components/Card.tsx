@@ -1,5 +1,5 @@
 import type { KeyboardEvent } from "react";
-import type { Card as GameCardData, GameState, PlayerId } from "../engine";
+import { entryValue, type Card as GameCardData, type GameState, type PlayerId } from "../engine";
 import type { FactionTone } from "./factions";
 import type { CardBackKind } from "./cardBacks";
 import { cardBackImageUrl } from "./cardBacks";
@@ -8,7 +8,7 @@ import { playerLabel, sideToTone } from "./factions";
 function toneForCardOwner(card: GameCardData, state: GameState): FactionTone {
   if (!card.owner) return "neutral";
   if (card.owner === "WhiteCell") return "white";
-  return sideToTone(state.players[card.owner]?.side);
+  return sideToTone(entryValue(state.players, card.owner)?.side);
 }
 
 export type CardSize = "sm" | "compact" | "default" | "lg";

@@ -16,6 +16,11 @@ import {
   type RtBColumn,
 } from "./tables";
 import {
+  deleteEntryValue,
+  entryPairs,
+  entryValue,
+  entryValues,
+  setEntryValue,
   type AdjudicationRequest,
   type Base,
   type Card,
@@ -28,6 +33,7 @@ import {
   type ForceId,
   type GameState,
   type GroundTruthItem,
+  type IdValueEntry,
   type JsonValue,
   type Location,
   type LocationId,
@@ -130,7 +136,7 @@ function nextId(state: GameState, prefix: string): string {
     state.rolls.length +
     state.pending_adjudications.length +
     state.ground_truth.length +
-    Object.keys(state.forces).length;
+    state.forces.length;
   return `${prefix}-${state.turn}-${count + 1}`;
 }
 
@@ -216,20 +222,20 @@ function stringFrom(value: JsonValue, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
 
-function cardMapFromScenario(scenario: Scenario): Record<CardId, Card> {
-  const cards: Record<CardId, Card> = {};
-  for (const deck of Object.values(scenario.card_decks.action_investment)) {
+function cardMapFromScenario(scenario: Scenario): IdValueEntry<CardId, Card>[] {
+  const cards: IdValueEntry<CardId, Card>[] = [];
+  for (const deck of entryValues(scenario.card_decks.action_investment)) {
     for (const card of deck) {
-      cards[card.id] = card;
+      setEntryValue(cards, card.id, card);
     }
   }
-  for (const deck of Object.values(scenario.card_decks.domestic_event)) {
+  for (const deck of entryValues(scenario.card_decks.domestic_event)) {
     for (const card of deck) {
-      cards[card.id] = card;
+      setEntryValue(cards, card.id, card);
     }
   }
   for (const card of scenario.card_decks.international_event) {
-    cards[card.id] = card;
+    setEntryValue(cards, card.id, card);
   }
   return cards;
 }
@@ -271,20 +277,19 @@ function normalizeLocation(location: Location): Location {
 
 function playerMapFromScenario(
   scenario: Scenario,
-): Record<PlayerId, PlayerState> {
-  return Object.fromEntries(
-    scenario.players.map((player) => [
-      player.id,
-      {
+): IdValueEntry<PlayerId, PlayerState>[] {
+  return scenario.players.map((player) => ({
+      id: player.id,
+      value: {
         ...player,
         resource_points:
-          scenario.starting_conditions.resources[player.id] ??
+          entryValue(scenario.starting_conditions.resources, player.id) ??
           player.resource_points,
         influence_points:
-          scenario.starting_conditions.influence[player.id] ??
+          entryValue(scenario.starting_conditions.influence, player.id) ??
           player.influence_points,
         national_tech_level:
-          scenario.starting_conditions.national_tech_levels[player.id] ??
+          entryValue(scenario.starting_conditions.national_tech_levels, player.id) ??
           player.national_tech_level,
         critical_capabilities:
           scenario.starting_conditions.critical_capabilities.find(
@@ -292,10 +297,10 @@ function playerMapFromScenario(
           )?.value ??
           player.critical_capabilities,
         victory_condition:
-          scenario.victory_conditions[player.id] ?? player.victory_condition,
+          entryValue(scenario.victory_conditions, player.id) ??
+          player.victory_condition,
       },
-    ]),
-  );
+    }));
 }
 
 function getCapabilityLevel(
@@ -325,11 +330,10 @@ function setCapabilityLevel(
 
 function forceMapFromScenario(
   scenario: Scenario,
-): Record<ForceId, ForceCounter> {
-  return Object.fromEntries(
-    scenario.starting_conditions.force_laydown.map((force) => [
-      force.id,
-      {
+): IdValueEntry<ForceId, ForceCounter>[] {
+  return scenario.starting_conditions.force_laydown.map((force) => ({
+      id: force.id,
+      value: {
         id: force.id,
         owner: force.owner,
         force_factors: force.force_factors,
@@ -346,8 +350,7 @@ function forceMapFromScenario(
         procured_turn: null,
         proxy: force.proxy ?? false,
       },
-    ]),
-  );
+    }));
 }
 
 export function createInitialGameState(scenario: Scenario): GameState {
@@ -359,31 +362,30 @@ export function createInitialGameState(scenario: Scenario): GameState {
     players,
     forces: forceMapFromScenario(scenario),
     cards: cardMapFromScenario(scenario),
-    locations: Object.fromEntries(
-      scenario.map.locations.map((location) => [
-        location.id,
-        normalizeLocation(location),
-      ]),
+    locations: scenario.map.locations.map((location) => ({
+      id: location.id,
+      value: normalizeLocation(location),
+    })),
+    bases: scenario.starting_conditions.bases.map((base) => ({
+      id: base.id,
+      value: base,
+    })),
+    proxy_forces: scenario.starting_conditions.proxy_forces.map((proxy) => ({
+      id: proxy.id,
+      value: proxy,
+    })),
+    per_turn_resources: scenario.starting_conditions.per_turn_resources.map(
+      (entry) => ({ ...entry }),
     ),
-    bases: Object.fromEntries(
-      scenario.starting_conditions.bases.map((base) => [base.id, base]),
-    ),
-    proxy_forces: Object.fromEntries(
-      scenario.starting_conditions.proxy_forces.map((proxy) => [
-        proxy.id,
-        proxy,
-      ]),
-    ),
-    per_turn_resources: { ...scenario.starting_conditions.per_turn_resources },
     rules_in_effect: scenario.rules_in_effect,
     max_turns: scenario.max_turns,
     active_player_id: null,
     blue_subphase: null,
     red_sequence: DEFAULT_RED_SEQUENCE.filter(
-      (id) => players[id]?.side === "Red",
+      (id) => entryValue(players, id)?.side === "Red",
     ),
-    red_signals: {},
-    red_plays: {},
+    red_signals: [],
+    red_plays: [],
     active_red_index: 0,
     readiness_paid_turns: [],
     event_log: [],
@@ -392,10 +394,10 @@ export function createInitialGameState(scenario: Scenario): GameState {
     pending_resets: [],
     card_play_history: [],
     ground_truth: [],
-    scenario_flags: {},
+    scenario_flags: [],
     summaries: {
       game_start: null,
-      state_of_world: {},
+      state_of_world: [],
     },
   };
   appendLog(
@@ -411,13 +413,13 @@ export function getPlayersBySide(
   state: GameState,
   side: "Blue" | "Red",
 ): PlayerState[] {
-  return Object.values(state.players).filter((player) => player.side === side);
+  return entryValues(state.players).filter((player) => player.side === side);
 }
 
 export function getPlayerDeck(state: GameState, playerId: PlayerId): Card[] {
-  const ids = state.players[playerId]?.card_decks.action_investment ?? [];
+  const ids = entryValue(state.players, playerId)?.card_decks.action_investment ?? [];
   return ids
-    .map((id) => state.cards[id])
+    .map((id) => entryValue(state.cards, id))
     .filter((card): card is Card => Boolean(card));
 }
 
@@ -439,7 +441,7 @@ export function recordGameStartSummary(
 
 export function validateState(state: GameState): RuleIssue[] {
   const issues: RuleIssue[] = [];
-  for (const player of Object.values(state.players)) {
+  for (const player of entryValues(state.players)) {
     if (player.resource_points < 0 && !player.allow_deficit) {
       issues.push(
         makeIssue(
@@ -459,8 +461,8 @@ export function validateState(state: GameState): RuleIssue[] {
       }
     }
   }
-  for (const force of Object.values(state.forces)) {
-    const owner = state.players[force.owner];
+  for (const force of entryValues(state.forces)) {
+    const owner = entryValue(state.players, force.owner);
     if (owner && force.modernization_level > owner.national_tech_level) {
       issues.push(
         makeIssue(
@@ -551,7 +553,9 @@ export function signalRedCards(
   playerId: PlayerId,
   cardIds: CardId[],
   briefSummary = "",
-  activationIntent: Record<CardId, "Yes" | "No" | "Undeclared"> = {},
+  activationIntent:
+    | IdValueEntry<CardId, "Yes" | "No" | "Undeclared">[]
+    | Record<CardId, "Yes" | "No" | "Undeclared"> = [],
 ): { state: GameState; issues: RuleIssue[] } {
   const draft = cloneState(state);
   const issues: RuleIssue[] = [];
@@ -559,7 +563,7 @@ export function signalRedCards(
   if (phase) {
     issues.push(phase);
   }
-  const player = draft.players[playerId];
+  const player = entryValue(draft.players, playerId);
   if (!player || player.side !== "Red") {
     issues.push(
       makeIssue(`${playerId} is not a Red player.`, [
@@ -584,7 +588,7 @@ export function signalRedCards(
   }
   const deck = new Set(player?.card_decks.action_investment ?? []);
   const cards = cardIds
-    .map((id) => draft.cards[id])
+    .map((id) => entryValue(draft.cards, id))
     .filter((card): card is Card => Boolean(card));
   for (const cardId of cardIds) {
     if (!deck.has(cardId)) {
@@ -602,18 +606,23 @@ export function signalRedCards(
   if (issues.some((issue) => issue.severity === "error")) {
     return { state, issues };
   }
-  draft.red_signals[playerId] = {
+  setEntryValue(draft.red_signals, playerId, {
     player_id: playerId,
     card_ids: cardIds,
     brief_summary: briefSummary,
-    activation_intent: activationIntent,
+    activation_intent: Array.isArray(activationIntent)
+      ? activationIntent
+      : Object.entries(activationIntent).map(([id, value]) => ({
+          id,
+          value,
+        })),
     completed: true,
-  };
-  draft.red_plays[playerId] = {
+  });
+  setEntryValue(draft.red_plays, playerId, {
     player_id: playerId,
     played_card_ids: [],
     skipped: false,
-  };
+  });
   appendLog(
     draft,
     `${playerId} signaled ${cardIds.length} card(s): ${cardIds.join(", ")}.`,
@@ -639,7 +648,7 @@ export function signalRedCards(
 
 export function allRedPlayersSignaled(state: GameState): boolean {
   return getPlayersBySide(state, "Red").every(
-    (player) => state.red_signals[player.id]?.completed,
+    (player) => entryValue(state.red_signals, player.id)?.completed,
   );
 }
 
@@ -682,7 +691,7 @@ export function setActiveBluePlayer(
   if (phase) {
     issues.push(phase);
   }
-  const player = draft.players[playerId];
+  const player = entryValue(draft.players, playerId);
   if (!player || player.side !== "Blue") {
     issues.push(
       makeIssue(`${playerId} is not a Blue player.`, [
@@ -696,7 +705,7 @@ export function setActiveBluePlayer(
   draft.active_player_id = playerId;
   appendLog(
     draft,
-    `Active Blue player is now ${player.label}.`,
+    `Active Blue player is now ${player!.label}.`,
     ["DETERMINISTIC"],
     "public",
     {
@@ -707,7 +716,7 @@ export function setActiveBluePlayer(
 }
 
 function isConus(state: GameState, locationId: LocationId): boolean {
-  const location = state.locations[locationId];
+  const location = entryValue(state.locations, locationId);
   return (
     locationId === "CONUS" ||
     location?.parent_location_id === "CONUS" ||
@@ -720,7 +729,7 @@ export function calculateUsReadinessBill(state: GameState): ReadinessBill {
     string,
     { location: "CONUS" | "OCONUS"; readiness: ReadinessLevel; ffs: number }
   >();
-  for (const force of Object.values(state.forces)) {
+  for (const force of entryValues(state.forces)) {
     if (force.owner !== "US") {
       continue;
     }
@@ -767,7 +776,7 @@ export function setUsForceReadiness(
   if (phase) {
     issues.push(phase);
   }
-  const force = draft.forces[forceId];
+  const force = entryValue(draft.forces, forceId);
   if (!force || force.owner !== "US") {
     issues.push(
       makeIssue(`${forceId} is not a U.S. force.`, ["15 U.S. Readiness"]),
@@ -783,7 +792,7 @@ export function setUsForceReadiness(
   if (issues.length > 0) {
     return { state, issues };
   }
-  draft.forces[forceId].readiness_level = readinessLevel;
+  force!.readiness_level = readinessLevel;
   appendLog(
     draft,
     `${forceId} readiness set to ${readinessLevel}%.`,
@@ -801,7 +810,7 @@ function spendResources(
   reason: string,
   allowDeficit = false,
 ): RuleIssue | undefined {
-  const player = state.players[playerId];
+  const player = entryValue(state.players, playerId);
   if (!player) {
     if (amount === 0) {
       appendLog(
@@ -957,7 +966,7 @@ function redAdditionalCardCost(
   card: Card,
 ): number {
   if (
-    state.players[playerId]?.side !== "Red" ||
+    entryValue(state.players, playerId)?.side !== "Red" ||
     !card.cost.additional_red_card_cost_applies
   ) {
     return 0;
@@ -970,8 +979,8 @@ function redAdditionalCardCost(
     additional_cost_per_card: 1,
   };
   const alreadyPlayed =
-    state.red_plays[playerId]?.played_card_ids.filter((id) => {
-      const playedCard = state.cards[id];
+    entryValue(state.red_plays, playerId)?.played_card_ids.filter((id) => {
+      const playedCard = entryValue(state.cards, id);
       return playedCard?.subtype !== "Procure New Forces";
     }).length ?? 0;
   if (alreadyPlayed < pace.additional_cost_starts_after_card_number) {
@@ -995,10 +1004,12 @@ function validateCardPhase(
   }
   const owner =
     card.owner && card.owner !== "WhiteCell"
-      ? state.players[card.owner]
+      ? entryValue(state.players, card.owner)
       : undefined;
   const actor =
-    actorId && actorId !== "WhiteCell" ? state.players[actorId] : undefined;
+    actorId && actorId !== "WhiteCell"
+      ? entryValue(state.players, actorId)
+      : undefined;
   if (
     state.phase === "BlueInvestmentsAndActions" &&
     (owner?.side === "Blue" || actor?.side === "Blue")
@@ -1132,7 +1143,7 @@ function setPlayerResourceAllocation(
   value: JsonValue,
 ): void {
   if (typeof value === "number") {
-    state.per_turn_resources[playerId] = value;
+    setEntryValue(state.per_turn_resources, playerId, value);
     return;
   }
   if (!isRecord(value)) {
@@ -1141,10 +1152,13 @@ function setPlayerResourceAllocation(
   const amount = numberFrom(value.amount);
   const mode = stringFrom(value.mode, "adjust");
   if (mode === "set") {
-    state.per_turn_resources[playerId] = amount;
+    setEntryValue(state.per_turn_resources, playerId, amount);
   } else {
-    state.per_turn_resources[playerId] =
-      (state.per_turn_resources[playerId] ?? 0) + amount;
+    setEntryValue(
+      state.per_turn_resources,
+      playerId,
+      (entryValue(state.per_turn_resources, playerId) ?? 0) + amount,
+    );
   }
 }
 
@@ -1179,11 +1193,11 @@ function applySingleEffect(
   const player =
     target === "WhiteCell" || target === "ACTOR"
       ? undefined
-      : state.players[target as PlayerId];
+      : entryValue(state.players, target as PlayerId);
   const force =
     target === "WhiteCell" || target === "ACTOR"
       ? undefined
-      : state.forces[target as ForceId];
+      : entryValue(state.forces, target as ForceId);
   switch (effect.type) {
     case "adjust_resource_points":
       if (player) {
@@ -1203,7 +1217,7 @@ function applySingleEffect(
     case "set_national_tech_level":
       if (player) {
         const nextLevel = numberFrom(effect.value, player.national_tech_level);
-        const forceAboveCap = Object.values(state.forces).find(
+        const forceAboveCap = entryValues(state.forces).find(
           (force) =>
             force.owner === player.id && force.modernization_level > nextLevel,
         );
@@ -1224,7 +1238,7 @@ function applySingleEffect(
     case "adjust_national_tech_level":
       if (player) {
         const nextLevel = player.national_tech_level + numberFrom(effect.value);
-        const forceAboveCap = Object.values(state.forces).find(
+        const forceAboveCap = entryValues(state.forces).find(
           (force) =>
             force.owner === player.id && force.modernization_level > nextLevel,
         );
@@ -1347,7 +1361,7 @@ function applySingleEffect(
           ),
           notes: stringFrom(effect.value.notes),
         };
-        state.bases[base.id] = base;
+        setEntryValue(state.bases, base.id, base);
       }
       break;
     case "create_proxy_force":
@@ -1365,7 +1379,7 @@ function applySingleEffect(
           ) as ReliabilityLevel,
           scope: stringFrom(effect.value.scope),
         };
-        state.proxy_forces[proxy.id] = proxy;
+        setEntryValue(state.proxy_forces, proxy.id, proxy);
       }
       break;
     case "procure_forces":
@@ -1373,9 +1387,9 @@ function applySingleEffect(
         const owner = stringFrom(effect.value.owner, effect.target);
         const id = stringFrom(
           effect.value.id,
-          `${owner}-F-${Object.keys(state.forces).length + 1}`,
+          `${owner}-F-${state.forces.length + 1}`,
         );
-        state.forces[id] = {
+        setEntryValue(state.forces, id, {
           id,
           owner,
           force_factors: numberFrom(effect.value.force_factors),
@@ -1393,7 +1407,7 @@ function applySingleEffect(
           reset_required: false, reset_available_turn: null, 
           procured_turn: state.turn,
           proxy: false,
-        };
+        });
       } else {
         addAdjudication(
           state,
@@ -1405,11 +1419,15 @@ function applySingleEffect(
       }
       break;
     case "create_scenario_flag":
-      state.scenario_flags[target] = effect.value;
+      setEntryValue(state.scenario_flags, target, effect.value);
       break;
     case "adjust_scenario_flag_number":
-      state.scenario_flags[target] =
-        numberFrom(state.scenario_flags[target]) + numberFrom(effect.value);
+      setEntryValue(
+        state.scenario_flags,
+        target,
+        numberFrom(entryValue(state.scenario_flags, target) ?? null) +
+          numberFrom(effect.value),
+      );
       break;
     case "schedule_future_effect":
       addGroundTruthForEffect(state, effect, owner, "Future effect scheduled.");
@@ -1486,7 +1504,7 @@ export function calculateCombatFactors(
   const adjudications: RuleIssue[] = [];
   let total = 0;
   for (const commitment of commitments) {
-    const force = state.forces[commitment.force_id];
+    const force = entryValue(state.forces, commitment.force_id);
     if (!force || force.owner !== playerId) {
       adjudications.push(
         makeIssue(`${commitment.force_id} is not available to ${playerId}.`, [
@@ -1630,7 +1648,9 @@ function bestCapability(
 ): number {
   return Math.max(
     0,
-    ...players.map((id) => getCapabilityLevel(state.players[id], capability)),
+    ...players.map((id) =>
+      getCapabilityLevel(entryValue(state.players, id), capability),
+    ),
   );
 }
 
@@ -1661,7 +1681,7 @@ function totalFfsForCommitments(
   commitments: ForceCommitment[],
 ): number {
   return commitments.reduce((sum, commitment) => {
-    const force = state.forces[commitment.force_id];
+    const force = entryValue(state.forces, commitment.force_id);
     if (!force) {
       return sum;
     }
@@ -1678,7 +1698,8 @@ function commitmentsOwnedBy(
   commitments: ForceCommitment[],
 ): ForceCommitment[] {
   return commitments.filter(
-    (commitment) => state.forces[commitment.force_id]?.owner === playerId,
+    (commitment) =>
+      entryValue(state.forces, commitment.force_id)?.owner === playerId,
   );
 }
 
@@ -1955,7 +1976,7 @@ export function resolveCard(
 ): CardResolutionResult {
   const draft = cloneState(state);
   const issues: RuleIssue[] = [];
-  const card = draft.cards[args.card_id];
+  const card = entryValue(draft.cards, args.card_id);
   if (!card) {
     return {
       state,
@@ -2043,7 +2064,9 @@ export function resolveCard(
     outcome = resolved.outcome;
     roll = resolved.roll;
   } else if (method === "proxy_reliability") {
-    const proxy = args.proxy_id ? draft.proxy_forces[args.proxy_id] : undefined;
+    const proxy = args.proxy_id
+      ? entryValue(draft.proxy_forces, args.proxy_id)
+      : undefined;
     const reliability = args.reliability_level ?? proxy?.reliability;
     if (!reliability) {
       const issue = makeIssue(
@@ -2134,7 +2157,7 @@ export function resolveCard(
         ...(args.blue_commitments ?? []),
         ...(args.red_commitments ?? []),
       ]) {
-        const force = draft.forces[commitment.force_id];
+        const force = entryValue(draft.forces, commitment.force_id);
         if (force) {
           force.pinned = {
             active: true,
@@ -2216,7 +2239,7 @@ function redPlayedMixIssueForCardIds(
     return undefined;
   }
   const cards = playedIds
-    .map((id) => state.cards[id])
+    .map((id) => entryValue(state.cards, id))
     .filter((card): card is Card => Boolean(card));
   const hasAction = cards.some((card) => card.type === "Action");
   const hasInvestment = cards.some((card) => card.type === "Investment");
@@ -2231,8 +2254,8 @@ function redPlayDeadEndIssue(
   playerId: PlayerId,
   cardId: CardId,
 ): RuleIssue | undefined {
-  const signal = state.red_signals[playerId];
-  const play = state.red_plays[playerId];
+  const signal = entryValue(state.red_signals, playerId);
+  const play = entryValue(state.red_plays, playerId);
   if (!signal || !play) {
     return undefined;
   }
@@ -2258,15 +2281,15 @@ export function getRedChoiceOptions(
   state: GameState,
   playerId: PlayerId,
 ): { remaining: Card[]; canSkip: boolean } {
-  const signal = state.red_signals[playerId];
-  const play = state.red_plays[playerId];
+  const signal = entryValue(state.red_signals, playerId);
+  const play = entryValue(state.red_plays, playerId);
   if (!signal || !play || play.skipped) {
     return { remaining: [], canSkip: true };
   }
   const remaining = signal.card_ids
     .filter((id) => !play.played_card_ids.includes(id))
     .filter((id) => !redPlayDeadEndIssue(state, playerId, id))
-    .map((id) => state.cards[id])
+    .map((id) => entryValue(state.cards, id))
     .filter((card): card is Card => Boolean(card));
   return {
     remaining,
@@ -2277,7 +2300,7 @@ export function getRedChoiceOptions(
 function redPlayedMixValid(state: GameState, playerId: PlayerId): boolean {
   return !redPlayedMixIssueForCardIds(
     state,
-    state.red_plays[playerId]?.played_card_ids ?? [],
+    entryValue(state.red_plays, playerId)?.played_card_ids ?? [],
   );
 }
 
@@ -2288,8 +2311,8 @@ export function playRedSignaledCard(
   roller: DiceRoller,
   args: Omit<ResolveCardArgs, "acting_player_id" | "card_id"> = {},
 ): CardResolutionResult {
-  const signal = state.red_signals[playerId];
-  const play = state.red_plays[playerId];
+  const signal = entryValue(state.red_signals, playerId);
+  const play = entryValue(state.red_plays, playerId);
   if (
     !signal ||
     !play ||
@@ -2322,13 +2345,16 @@ export function playRedSignaledCard(
     roller,
   );
   if (!resolved.issues.some((issue) => issue.severity === "error")) {
-    resolved.state.red_plays[playerId] = {
-      ...resolved.state.red_plays[playerId],
+    const resolvedPlay = entryValue(resolved.state.red_plays, playerId);
+    if (resolvedPlay) {
+      setEntryValue(resolved.state.red_plays, playerId, {
+      ...resolvedPlay,
       played_card_ids: [
-        ...resolved.state.red_plays[playerId].played_card_ids,
+        ...resolvedPlay.played_card_ids,
         cardId,
       ],
-    };
+      });
+    }
     appendLog(
       resolved.state,
       `${playerId} has remaining signaled options: ${
@@ -2356,7 +2382,8 @@ export function skipRemainingRedCards(
     issues.push(makeIssue(RED_PLAY_MIX_MESSAGE, RED_PLAY_MIX_RULE_REFS));
     return { state, issues };
   }
-  if (!draft.red_plays[playerId]) {
+  const play = entryValue(draft.red_plays, playerId);
+  if (!play) {
     issues.push(
       makeIssue(`${playerId} has no Red play state.`, [
         "5.4 Red Investments and Actions Phase",
@@ -2364,7 +2391,7 @@ export function skipRemainingRedCards(
     );
     return { state, issues };
   }
-  draft.red_plays[playerId].skipped = true;
+  play.skipped = true;
   appendLog(
     draft,
     `${playerId} skipped remaining signaled cards.`,
@@ -2521,8 +2548,8 @@ export function calculateMovementCost(
 ): MovementCostResult {
   const notes: string[] = [];
   const issues: RuleIssue[] = [];
-  const from = state.locations[request.from_location_id];
-  const to = state.locations[request.to_location_id];
+  const from = entryValue(state.locations, request.from_location_id);
+  const to = entryValue(state.locations, request.to_location_id);
   if (!from || !to) {
     return {
       cost: 0,
@@ -2546,7 +2573,7 @@ export function calculateMovementCost(
     };
   }
   const forces = request.force_ids
-    .map((id) => state.forces[id])
+    .map((id) => entryValue(state.forces, id))
     .filter((force): force is ForceCounter => Boolean(force));
   if (forces.some((force) => force.home_base_id === request.to_location_id)) {
     return {
@@ -2615,7 +2642,7 @@ export function buyBackReadiness(
     }
   >();
   for (const forceId of forceIds) {
-    const force = draft.forces[forceId];
+    const force = entryValue(draft.forces, forceId);
     if (!force || force.owner !== "US") {
       issues.push(
         makeIssue(`${forceId} is not a U.S. force.`, [
@@ -2673,7 +2700,10 @@ export function buyBackReadiness(
     return { state, cost: totalCost, issues: [spendIssue] };
   }
   for (const forceId of forceIds) {
-    draft.forces[forceId].readiness_level = targetReadiness;
+    const force = entryValue(draft.forces, forceId);
+    if (force) {
+      force.readiness_level = targetReadiness;
+    }
   }
   return { state: draft, cost: totalCost, issues };
 }
@@ -2691,7 +2721,7 @@ export function procureForces(
   },
 ): { state: GameState; force_id?: ForceId; cost: number; issues: RuleIssue[] } {
   const draft = cloneState(state);
-  const player = draft.players[args.player_id];
+  const player = entryValue(draft.players, args.player_id);
   const issues: RuleIssue[] = [];
   if (!player) {
     return {
@@ -2732,8 +2762,8 @@ export function procureForces(
     return { state, cost: cost.value, issues: [spendIssue] };
   }
   const id =
-    args.id ?? `${args.player_id}-F-${Object.keys(draft.forces).length + 1}`;
-  draft.forces[id] = {
+    args.id ?? `${args.player_id}-F-${draft.forces.length + 1}`;
+  setEntryValue(draft.forces, id, {
     id,
     owner: args.player_id,
     force_factors: args.force_factors,
@@ -2746,7 +2776,7 @@ export function procureForces(
     reset_required: false, reset_available_turn: null, 
     procured_turn: draft.turn,
     proxy: false,
-  };
+  });
   appendLog(
     draft,
     `${args.player_id} procured ${args.force_factors} FF at M${args.modernization_level}.`,
@@ -2769,7 +2799,7 @@ export function modernizeForces(
   },
 ): { state: GameState; cost: number; issues: RuleIssue[] } {
   const draft = cloneState(state);
-  const player = draft.players[args.player_id];
+  const player = entryValue(draft.players, args.player_id);
   const issues: RuleIssue[] = [];
   if (!player) {
     return {
@@ -2788,11 +2818,11 @@ export function modernizeForces(
       ),
     );
   }
-  const ownedForces = Object.values(draft.forces).filter(
+  const ownedForces = entryValues(draft.forces).filter(
     (force) => force.owner === args.player_id,
   );
   const requestedForces = args.force_ids
-    .map((id) => draft.forces[id])
+    .map((id) => entryValue(draft.forces, id))
     .filter((force): force is ForceCounter => Boolean(force));
   const requestedFfs = requestedForces.reduce(
     (sum, force) => sum + force.force_factors,
@@ -2869,8 +2899,7 @@ export function modernizeForces(
     return { state, cost: totalCost, issues: [spendIssue] };
   }
   for (const force of requestedForces) {
-    draft.forces[force.id].modernization_level =
-      args.target_modernization_level;
+    force.modernization_level = args.target_modernization_level;
   }
   appendLog(
     draft,
@@ -2895,7 +2924,7 @@ export function retireUsForces(
     issues.push(phase);
   }
   for (const forceId of forceIds) {
-    const force = draft.forces[forceId];
+    const force = entryValue(draft.forces, forceId);
     if (!force || force.owner !== "US") {
       issues.push(
         makeIssue(`${forceId} is not a U.S. force.`, ["13.3 Retirement"]),
@@ -2913,7 +2942,7 @@ export function retireUsForces(
     return { state, issues };
   }
   for (const forceId of forceIds) {
-    delete draft.forces[forceId];
+    deleteEntryValue(draft.forces, forceId);
   }
   appendLog(
     draft,
@@ -2934,7 +2963,7 @@ export function applyResetRules(
   const draft = cloneState(state);
   const issues: RuleIssue[] = [];
   const committed = committedForceIds
-    .map((id) => draft.forces[id])
+    .map((id) => entryValue(draft.forces, id))
     .filter((force): force is ForceCounter => Boolean(force));
   const requiredFfs = Math.ceil(
     committed.reduce((sum, force) => sum + force.force_factors, 0) / 2,
@@ -2945,7 +2974,7 @@ export function applyResetRules(
     if (resetFfs >= requiredFfs) {
       break;
     }
-    const force = draft.forces[forceId];
+    const force = entryValue(draft.forces, forceId);
     if (!force) {
       continue;
     }
@@ -2984,7 +3013,7 @@ export function applyResetRules(
         ["11.3 Reset Rules"],
       );
     } else {
-      draft.forces[force.id].readiness_level = next as ReadinessLevel;
+      force.readiness_level = next as ReadinessLevel;
     }
   }
   appendLog(
@@ -3005,11 +3034,11 @@ export function restoreResetRedForces(
   const issues: RuleIssue[] = [];
   let cost = 0;
   for (const forceId of forceIds) {
-    const force = draft.forces[forceId];
+    const force = entryValue(draft.forces, forceId);
     if (
       !force ||
       force.owner !== playerId ||
-      draft.players[playerId]?.side !== "Red"
+      entryValue(draft.players, playerId)?.side !== "Red"
     ) {
       issues.push(
         makeIssue(`${forceId} is not a reset Red force for ${playerId}.`, [
@@ -3033,8 +3062,11 @@ export function restoreResetRedForces(
     return { state, cost, issues: [spendIssue] };
   }
   for (const forceId of forceIds) {
-    draft.forces[forceId].reset_required = false;
-    draft.forces[forceId].reset_available_turn = draft.turn + 1;
+    const force = entryValue(draft.forces, forceId);
+    if (force) {
+      force.reset_required = false;
+      force.reset_available_turn = draft.turn + 1;
+    }
   }
   return { state: draft, cost, issues };
 }
@@ -3051,7 +3083,7 @@ export function resolveProxyParticipation(
   issues: RuleIssue[];
 } {
   const draft = cloneState(state);
-  const proxy = draft.proxy_forces[proxyId];
+  const proxy = entryValue(draft.proxy_forces, proxyId);
   if (!proxy) {
     return {
       state,
@@ -3137,7 +3169,7 @@ export function developProxyForce(
     ? args.intended_ffs
     : Math.max(0, args.intended_ffs - 1);
   const deliveredMod = args.intended_mod_level;
-  const proxy = draft.proxy_forces[args.proxy_id];
+  const proxy = entryValue(draft.proxy_forces, args.proxy_id);
   if (proxy) {
     proxy.force_factors += deliveredFfs;
     proxy.modernization_level = Math.max(
@@ -3183,11 +3215,13 @@ export function annualResourceAllocation(
   });
   draft.rolls.push(budgetRoll);
   const usVariation = getBudgetVariation(budgetRoll.total);
-  for (const [playerId, allocation] of Object.entries(
-    draft.per_turn_resources,
-  )) {
+  for (const [playerId, allocation] of entryPairs(draft.per_turn_resources)) {
     const amount = playerId === "US" ? allocation + usVariation : allocation;
-    draft.players[playerId as PlayerId].resource_points += amount;
+    const player = entryValue(draft.players, playerId);
+    if (!player) {
+      continue;
+    }
+    player.resource_points += amount;
     appendLog(
       draft,
       `${playerId} received ${amount} RP annual allocation.`,
@@ -3218,14 +3252,14 @@ export function recordStateOfWorldSummary(
   summary: string,
 ): GameState {
   const draft = cloneState(state);
-  draft.summaries.state_of_world[draft.turn] = summary;
+  setEntryValue(draft.summaries.state_of_world, draft.turn, summary);
   appendLog(
     draft,
     `State-of-world summary recorded for turn ${draft.turn}.`,
     ["SUMMARY_REQUIRED"],
     "public",
   );
-  for (const force of Object.values(draft.forces)) {
+  for (const force of entryValues(draft.forces)) {
     if (
       force.pinned.active &&
       typeof force.pinned.remaining_turns === "number"
@@ -3247,7 +3281,7 @@ export function recordStateOfWorldSummary(
     (entry) => entry.status === "pending_after_pinning",
   )) {
     const stillPinned = pendingReset.force_ids.some(
-      (forceId) => draft.forces[forceId]?.pinned.active,
+      (forceId) => entryValue(draft.forces, forceId)?.pinned.active,
     );
     if (!stillPinned) {
       const reset = applyResetRules(
@@ -3309,8 +3343,8 @@ export function recordStateOfWorldSummary(
     draft.phase = "RedSignaling";
     draft.active_player_id = null;
     draft.blue_subphase = null;
-    draft.red_signals = {};
-    draft.red_plays = {};
+    draft.red_signals = [];
+    draft.red_plays = [];
     draft.active_red_index = 0;
     appendLog(draft, `Turn ${draft.turn} begins.`, ["DETERMINISTIC"], "public");
   }
@@ -3402,7 +3436,7 @@ export function injectWhiteCellEvent(
   note: string,
   roller: DiceRoller,
 ): CardResolutionResult {
-  const card = state.cards[cardId];
+  const card = entryValue(state.cards, cardId);
   if (
     !card ||
     (card.type !== "DomesticEvent" && card.type !== "InternationalEvent")

@@ -1,4 +1,4 @@
-import type { GameState, PlayerId, PlayerSide } from "../engine";
+import { entryValue, type GameState, type PlayerId, type PlayerSide } from "../engine";
 
 export type FactionTone = "blue" | "red" | "white" | "neutral";
 
@@ -12,14 +12,14 @@ export function sideToTone(side: PlayerSide | "WhiteCell" | undefined): FactionT
 export function playerTone(state: GameState, playerId: PlayerId | "WhiteCell" | undefined): FactionTone {
   if (!playerId) return "neutral";
   if (playerId === "WhiteCell") return "white";
-  const player = state.players[playerId];
+  const player = entryValue(state.players, playerId);
   return sideToTone(player?.side);
 }
 
 export function playerLabel(state: GameState, playerId: PlayerId | "WhiteCell" | undefined): string {
   if (!playerId) return "—";
   if (playerId === "WhiteCell") return "White Cell";
-  return state.players[playerId]?.label ?? playerId;
+  return entryValue(state.players, playerId)?.label ?? playerId;
 }
 
 export const PHASE_LABELS: Record<string, string> = {

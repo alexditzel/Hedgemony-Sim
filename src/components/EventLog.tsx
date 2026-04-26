@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { EventLogItem, GameState, RuleTag } from "../engine";
+import { entryValue, type EventLogItem, type GameState, type RuleTag } from "../engine";
 import { canViewLog, type ViewerId } from "./visibility";
 import { Modal, Tag } from "./ui";
 import { phaseLabel, playerTone } from "./factions";
@@ -141,7 +141,7 @@ interface LogEntryModalProps {
 
 export function LogEntryModal({ entry, state, open, onClose }: LogEntryModalProps) {
   if (!entry) return null;
-  const card = entry.card_id ? state.cards[entry.card_id] : undefined;
+  const card = entry.card_id ? entryValue(state.cards, entry.card_id) : undefined;
   const roll = entry.roll_id ? state.rolls.find((r) => r.id === entry.roll_id) : undefined;
   return (
     <Modal open={open} onClose={onClose} title={`Log · T${entry.turn} ${phaseLabel(entry.phase)}`}>

@@ -7,6 +7,9 @@ import {
   beginRedInvestmentsAndActions,
   calculateUsReadinessBill,
   createInitialGameState,
+  entryPairs,
+  entryValue,
+  entryValues,
   generateRedPlayDecision,
   generateRedSequenceDecision,
   generateRedSignalDecision,
@@ -147,7 +150,11 @@ function turnSummary(state: GameState, turn: number): string {
   if (turn <= 1) {
     return state.summaries.game_start ?? "World state at the start of the campaign.";
   }
-  return state.summaries.state_of_world[turn - 1] ?? state.summaries.state_of_world[turn] ?? "Open-source picture is forming.";
+  return (
+    entryValue(state.summaries.state_of_world, turn - 1) ??
+    entryValue(state.summaries.state_of_world, turn) ??
+    "Open-source picture is forming."
+  );
 }
 
 function openingSummaryFromReviews(reviewItems: ReviewItem[], fallback: string): string {
@@ -185,12 +192,12 @@ function metricPointFromState(state: GameState, turn: number): PlayerMetricPoint
   return {
     turn,
     players: Object.fromEntries(
-      Object.entries(state.players).map(([id, player]) => [
+      entryPairs(state.players).map(([id, player]) => [
         id,
         {
           rp: player.resource_points,
           ip: player.influence_points,
-          perTurn: state.per_turn_resources[player.id] ?? 0,
+          perTurn: entryValue(state.per_turn_resources, player.id) ?? 0,
           ntl: player.national_tech_level
         }
       ])
@@ -232,13 +239,13 @@ export function GameView({ scenario }: GameViewProps) {
   const validationIssues = validateState(state);
   const blockingValidation = validationIssues.filter((issue) => issue.severity === "error");
 
-  const activePlayer = state.active_player_id ? state.players[state.active_player_id] : undefined;
+  const activePlayer = state.active_player_id ? entryValue(state.players, state.active_player_id) : undefined;
   const bluePlayers = useMemo(() => getPlayersBySide(state, "Blue"), [state]);
 
   const allRevealedSignals = useMemo(() => {
-    return Object.values(state.red_signals).flatMap((signal) =>
+    return entryValues(state.red_signals).flatMap((signal) =>
       signal.card_ids
-        .map((id) => ({ playerId: signal.player_id, card: state.cards[id] }))
+        .map((id) => ({ playerId: signal.player_id, card: entryValue(state.cards, id) }))
         .filter((entry): entry is { playerId: PlayerId; card: Card } => Boolean(entry.card))
     );
   }, [state.red_signals, state.cards]);
@@ -270,7 +277,7 @@ export function GameView({ scenario }: GameViewProps) {
     if (rollFromResult && !newRolls.some((roll) => roll.id === rollFromResult.id)) {
       newRolls.push(rollFromResult);
     }
-    const card = nextState.cards[cardId];
+    const card = entryValue(nextState.cards, cardId);
     setReviewQueue((queue) => [
       ...queue,
       {
@@ -352,7 +359,9 @@ export function GameView({ scenario }: GameViewProps) {
           if (!turnStartSnapshots.current[state.turn]) {
             turnStartSnapshots.current[state.turn] = takeSnapshot(state);
           }
-          const nextRed = getPlayersBySide(state, "Red").find((player) => !state.red_signals[player.id]?.completed);
+          const nextRed = getPlayersBySide(state, "Red").find(
+            (player) => !entryValue(state.red_signals, player.id)?.completed,
+          );
           if (nextRed) {
             const decision = await generateRedSignalDecision(state, nextRed.id);
             const result = signalRedCards(state, nextRed.id, decision.cardIds, decision.briefSummary, decision.activationIntent ?? undefined);
@@ -382,7 +391,7 @@ export function GameView({ scenario }: GameViewProps) {
 
         if (state.phase === "RedInvestmentsAndActions" && state.active_player_id) {
           const playerId = state.active_player_id;
-          if (state.red_plays[playerId]?.skipped) {
+          if (entryValue(state.red_plays, playerId)?.skipped) {
             applyResult(advanceRedActivePlayer(state));
             return;
           }
@@ -409,13 +418,13 @@ export function GameView({ scenario }: GameViewProps) {
 
         if (state.phase === "AnnualResourcesAllocation") {
           const before: Record<string, number> = {};
-          for (const [id, p] of Object.entries(state.players)) before[id] = p.resource_points;
+          for (const [id, p] of entryPairs(state.players)) before[id] = p.resource_points;
           const result = annualResourceAllocation(state, roller);
           if (showIssues(result.issues)) return;
-          const allocations = Object.values(result.state.players).map((player) => {
+          const allocations = entryValues(result.state.players).map((player) => {
             const beforeRp = before[player.id] ?? 0;
             const total = player.resource_points - beforeRp;
-            const baseRp = state.per_turn_resources[player.id] ?? 0;
+            const baseRp = entryValue(state.per_turn_resources, player.id) ?? 0;
             const variation = total - baseRp;
             return { playerId: player.id, baseRp, variation, total };
           });
@@ -680,7 +689,7 @@ export function GameView({ scenario }: GameViewProps) {
                 text={
                   summaryModal.kind === "game_start"
                     ? state.summaries.game_start ?? "No summary available."
-                    : state.summaries.state_of_world[summaryModal.turn] ?? "No summary available."
+                    : entryValue(state.summaries.state_of_world, summaryModal.turn) ?? "No summary available."
                 }
               />
             </BriefingSection>
@@ -931,7 +940,7 @@ function TrendChart({
   metric: "rp" | "ip";
   title: string;
 }) {
-  const players = Object.values(state.players);
+  const players = entryValues(state.players);
   const values = history.flatMap((point) => players.map((player) => point.players[player.id]?.[metric] ?? 0));
   const minValue = Math.min(0, ...values);
   const maxValue = Math.max(1, ...values);
@@ -1066,7 +1075,7 @@ function ReviewStage({ state, review, onContinue, onOpenCard }: ReviewStageProps
           </BriefingSection>
           <BriefingSection title="Posture Notes">
             <ul className="briefing__bullets">
-              {Object.values(state.players).map((player) => (
+              {entryValues(state.players).map((player) => (
                 <li key={player.id}>
                   <b>{player.label}</b> — {player.resource_points} RP · {player.influence_points} IP · NTL {player.national_tech_level}
                 </li>
@@ -1083,7 +1092,7 @@ function ReviewStage({ state, review, onContinue, onOpenCard }: ReviewStageProps
 
   if (review.kind === "signal_reveal") {
     const cards = review.cardIds
-      .map((id) => state.cards[id])
+      .map((id) => entryValue(state.cards, id))
       .filter((card): card is Card => Boolean(card));
     return (
       <div className="stack-lg fade-in">
@@ -1113,7 +1122,7 @@ function ReviewStage({ state, review, onContinue, onOpenCard }: ReviewStageProps
   }
 
 	if (review.kind === "signal_intel") {
-		const signal = state.red_signals[review.playerId];
+		const signal = entryValue(state.red_signals, review.playerId);
 		const signalLogMessage = [...state.event_log].reverse().find((entry) =>
 			entry.turn === review.turn &&
 			entry.phase === "RedSignaling" &&
@@ -1173,7 +1182,7 @@ function ReviewStage({ state, review, onContinue, onOpenCard }: ReviewStageProps
             <span>Credited</span>
           </div>
           {review.allocations.map((row) => {
-            const player = state.players[row.playerId];
+            const player = entryValue(state.players, row.playerId);
             const tone = sideToTone(player?.side);
             const variation = row.variation;
             const variationCls = variation > 0 ? "alloc-table__delta--up" : variation < 0 ? "alloc-table__delta--down" : "alloc-table__delta--neutral";
@@ -1287,12 +1296,12 @@ function ReviewStage({ state, review, onContinue, onOpenCard }: ReviewStageProps
 	}
 
   if (review.kind === "card_resolution") {
-    const card = state.cards[review.cardId];
+    const card = entryValue(state.cards, review.cardId);
     const isWhiteCell = review.actor === "WhiteCell";
     const tone = isWhiteCell
       ? "white"
       : card?.owner && card.owner !== "WhiteCell"
-        ? sideToTone(state.players[card.owner]?.side)
+        ? sideToTone(entryValue(state.players, card.owner)?.side)
         : "white";
     const headerLabel = isWhiteCell
       ? "WHITE CELL ADJUDICATION"
@@ -1425,7 +1434,7 @@ function AutoResolvingStage({ state }: { state: GameState }) {
 }
 
 function GameOverStage({ state }: { state: GameState }) {
-  const players = Object.values(state.players);
+  const players = entryValues(state.players);
   return (
     <div className="stack-md fade-in">
       <header>
@@ -1457,7 +1466,7 @@ interface ReadinessStageProps {
 
 function ReadinessStage({ state, onPay, onSetReadiness }: ReadinessStageProps) {
   const bill = calculateUsReadinessBill(state);
-  const usForces = Object.values(state.forces)
+  const usForces = entryValues(state.forces)
     .filter((force) => force.owner === "US")
     .sort((a, b) => a.id.localeCompare(b.id));
   return (
@@ -1483,7 +1492,7 @@ function ReadinessStage({ state, onPay, onSetReadiness }: ReadinessStageProps) {
           <span>Mod</span>
         </div>
         {usForces.map((force) => {
-          const location = state.locations[force.location_id];
+          const location = entryValue(state.locations, force.location_id);
           const readiness = (force.readiness_level ?? 100) as ReadinessLevel;
           return (
             <div key={force.id} className="readiness-table__row" role="row">
@@ -1527,7 +1536,7 @@ function ReadinessStage({ state, onPay, onSetReadiness }: ReadinessStageProps) {
       <div className="row gap-md">
         <Button variant="primary" onClick={onPay}>Pay Readiness Bill ({bill.total} RP) →</Button>
         <span className="muted" style={{ fontFamily: "var(--font-mono)", fontSize: "0.78rem", letterSpacing: "0.08em" }}>
-          U.S. RP: {state.players["US"]?.resource_points ?? 0}
+          U.S. RP: {entryValue(state.players, "US")?.resource_points ?? 0}
         </span>
       </div>
     </div>

@@ -5,6 +5,8 @@ import type { ReviewItem } from "../components/diff";
 import { getPlayerDeck } from "./rules";
 import {
   CardIdSchema,
+  entryValue,
+  entryValues,
   PlayerIdSchema,
   type AdjudicationRequest,
   type CardId,
@@ -40,10 +42,10 @@ function printGameState(state: GameState): string {
   if (state.blue_subphase) parts.push(`Blue Subphase: ${state.blue_subphase}`);
 
   parts.push(`\n## Players`);
-  for (const player of Object.values(state.players)) {
+  for (const player of entryValues(state.players)) {
     parts.push(`### ${player.label} (${player.id})`);
     parts.push(`Side: ${player.side}`);
-    parts.push(`Resource Points: ${player.resource_points} (Per turn: +${state.per_turn_resources[player.id] ?? 0})`);
+    parts.push(`Resource Points: ${player.resource_points} (Per turn: +${entryValue(state.per_turn_resources, player.id) ?? 0})`);
     parts.push(`Influence Points: ${player.influence_points}`);
     parts.push(`National Tech Level: ${player.national_tech_level}`);
     parts.push(`Victory Condition: ${player.victory_condition}`);
@@ -54,29 +56,29 @@ function printGameState(state: GameState): string {
   }
 
   parts.push(`\n## Forces`);
-  for (const force of Object.values(state.forces)) {
+  for (const force of entryValues(state.forces)) {
     let forceStr = `- ${force.id} (Owner: ${force.owner}): Location ${force.location_id}, Factors ${force.force_factors}, Mod ${force.modernization_level}`;
     if (force.readiness_level) forceStr += `, Readiness ${force.readiness_level}`;
     if (force.proxy) forceStr += ` [PROXY]`;
     parts.push(forceStr);
   }
 
-  if (Object.keys(state.bases).length > 0) {
+  if (state.bases.length > 0) {
     parts.push(`\n## Bases`);
-    for (const base of Object.values(state.bases)) {
+    for (const base of entryValues(state.bases)) {
       parts.push(`- ${base.id} (Owner: ${base.owner}): Location ${base.location_id}`);
     }
   }
 
-  if (Object.keys(state.proxy_forces).length > 0) {
+  if (state.proxy_forces.length > 0) {
     parts.push(`\n## Proxy Forces`);
-    for (const proxy of Object.values(state.proxy_forces)) {
+    for (const proxy of entryValues(state.proxy_forces)) {
       parts.push(`- ${proxy.id} (Sponsor: ${proxy.sponsor}): Location ${proxy.location_id}, Factors ${proxy.force_factors}, Mod ${proxy.modernization_level}, Reliability ${proxy.reliability}`);
     }
   }
 
   parts.push(`\n## Cards`);
-  for (const card of Object.values(state.cards)) {
+  for (const card of entryValues(state.cards)) {
     parts.push(`### Card: ${card.id}`);
     parts.push(`Title: ${card.title}`);
     parts.push(`Type: ${card.type} (Owner: ${card.owner ?? "None"})`);
@@ -87,7 +89,7 @@ function printGameState(state: GameState): string {
   }
 
   parts.push(`\n## Locations`);
-  for (const loc of Object.values(state.locations)) {
+  for (const loc of entryValues(state.locations)) {
     parts.push(`- ${loc.id} (${loc.label}): Owner ${loc.country_owner ?? "None"}`);
   }
 
@@ -95,9 +97,9 @@ function printGameState(state: GameState): string {
   parts.push(`Sequence: ${state.red_sequence.join(" -> ")}`);
   parts.push(`Active Index: ${state.active_red_index}`);
 
-  if (Object.keys(state.red_signals).length > 0) {
+  if (state.red_signals.length > 0) {
     parts.push(`\n## Red Signals`);
-    for (const sig of Object.values(state.red_signals)) {
+    for (const sig of entryValues(state.red_signals)) {
       parts.push(`- ${sig.player_id}: Cards [${sig.card_ids.join(", ")}], Completed: ${sig.completed}`);
       if (sig.brief_summary) parts.push(`  Summary: ${sig.brief_summary}`);
       if (sig.activation_intent) parts.push(`  Intent: ${JSON.stringify(sig.activation_intent)}`);
@@ -172,16 +174,13 @@ export async function generateRedSignalDecision(
 
   const parsed = response.output_parsed as z.infer<typeof SignalDecisionSchema>;
 
-  const activationIntentRecord: Record<CardId, "Yes" | "No" | "Undeclared"> =
-    {};
-  for (const { cardId, intent } of parsed.activationIntent) {
-    activationIntentRecord[cardId] = intent;
-  }
-
   return {
     cardIds: parsed.cardIds,
     briefSummary: parsed.briefSummary,
-    activationIntent: activationIntentRecord,
+    activationIntent: parsed.activationIntent.map(({ cardId, intent }) => ({
+      id: cardId,
+      value: intent,
+    })),
   };
 }
 

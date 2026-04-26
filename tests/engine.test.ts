@@ -16,6 +16,7 @@ import {
   calculateUsReadinessBill,
   createInitialGameState,
   developProxyForce,
+  entryValue,
   getBudgetVariation,
   getConusDeploymentCost,
   getCrtAOutcome,
@@ -139,11 +140,11 @@ describe("printed tables", () => {
 describe("scenario loading and validation", () => {
   it("loads all initial conditions from a single scenario object", () => {
     const state = freshState();
-    expect(state.players.US.resource_points).toBe(40);
-    expect(state.players.PRC.influence_points).toBe(40);
-    expect(state.forces["US-CONUS-10"].force_factors).toBe(10);
-    expect(state.cards["RU-ACT-01"].title).toBe("Limited Incursion");
-    expect(state.locations.INDOPACOM_PRC.coordinates).toEqual(
+    expect(entryValue(state.players, "US")!.resource_points).toBe(40);
+    expect(entryValue(state.players, "PRC")!.influence_points).toBe(40);
+    expect(entryValue(state.forces, "US-CONUS-10")!.force_factors).toBe(10);
+    expect(entryValue(state.cards, "RU-ACT-01")!.title).toBe("Limited Incursion");
+    expect(entryValue(state.locations, "INDOPACOM_PRC")!.coordinates).toEqual(
       { lat: 35.8617, lng: 104.1954 }
     );
     expect(
@@ -157,19 +158,19 @@ describe("scenario loading and validation", () => {
     expect(
       resolveMapCoordinates(
         { owner: "US", locationId: "INDOPACOM_PRC" },
-        state.locations.INDOPACOM_PRC,
+        entryValue(state.locations, "INDOPACOM_PRC")!,
       ),
     ).toEqual({ lat: 21.3069, lng: -157.8583 });
     expect(
       resolveMapCoordinates(
         { owner: "US", locationId: "INDOPACOM_DPRK" },
-        state.locations.INDOPACOM_DPRK,
+        entryValue(state.locations, "INDOPACOM_DPRK")!,
       ),
     ).toEqual({ lat: 36.9622, lng: 127.0311 });
     expect(
       resolveMapCoordinates(
         { owner: "PRC", locationId: "INDOPACOM_PRC" },
-        state.locations.INDOPACOM_PRC,
+        entryValue(state.locations, "INDOPACOM_PRC")!,
       ),
     ).toEqual({ lat: 35.8617, lng: 104.1954 });
   });
@@ -181,7 +182,7 @@ describe("scenario loading and validation", () => {
     state = recordStateOfWorldSummary(state, "Year-end summary.");
     expect(state.turn).toBe(2);
     expect(state.phase).toBe("RedSignaling");
-    expect(state.summaries.state_of_world[1]).toBe("Year-end summary.");
+    expect(entryValue(state.summaries.state_of_world, 1)).toBe("Year-end summary.");
   });
 
   it("loads scenario-defined cards into the playable scenario", () => {
@@ -236,13 +237,13 @@ describe("scenario loading and validation", () => {
       "US-10",
       "US-11",
     ];
-    expect(Object.keys(state.cards)).toEqual(
+    expect(state.cards.map((entry) => entry.id)).toEqual(
       expect.arrayContaining(expectedScenarioCardIds),
     );
-    expect(state.players.US.card_decks.action_investment).toEqual(
+    expect(entryValue(state.players, "US")!.card_decks.action_investment).toEqual(
       expect.arrayContaining(["BLUE-01", "UAC-1", "US-10", "US-11"]),
     );
-    expect(state.players.PRC.card_decks.action_investment).toEqual(
+    expect(entryValue(state.players, "PRC")!.card_decks.action_investment).toEqual(
       expect.arrayContaining([
         "PRC-01",
         "PRC-17",
@@ -254,10 +255,10 @@ describe("scenario loading and validation", () => {
         "PRC-29",
       ]),
     );
-    expect(state.players.DPRK.card_decks.action_investment).toEqual(
+    expect(entryValue(state.players, "DPRK")!.card_decks.action_investment).toEqual(
       expect.arrayContaining(["DPRK-29", "DPRK-30", "DPRK-31", "DPRK-32"]),
     );
-    expect(state.players.NATO_EU.card_decks.domestic_event).toEqual(
+    expect(entryValue(state.players, "NATO_EU")!.card_decks.domestic_event).toEqual(
       expect.arrayContaining(["EVT-NATO-05", "EVT-NATO-11"]),
     );
   });
@@ -342,12 +343,12 @@ describe("turn sequence and Red signaling", () => {
       "PRC brief.",
     );
     state = result.state;
-    expect(state.red_signals.RU.card_ids).toEqual([
+    expect(entryValue(state.red_signals, "RU")!.card_ids).toEqual([
       "RU-ACT-01",
       "RU-ACT-02",
       "RU-INV-01",
     ]);
-    expect(state.red_signals.PRC.card_ids).toEqual([
+    expect(entryValue(state.red_signals, "PRC")!.card_ids).toEqual([
       "PRC-ACT-01",
       "PRC-ACT-02",
       "PRC-INV-01",
@@ -473,29 +474,34 @@ describe("turn sequence and Red signaling", () => {
       new SequenceDiceRoller([5]),
     );
     expect(second.issues[0].message).toContain("unable to finish");
-    expect(second.state.red_plays.PRC.played_card_ids).toEqual(["PRC-ACT-01"]);
+    expect(entryValue(second.state.red_plays, "PRC")!.played_card_ids).toEqual(["PRC-ACT-01"]);
 
     const skip = skipRemainingRedCards(state, "PRC");
     expect(skip.issues).toHaveLength(0);
-    expect(skip.state.red_plays.PRC.skipped).toBe(true);
+    expect(entryValue(skip.state.red_plays, "PRC")!.skipped).toBe(true);
   });
 
   it("charges a flat Red additional-card cost for each card after the first", () => {
     const state = startRedPhase();
     const afterOnePlayed = {
       ...state,
-      players: {
-        ...state.players,
-        RU: { ...state.players.RU, resource_points: 15 },
-      },
-      red_plays: {
-        ...state.red_plays,
-        RU: {
+      players: state.players.map((entry) =>
+        entry.id === "RU"
+          ? { ...entry, value: { ...entry.value, resource_points: 15 } }
+          : entry,
+      ),
+      red_plays: state.red_plays.map((entry) =>
+        entry.id === "RU"
+          ? {
+              ...entry,
+              value: {
           player_id: "RU",
           played_card_ids: ["RU-ACT-02"],
           skipped: false,
-        },
-      },
+              },
+            }
+          : entry,
+      ),
     };
     const secondCard = resolveCard(
       afterOnePlayed,
@@ -505,22 +511,27 @@ describe("turn sequence and Red signaling", () => {
     expect(
       secondCard.issues.filter((issue) => issue.severity === "error"),
     ).toHaveLength(0);
-    expect(secondCard.state.players.RU.resource_points).toBe(11);
+    expect(entryValue(secondCard.state.players, "RU")!.resource_points).toBe(11);
 
     const afterTwoPlayed = {
       ...state,
-      players: {
-        ...state.players,
-        RU: { ...state.players.RU, resource_points: 15 },
-      },
-      red_plays: {
-        ...state.red_plays,
-        RU: {
+      players: state.players.map((entry) =>
+        entry.id === "RU"
+          ? { ...entry, value: { ...entry.value, resource_points: 15 } }
+          : entry,
+      ),
+      red_plays: state.red_plays.map((entry) =>
+        entry.id === "RU"
+          ? {
+              ...entry,
+              value: {
           player_id: "RU",
           played_card_ids: ["RU-ACT-02", "RU-ACT-01"],
           skipped: false,
-        },
-      },
+              },
+            }
+          : entry,
+      ),
     };
     const thirdCard = resolveCard(
       afterTwoPlayed,
@@ -530,7 +541,7 @@ describe("turn sequence and Red signaling", () => {
     expect(
       thirdCard.issues.filter((issue) => issue.severity === "error"),
     ).toHaveLength(0);
-    expect(thirdCard.state.players.RU.resource_points).toBe(11);
+    expect(entryValue(thirdCard.state.players, "RU")!.resource_points).toBe(11);
   });
 });
 
@@ -547,7 +558,7 @@ describe("readiness, resources, and movement", () => {
       ]),
     );
     const paid = payUsReadinessBill(state);
-    expect(paid.state.players.US.resource_points).toBe(15);
+    expect(entryValue(paid.state.players, "US")!.resource_points).toBe(15);
     expect(paid.state.phase).toBe("BlueInvestmentsAndActions");
   });
 
@@ -557,7 +568,7 @@ describe("readiness, resources, and movement", () => {
 
     const configured = setUsForceReadiness(state, "US-CONUS-10", 50);
     expect(configured.issues).toHaveLength(0);
-    expect(configured.state.forces["US-CONUS-10"].readiness_level).toBe(50);
+    expect(entryValue(configured.state.forces, "US-CONUS-10")!.readiness_level).toBe(50);
 
     const bill = calculateUsReadinessBill(configured.state);
     expect(bill.issues).toHaveLength(0);
@@ -570,7 +581,7 @@ describe("readiness, resources, and movement", () => {
 
     const paid = payUsReadinessBill(configured.state);
     expect(paid.issues).toHaveLength(0);
-    expect(paid.state.players.US.resource_points).toBe(20);
+    expect(entryValue(paid.state.players, "US")!.resource_points).toBe(20);
   });
 
   it("keeps readiness bill rows stable for mixed CONUS and OCONUS readiness groups", () => {
@@ -617,8 +628,8 @@ describe("readiness, resources, and movement", () => {
     expect(
       played.issues.filter((issue) => issue.severity === "error"),
     ).toHaveLength(0);
-    expect(played.state.players.NATO_EU.resource_points).toBe(8);
-    expect(played.state.players.NATO_EU.influence_points).toBe(51);
+    expect(entryValue(played.state.players, "NATO_EU")!.resource_points).toBe(8);
+    expect(entryValue(played.state.players, "NATO_EU")!.influence_points).toBe(51);
   });
 
   it("enforces Blue investments before Blue actions", () => {
@@ -729,9 +740,11 @@ describe("readiness, resources, and movement", () => {
     let state = startTurnThroughBlueReadiness();
     state = {
       ...state,
-      forces: {
+      forces: [
         ...state.forces,
-        "US-EXTRA-100": {
+        {
+          id: "US-EXTRA-100",
+          value: {
           id: "US-EXTRA-100",
           owner: "US",
           force_factors: 1,
@@ -744,7 +757,8 @@ describe("readiness, resources, and movement", () => {
           procured_turn: 1,
           proxy: false,
         },
-      },
+        },
+      ],
     };
     const bill = calculateUsReadinessBill(state);
     expect(bill.issues).toHaveLength(0);
@@ -765,9 +779,11 @@ describe("readiness, resources, and movement", () => {
         ...state.rules_in_effect,
         table_extensions: [],
       },
-      forces: {
+      forces: [
         ...state.forces,
-        "US-EXTRA-100": {
+        {
+          id: "US-EXTRA-100",
+          value: {
           id: "US-EXTRA-100",
           owner: "US",
           force_factors: 1,
@@ -780,7 +796,8 @@ describe("readiness, resources, and movement", () => {
           procured_turn: 1,
           proxy: false,
         },
-      },
+        },
+      ],
     };
     const bill = calculateUsReadinessBill(state);
     expect(bill.issues).toHaveLength(0);
@@ -793,7 +810,7 @@ describe("readiness, resources, and movement", () => {
 
     const paid = payUsReadinessBill(state);
     expect(paid.issues).toHaveLength(0);
-    expect(paid.state.players.US.resource_points).toBe(14);
+    expect(entryValue(paid.state.players, "US")!.resource_points).toBe(14);
   });
 
   it("calculates movement costs without inventing missing facts", () => {
@@ -834,8 +851,8 @@ describe("readiness, resources, and movement", () => {
     };
     const result = buyBackReadiness(state, ["US-CONUS-4"], 100);
     expect(result.cost).toBe(5);
-    expect(result.state.forces["US-CONUS-4"].readiness_level).toBe(100);
-    expect(result.state.players.US.resource_points).toBe(35);
+    expect(entryValue(result.state.forces, "US-CONUS-4")!.readiness_level).toBe(100);
+    expect(entryValue(result.state.players, "US")!.resource_points).toBe(35);
   });
 
   it("does not allocate annual resources outside the annual allocation phase", () => {
@@ -846,7 +863,7 @@ describe("readiness, resources, and movement", () => {
     );
     expect(result.budgetRoll).toBeUndefined();
     expect(result.state).toBe(state);
-    expect(result.state.players.US.resource_points).toBe(40);
+    expect(entryValue(result.state.players, "US")!.resource_points).toBe(40);
   });
 });
 
@@ -883,8 +900,8 @@ describe("combat resolution and card effects", () => {
     );
     expect(result.outcome).toBe("BmG");
     expect(result.roll?.formula).toBe("D10(9) = 9");
-    expect(result.state.players.US.influence_points).toBe(51);
-    expect(result.state.forces["US-PRC-1"].pinned.active).toBe(true);
+    expect(entryValue(result.state.players, "US")!.influence_points).toBe(51);
+    expect(entryValue(result.state.forces, "US-PRC-1")!.pinned.active).toBe(true);
   });
 
   it("resolves CRT A cards with best relevant Critical Capability modifier and reset rules", () => {
@@ -909,10 +926,10 @@ describe("combat resolution and card effects", () => {
     );
     expect(result.roll?.modifier).toBe(-1);
     expect(result.outcome).toBe("BmG");
-    expect(result.state.players.NATO_EU.influence_points).toBe(52);
-    expect(result.state.forces["US-EUCOM-1"].readiness_level).toBe(100);
-    expect(result.state.forces["NATO-EUCOM-5"].pinned.active).toBe(true);
-    expect(result.state.forces["NATO-EUCOM-5"].reset_required).toBe(false);
+    expect(entryValue(result.state.players, "NATO_EU")!.influence_points).toBe(52);
+    expect(entryValue(result.state.forces, "US-EUCOM-1")!.readiness_level).toBe(100);
+    expect(entryValue(result.state.forces, "NATO-EUCOM-5")!.pinned.active).toBe(true);
+    expect(entryValue(result.state.forces, "NATO-EUCOM-5")!.reset_required).toBe(false);
     expect(result.state.pending_resets).toContainEqual(
       expect.objectContaining({
         force_ids: [
@@ -928,8 +945,8 @@ describe("combat resolution and card effects", () => {
       { ...result.state, phase: "StateOfWorldSummary" },
       "Pinned forces resolve reset.",
     );
-    expect(afterSummary.forces["US-EUCOM-1"].readiness_level).toBe(90);
-    expect(afterSummary.forces["NATO-EUCOM-5"].reset_required).toBe(true);
+    expect(entryValue(afterSummary.forces, "US-EUCOM-1")!.readiness_level).toBe(90);
+    expect(entryValue(afterSummary.forces, "NATO-EUCOM-5")!.reset_required).toBe(true);
   });
 
   it("tracks private outcomes in the ground-truth log", () => {
@@ -941,7 +958,7 @@ describe("combat resolution and card effects", () => {
       new SequenceDiceRoller([5]),
     );
     expect(
-      result.state.players.DPRK.critical_capabilities.find(
+      entryValue(result.state.players, "DPRK")!.critical_capabilities.find(
         (capability) => capability.id === "NUCLEAR",
       )?.value,
     ).toBe(1);
@@ -1010,8 +1027,8 @@ describe("combat resolution and card effects", () => {
     expect(
       result.issues.filter((issue) => issue.severity === "error"),
     ).toHaveLength(0);
-    expect(result.state.players.US.resource_points).toBe(14);
-    expect(result.state.players.PRC.resource_points).toBe(14);
+    expect(entryValue(result.state.players, "US")!.resource_points).toBe(14);
+    expect(entryValue(result.state.players, "PRC")!.resource_points).toBe(14);
     expect(
       result.state.event_log.some((entry) =>
         entry.message.includes("White Cell injected event INT-EVT-01"),
@@ -1023,12 +1040,14 @@ describe("combat resolution and card effects", () => {
     const state = startRedPhase();
     const gapState: GameState = {
       ...state,
-      cards: {
-        ...state.cards,
-        "DPRK-ACT-01": {
-          ...state.cards["DPRK-ACT-01"],
+      cards: state.cards.map((entry) =>
+        entry.id === "DPRK-ACT-01"
+          ? {
+              ...entry,
+              value: {
+          ...entry.value,
           resolution: {
-            ...state.cards["DPRK-ACT-01"].resolution,
+            ...entry.value.resolution,
             outcome_map: [
               {
                 outcome: null, roll_min: 0,
@@ -1048,8 +1067,10 @@ describe("combat resolution and card effects", () => {
               },
             ],
           },
-        },
-      },
+              },
+            }
+          : entry,
+      ),
     };
     const result = resolveCard(
       gapState,
@@ -1058,7 +1079,7 @@ describe("combat resolution and card effects", () => {
     );
     expect(result.issues[0].message).toContain("no card-defined outcome row");
     expect(result.adjudications.length).toBeGreaterThan(0);
-    expect(result.state.players.DPRK.influence_points).toBe(5);
+    expect(entryValue(result.state.players, "DPRK")!.influence_points).toBe(5);
   });
 
   it("blocks Critical Capability upgrades that exceed National Tech Level", () => {
@@ -1072,7 +1093,7 @@ describe("combat resolution and card effects", () => {
       firstUpgrade.issues.filter((issue) => issue.severity === "error"),
     ).toHaveLength(0);
     expect(
-      firstUpgrade.state.players.US.critical_capabilities.find(
+      entryValue(firstUpgrade.state.players, "US")!.critical_capabilities.find(
         (capability) => capability.id === "C4ISR",
       )?.value,
     ).toBe(4);
@@ -1087,7 +1108,7 @@ describe("combat resolution and card effects", () => {
     );
     expect(blockedUpgrade.adjudications.length).toBeGreaterThan(0);
     expect(
-      blockedUpgrade.state.players.US.critical_capabilities.find(
+      entryValue(blockedUpgrade.state.players, "US")!.critical_capabilities.find(
         (capability) => capability.id === "C4ISR",
       )?.value,
     ).toBe(4);
@@ -1110,7 +1131,7 @@ describe("combat resolution and card effects", () => {
     expect(
       ukraineSupport.issues.filter((issue) => issue.severity === "error"),
     ).toHaveLength(0);
-    expect(ukraineSupport.state.players.US.resource_points).toBe(14);
+    expect(entryValue(ukraineSupport.state.players, "US")!.resource_points).toBe(14);
     expect(ukraineSupport.state.ground_truth).toContainEqual(
       expect.objectContaining({
         source: "BLUE-01",
@@ -1122,7 +1143,9 @@ describe("combat resolution and card effects", () => {
       { ...ukraineSupport.state, phase: "StateOfWorldSummary" },
       "Ukraine support takes effect.",
     );
-    expect(nextTurn.scenario_flags.RU_UKRAINE_LOSS_CHANCE_MODIFIER).toBe(1);
+    expect(
+      entryValue(nextTurn.scenario_flags, "RU_UKRAINE_LOSS_CHANCE_MODIFIER"),
+    ).toBe(1);
     expect(
       nextTurn.ground_truth.find((item) => item.source === "BLUE-01")?.status,
     ).toBe("resolved");
@@ -1135,8 +1158,8 @@ describe("combat resolution and card effects", () => {
     expect(
       missileTest.issues.filter((issue) => issue.severity === "error"),
     ).toHaveLength(0);
-    expect(missileTest.state.players.RU.influence_points).toBe(13);
-    expect(missileTest.state.players.PRC.influence_points).toBe(38);
+    expect(entryValue(missileTest.state.players, "RU")!.influence_points).toBe(13);
+    expect(entryValue(missileTest.state.players, "PRC")!.influence_points).toBe(38);
     const repeatedMissileTest = resolveCard(
       missileTest.state,
       { acting_player_id: "US", card_id: "US-10" },
@@ -1149,9 +1172,9 @@ describe("combat resolution and card effects", () => {
       { acting_player_id: "US", card_id: "US-11" },
       new SequenceDiceRoller([5]),
     );
-    expect(sanctions.state.players.IR.influence_points).toBe(6);
-    expect(sanctions.state.players.US.influence_points).toBe(48);
-    expect(sanctions.state.scenario_flags.IR_JCPOA_BLOCKED).toBe(true);
+    expect(entryValue(sanctions.state.players, "IR")!.influence_points).toBe(6);
+    expect(entryValue(sanctions.state.players, "US")!.influence_points).toBe(48);
+    expect(entryValue(sanctions.state.scenario_flags, "IR_JCPOA_BLOCKED")).toBe(true);
 
     const infrastructureAttack = resolveCard(
       actionPhase,
@@ -1161,7 +1184,7 @@ describe("combat resolution and card effects", () => {
     expect(
       infrastructureAttack.issues.filter((issue) => issue.severity === "error"),
     ).toHaveLength(0);
-    expect(infrastructureAttack.state.players.US.influence_points).toBe(51);
+    expect(entryValue(infrastructureAttack.state.players, "US")!.influence_points).toBe(51);
     expect(infrastructureAttack.adjudications.length).toBeGreaterThan(0);
   });
 
@@ -1183,8 +1206,8 @@ describe("combat resolution and card effects", () => {
       humanWaves.issues.filter((issue) => issue.severity === "error"),
     ).toHaveLength(0);
     expect(humanWaves.outcome).toBe("BmG");
-    expect(humanWaves.state.players.RU.influence_points).toBe(14);
-    expect(humanWaves.state.forces["RU-HUMAN-WAVES-1"]).toMatchObject({
+    expect(entryValue(humanWaves.state.players, "RU")!.influence_points).toBe(14);
+    expect(entryValue(humanWaves.state.forces, "RU-HUMAN-WAVES-1")!).toMatchObject({
       owner: "RU",
       force_factors: 1,
       modernization_level: 1,
@@ -1198,7 +1221,7 @@ describe("combat resolution and card effects", () => {
     expect(
       ransomware.issues.filter((issue) => issue.severity === "error"),
     ).toHaveLength(0);
-    expect(ransomware.state.players.DPRK.influence_points).toBe(6);
+    expect(entryValue(ransomware.state.players, "DPRK")!.influence_points).toBe(6);
     expect(ransomware.adjudications.length).toBeGreaterThan(0);
     const repeatedRansomware = resolveCard(
       ransomware.state,
@@ -1214,7 +1237,7 @@ describe("combat resolution and card effects", () => {
       { acting_player_id: "DPRK", card_id: "DPRK-31" },
       new SequenceDiceRoller([4]),
     );
-    expect(malware.state.scenario_flags.DPRK_NEXT_RANSOMWARE_MODIFIER).toBe(2);
+    expect(entryValue(malware.state.scenario_flags, "DPRK_NEXT_RANSOMWARE_MODIFIER")).toBe(2);
   });
 
   it("resolves representative standard cards without adding rule exceptions", () => {
@@ -1229,7 +1252,7 @@ describe("combat resolution and card effects", () => {
       c4isrUpgrade.issues.filter((issue) => issue.severity === "error"),
     ).toHaveLength(0);
     expect(
-      c4isrUpgrade.state.players.PRC.critical_capabilities.find(
+      entryValue(c4isrUpgrade.state.players, "PRC")!.critical_capabilities.find(
         (capability) => capability.id === "C4ISR",
       )?.value,
     ).toBe(4);
@@ -1251,7 +1274,7 @@ describe("combat resolution and card effects", () => {
     ).toHaveLength(0);
     expect(grayZone.outcome).toBeDefined();
     expect(
-      grayZone.state.scenario_flags.PRC_REGIONAL_ECONOMIC_ROLL_MODIFIER,
+      entryValue(grayZone.state.scenario_flags, "PRC_REGIONAL_ECONOMIC_ROLL_MODIFIER"),
     ).toBe(-2);
 
     const iranSupport = injectWhiteCellEvent(
@@ -1296,9 +1319,9 @@ describe("combat resolution and card effects", () => {
     expect(
       natoEvent.issues.filter((issue) => issue.severity === "error"),
     ).toHaveLength(0);
-    expect(natoEvent.state.players.NATO_EU.influence_points).toBe(51);
-    expect(natoEvent.state.players.NATO_EU.resource_points).toBe(11);
-    expect(natoEvent.state.forces["NATO-NORDIC-1-M2"]).toMatchObject({
+    expect(entryValue(natoEvent.state.players, "NATO_EU")!.influence_points).toBe(51);
+    expect(entryValue(natoEvent.state.players, "NATO_EU")!.resource_points).toBe(11);
+    expect(entryValue(natoEvent.state.forces, "NATO-NORDIC-1-M2")!).toMatchObject({
       owner: "NATO_EU",
       force_factors: 1,
       modernization_level: 2,
@@ -1310,8 +1333,8 @@ describe("combat resolution and card effects", () => {
       "Coup.",
       new SequenceDiceRoller([5]),
     );
-    expect(coup.state.players.IR.resource_points).toBe(6);
-    expect(coup.state.scenario_flags.IR_NO_ABROAD_ACTIONS_THIS_TURN).toBe(true);
+    expect(entryValue(coup.state.players, "IR")!.resource_points).toBe(6);
+    expect(entryValue(coup.state.scenario_flags, "IR_NO_ABROAD_ACTIONS_THIS_TURN")).toBe(true);
 
     const regionalEvent = injectWhiteCellEvent(
       state,
@@ -1319,11 +1342,11 @@ describe("combat resolution and card effects", () => {
       "Regional conflict.",
       new SequenceDiceRoller([5]),
     );
-    expect(regionalEvent.state.proxy_forces["ISRAEL-PROXY"]).toMatchObject({
+    expect(entryValue(regionalEvent.state.proxy_forces, "ISRAEL-PROXY")!).toMatchObject({
       sponsor: "US",
       force_factors: 2,
     });
-    expect(regionalEvent.state.proxy_forces["HAMAS-PROXY"]).toMatchObject({
+    expect(entryValue(regionalEvent.state.proxy_forces, "HAMAS-PROXY")!).toMatchObject({
       sponsor: "IR",
       force_factors: 1,
     });
@@ -1347,9 +1370,9 @@ describe("force development, proxies, reset, and annual allocation", () => {
       id: "US-NEW-1",
     });
     expect(procured.cost).toBe(4);
-    expect(procured.state.players.US.resource_points).toBe(36);
-    expect(procured.state.forces["US-NEW-1"].procured_turn).toBe(1);
-    expect(procured.state.forces["US-NEW-1"].readiness_level).toBe(90);
+    expect(entryValue(procured.state.players, "US")!.resource_points).toBe(36);
+    expect(entryValue(procured.state.forces, "US-NEW-1")!.procured_turn).toBe(1);
+    expect(entryValue(procured.state.forces, "US-NEW-1")!.readiness_level).toBe(90);
     const sameTurnModernize = modernizeForces(procured.state, {
       player_id: "US",
       force_ids: ["US-NEW-1"],
@@ -1363,12 +1386,12 @@ describe("force development, proxies, reset, and annual allocation", () => {
       target_modernization_level: 3,
     });
     expect(modernized.cost).toBe(5);
-    expect(modernized.state.forces["RU-EUCOM-5-M2"].modernization_level).toBe(
+    expect(entryValue(modernized.state.forces, "RU-EUCOM-5-M2")!.modernization_level).toBe(
       3,
     );
 
     const retired = retireUsForces(blueState, ["US-CONUS-4"]);
-    expect(retired.state.forces["US-CONUS-4"]).toBeUndefined();
+    expect(entryValue(retired.state.forces, "US-CONUS-4")!).toBeUndefined();
   });
 
   it("resolves proxy participation and proxy development consequences", () => {
@@ -1393,25 +1416,23 @@ describe("force development, proxies, reset, and annual allocation", () => {
       new SequenceDiceRoller([0]),
     );
     expect(development.delivered_ffs).toBe(1);
-    expect(development.state.players.IR.resource_points).toBe(5);
+    expect(entryValue(development.state.players, "IR")!.resource_points).toBe(5);
   });
 
   it("requires Red players to pay to restore reset forces", () => {
     const state = startRedPhase();
     const resetState = {
       ...state,
-      forces: {
-        ...state.forces,
-        "RU-EUCOM-5-M2": {
-          ...state.forces["RU-EUCOM-5-M2"],
-          reset_required: true,
-        },
-      },
+      forces: state.forces.map((entry) =>
+        entry.id === "RU-EUCOM-5-M2"
+          ? { ...entry, value: { ...entry.value, reset_required: true } }
+          : entry,
+      ),
     };
     const result = restoreResetRedForces(resetState, "RU", ["RU-EUCOM-5-M2"]);
     expect(result.cost).toBe(5);
-    expect(result.state.players.RU.resource_points).toBe(10);
-    expect(result.state.forces["RU-EUCOM-5-M2"].reset_required).toBe(false);
+    expect(entryValue(result.state.players, "RU")!.resource_points).toBe(10);
+    expect(entryValue(result.state.forces, "RU-EUCOM-5-M2")!.reset_required).toBe(false);
   });
 
   it("rolls annual resources with inline formula and advances to summary", () => {
@@ -1421,8 +1442,8 @@ describe("force development, proxies, reset, and annual allocation", () => {
     };
     const result = annualResourceAllocation(state, new SequenceDiceRoller([8]));
     expect(result.budgetRoll?.formula).toBe("D10(8) = 8");
-    expect(result.state.players.US.resource_points).toBe(71);
-    expect(result.state.players.NATO_EU.resource_points).toBe(15);
+    expect(entryValue(result.state.players, "US")!.resource_points).toBe(71);
+    expect(entryValue(result.state.players, "NATO_EU")!.resource_points).toBe(15);
     expect(result.state.phase).toBe("StateOfWorldSummary");
   });
 });
