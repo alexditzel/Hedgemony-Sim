@@ -81,16 +81,58 @@ export type Visibility =
   | "public"
   | "private_to_player_and_white_cell"
   | "white_cell_only";
+export const VisibilitySchema = z.enum([
+  "public",
+  "private_to_player_and_white_cell",
+  "white_cell_only",
+]);
 
 export type ProbabilityOutcome = "RMG" | "RmG" | "SQ" | "BmG" | "BMG";
+export const ProbabilityOutcomeSchema = z.enum([
+  "RMG",
+  "RmG",
+  "SQ",
+  "BmG",
+  "BMG",
+]);
+
 export type ReadinessLevel = 50 | 60 | 70 | 80 | 90 | 100;
+export const ReadinessLevelSchema = z.union([
+  z.literal(50),
+  z.literal(60),
+  z.literal(70),
+  z.literal(80),
+  z.literal(90),
+  z.literal(100),
+]);
+
 export type ReliabilityLevel = "Certain" | "High" | "Medium" | "Low";
+export const ReliabilityLevelSchema = z.enum([
+  "Certain",
+  "High",
+  "Medium",
+  "Low",
+]);
 
 export type JsonPrimitive = string | number | boolean | null;
+export const JsonPrimitiveSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.null(),
+]);
+
 export type JsonValue =
   | JsonPrimitive
   | JsonValue[]
   | { [key: string]: JsonValue };
+export const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
+  z.union([
+    JsonPrimitiveSchema,
+    z.array(JsonValueSchema),
+    z.record(z.string(), JsonValueSchema),
+  ]),
+);
 
 export type Condition = {
   id?: string;
@@ -101,7 +143,7 @@ export type Condition = {
 export const ConditionSchema = z.object({
   id: z.optional(z.string()),
   description: z.string(),
-  tag: z.optional(z.string()),
+  tag: z.optional(RuleTagSchema),
   expression: z.optional(z.string()),
 });
 
@@ -114,12 +156,26 @@ export type Location = {
   home_for?: string[];
   coordinates?: [number, number];
 };
+export const LocationSchema = z.object({
+  id: LocationIdSchema,
+  label: z.string(),
+  aor_id: z.optional(LocationIdSchema),
+  parent_location_id: z.optional(LocationIdSchema),
+  country_owner: z.optional(PlayerIdSchema),
+  home_for: z.optional(z.array(z.string())),
+  coordinates: z.optional(z.tuple([z.number(), z.number()])),
+});
 
 export type MovementEdge = {
   from: LocationId;
   to: LocationId;
   type?: "adjacent" | "same_aor" | "scenario";
 };
+export const MovementEdgeSchema = z.object({
+  from: LocationIdSchema,
+  to: LocationIdSchema,
+  type: z.optional(z.enum(["adjacent", "same_aor", "scenario"])),
+});
 
 export type Base = {
   id: string;
@@ -129,6 +185,14 @@ export type Base = {
   out_of_area_discount?: number;
   notes?: string;
 };
+export const BaseSchema = z.object({
+  id: z.string(),
+  owner: PlayerIdSchema,
+  location_id: LocationIdSchema,
+  aor_id: z.optional(LocationIdSchema),
+  out_of_area_discount: z.optional(z.number()),
+  notes: z.optional(z.string()),
+});
 
 export type ProxyForce = {
   id: string;
@@ -140,6 +204,16 @@ export type ProxyForce = {
   reliability: ReliabilityLevel;
   scope?: string;
 };
+export const ProxyForceSchema = z.object({
+  id: z.string(),
+  sponsor: PlayerIdSchema,
+  label: z.string(),
+  force_factors: z.number(),
+  modernization_level: z.number(),
+  location_id: LocationIdSchema,
+  reliability: ReliabilityLevelSchema,
+  scope: z.optional(z.string()),
+});
 
 export type PlayerState = {
   id: PlayerId;
@@ -157,6 +231,22 @@ export type PlayerState = {
   notes?: string;
   allow_deficit?: boolean;
 };
+export const PlayerStateSchema = z.object({
+  id: PlayerIdSchema,
+  label: z.string(),
+  side: PlayerSideSchema,
+  resource_points: z.number(),
+  influence_points: z.number(),
+  national_tech_level: z.number(),
+  critical_capabilities: z.record(CapabilityIdSchema, z.number()),
+  victory_condition: z.string(),
+  card_decks: z.object({
+    action_investment: z.array(CardIdSchema),
+    domestic_event: z.array(CardIdSchema),
+  }),
+  notes: z.optional(z.string()),
+  allow_deficit: z.optional(z.boolean()),
+});
 
 export type ForceCounter = {
   id: ForceId;
@@ -176,23 +266,55 @@ export type ForceCounter = {
   procured_turn?: number;
   proxy: boolean;
 };
+export const ForceCounterSchema = z.object({
+  id: ForceIdSchema,
+  owner: PlayerIdSchema,
+  force_factors: z.number(),
+  modernization_level: z.number(),
+  location_id: LocationIdSchema,
+  home_base_id: LocationIdSchema,
+  readiness_level: z.optional(ReadinessLevelSchema),
+  pinned: z.object({
+    active: z.boolean(),
+    remaining_turns: z.union([z.number(), z.literal("indefinite"), z.null()]),
+    area_of_interest_id: z.optional(LocationIdSchema),
+  }),
+  reset_required: z.boolean(),
+  reset_available_turn: z.optional(z.number()),
+  procured_turn: z.optional(z.number()),
+  proxy: z.boolean(),
+});
 
 export type MarkerDefinition = {
   id: string;
   label: string;
   description?: string;
 };
+export const MarkerDefinitionSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  description: z.optional(z.string()),
+});
 
 export type PaceRule = {
   additional_cost_starts_after_card_number: number;
   additional_cost_per_card: number;
 };
+export const PaceRuleSchema = z.object({
+  additional_cost_starts_after_card_number: z.number(),
+  additional_cost_per_card: z.number(),
+});
 
 export type RandomEventRule = {
   enabled: boolean;
   timing?: PhaseId[];
   threshold?: number;
 };
+export const RandomEventRuleSchema = z.object({
+  enabled: z.boolean(),
+  timing: z.optional(z.array(PhaseIdSchema)),
+  threshold: z.optional(z.number()),
+});
 
 export type TableExtension = {
   table: string;
@@ -201,6 +323,13 @@ export type TableExtension = {
   value: JsonValue;
   tag: "SCENARIO_DEFINED";
 };
+export const TableExtensionSchema = z.object({
+  table: z.string(),
+  row: z.string(),
+  column: z.optional(z.string()),
+  value: JsonValueSchema,
+  tag: z.literal("SCENARIO_DEFINED"),
+});
 
 export type ScenarioRules = {
   optional_pace_of_play?: PaceRule;
@@ -212,6 +341,16 @@ export type ScenarioRules = {
   table_extensions: TableExtension[];
   allow_us_emergency_deficit?: boolean;
 };
+export const ScenarioRulesSchema = z.object({
+  optional_pace_of_play: z.optional(PaceRuleSchema),
+  activation_markers: z.boolean(),
+  random_events: z.optional(RandomEventRuleSchema),
+  random_red_sequence: z.boolean(),
+  random_red_sequence_order: z.optional(z.enum(["ascending", "descending"])),
+  random_red_sequence_tie_rule: z.optional(z.enum(["player_id", "white_cell"])),
+  table_extensions: z.array(TableExtensionSchema),
+  allow_us_emergency_deficit: z.optional(z.boolean()),
+});
 
 export type CostValue =
   | number
@@ -221,11 +360,24 @@ export type CostValue =
       expression?: string;
       requires_adjudication?: boolean;
     };
+export const CostValueSchema = z.union([
+  z.number(),
+  z.null(),
+  z.object({
+    table_reference: z.optional(z.string()),
+    expression: z.optional(z.string()),
+    requires_adjudication: z.optional(z.boolean()),
+  }),
+]);
 
 export type CardCost = {
   resource_points: CostValue;
   additional_red_card_cost_applies: boolean;
 };
+export const CardCostSchema = z.object({
+  resource_points: CostValueSchema,
+  additional_red_card_cost_applies: z.boolean(),
+});
 
 export type CardResponse = {
   allowed_responders: string[];
@@ -233,6 +385,17 @@ export type CardResponse = {
   force_commitment_allowed: boolean;
   cost_rule?: string;
 };
+export const CardResponseSchema = z.object({
+  allowed_responders: z.array(z.string()),
+  response_window: z.enum([
+    "immediate",
+    "same_phase",
+    "card_defined",
+    "white_cell",
+  ]),
+  force_commitment_allowed: z.boolean(),
+  cost_rule: z.optional(z.string()),
+});
 
 export type ModifierDefinition = {
   id: string;
@@ -244,6 +407,19 @@ export type ModifierDefinition = {
     | "readiness"
     | "white_cell";
 };
+export const ModifierDefinitionSchema = z.object({
+  id: z.string(),
+  description: z.string(),
+  value: z.optional(z.number()),
+  source: z.optional(
+    z.enum([
+      "critical_capability_difference",
+      "card",
+      "readiness",
+      "white_cell",
+    ]),
+  ),
+});
 
 export type OutcomeRow = {
   outcome?: ProbabilityOutcome;
@@ -253,6 +429,14 @@ export type OutcomeRow = {
   effects: Effect[];
   narrative?: string;
 };
+export const OutcomeRowSchema = z.object({
+  outcome: z.optional(ProbabilityOutcomeSchema),
+  roll_min: z.optional(z.number()),
+  roll_max: z.optional(z.number()),
+  label: z.optional(z.string()),
+  effects: z.array(z.lazy(() => EffectSchema)),
+  narrative: z.optional(z.string()),
+});
 
 export type ResolutionMethod =
   | "fixed_effect"
@@ -261,11 +445,23 @@ export type ResolutionMethod =
   | "rt_b_then_card_outcome"
   | "proxy_reliability"
   | "white_cell_adjudication";
+export const ResolutionMethodSchema = z.enum([
+  "fixed_effect",
+  "card_d10_table",
+  "crt_a_then_card_outcome",
+  "rt_b_then_card_outcome",
+  "proxy_reliability",
+  "white_cell_adjudication",
+]);
 
 export type PinRule = {
   duration_turns: number | "indefinite";
   area_of_interest_id?: LocationId;
 };
+export const PinRuleSchema = z.object({
+  duration_turns: z.union([z.number(), z.literal("indefinite")]),
+  area_of_interest_id: z.optional(LocationIdSchema),
+});
 
 export type CardResolution = {
   method: ResolutionMethod[];
@@ -282,6 +478,21 @@ export type CardResolution = {
   reset_rules_apply: boolean;
   pinning?: PinRule;
 };
+export const CardResolutionSchema = z.object({
+  method: z.array(ResolutionMethodSchema),
+  table_reference: z.optional(
+    z.union([
+      z.enum(["CRT_A", "RT_B", "ProxyReliability", "DoDBudgetVariation"]),
+      z.null(),
+    ]),
+  ),
+  die: z.optional(z.literal("D10")),
+  modifiers: z.array(ModifierDefinitionSchema),
+  critical_capabilities: z.array(CapabilityIdSchema),
+  outcome_map: z.array(OutcomeRowSchema),
+  reset_rules_apply: z.boolean(),
+  pinning: z.optional(PinRuleSchema),
+});
 
 export type PlayConstraints = {
   frequency?: string;
@@ -293,6 +504,18 @@ export type PlayConstraints = {
     requires_adjudication?: boolean;
   };
 };
+export const PlayConstraintsSchema = z.object({
+  frequency: z.optional(z.string()),
+  phase_restrictions: z.array(PhaseIdSchema),
+  prerequisites: z.array(ConditionSchema),
+  unopposed_rule: z.optional(
+    z.object({
+      description: z.string(),
+      effects: z.optional(z.array(z.lazy(() => EffectSchema))),
+      requires_adjudication: z.optional(z.boolean()),
+    }),
+  ),
+});
 
 export type Card = {
   id: CardId;
@@ -313,6 +536,25 @@ export type Card = {
   future_effects: ScheduledEffect[];
   notes?: string;
 };
+export const CardSchema = z.object({
+  id: CardIdSchema,
+  type: CardTypeSchema,
+  subtype: z.optional(z.string()),
+  owner: z.union([PlayerIdSchema, z.literal("WhiteCell"), z.null()]),
+  public_private: PublicPrivateSchema,
+  private_conditions: z.array(ConditionSchema),
+  title: z.string(),
+  description: z.string(),
+  aor: z.optional(LocationIdSchema),
+  players_involved: z.array(PlayerIdSchema),
+  cost: CardCostSchema,
+  play_constraints: PlayConstraintsSchema,
+  response: CardResponseSchema,
+  resolution: CardResolutionSchema,
+  effects: z.array(z.lazy(() => EffectSchema)),
+  future_effects: z.array(z.lazy(() => ScheduledEffectSchema)),
+  notes: z.optional(z.string()),
+});
 
 export type EffectType =
   | "adjust_resource_points"
@@ -343,6 +585,36 @@ export type EffectType =
   | "create_scenario_flag"
   | "schedule_future_effect"
   | "expire_effect";
+export const EffectTypeSchema = z.enum([
+  "adjust_resource_points",
+  "adjust_influence_points",
+  "set_or_adjust_per_turn_resource_allocation",
+  "set_national_tech_level",
+  "adjust_national_tech_level",
+  "set_critical_capability_mod_level",
+  "adjust_critical_capability_mod_level",
+  "procure_forces",
+  "modernize_forces",
+  "retire_forces",
+  "move_forces",
+  "deploy_or_redeploy_forces",
+  "set_readiness_level",
+  "adjust_readiness_level",
+  "buy_back_readiness",
+  "pay_readiness_sustainment",
+  "pin_forces",
+  "unpin_forces",
+  "reset_forces",
+  "create_or_modify_base",
+  "create_proxy_force",
+  "develop_proxy_force",
+  "employ_proxy_force",
+  "adjust_scenario_flag_number",
+  "set_visibility",
+  "create_scenario_flag",
+  "schedule_future_effect",
+  "expire_effect",
+]);
 
 export type Effect = {
   type: EffectType;
@@ -358,6 +630,23 @@ export type Effect = {
   source_card_id?: CardId;
   requires_adjudication: boolean;
 };
+export const EffectSchema: z.ZodType<Effect> = z.lazy(() =>
+  z.object({
+    type: EffectTypeSchema,
+    target: z.string(),
+    value: JsonValueSchema,
+    timing: z.enum([
+      "immediate",
+      "start_of_turn",
+      "end_of_turn",
+      "after_pinning_removed",
+      "card_defined",
+    ]),
+    visibility: VisibilitySchema,
+    source_card_id: z.optional(CardIdSchema),
+    requires_adjudication: z.boolean(),
+  }),
+);
 
 export type ScheduledEffect = {
   effect: Effect;
@@ -365,6 +654,14 @@ export type ScheduledEffect = {
   expiration_turn?: number;
   trigger_condition?: Condition;
 };
+export const ScheduledEffectSchema: z.ZodType<ScheduledEffect> = z.lazy(() =>
+  z.object({
+    effect: EffectSchema,
+    trigger_turn: z.optional(z.number()),
+    expiration_turn: z.optional(z.number()),
+    trigger_condition: z.optional(ConditionSchema),
+  }),
+);
 
 export type GroundTruthItem = {
   id: string;
@@ -378,6 +675,24 @@ export type GroundTruthItem = {
   status: "pending" | "active" | "expired" | "resolved";
   narrative_note: string;
 };
+export const GroundTruthItemSchema = z.object({
+  id: z.string(),
+  source: z.union([
+    CardIdSchema,
+    z.literal("rule_id"),
+    z.literal("white_cell"),
+  ]),
+  created_turn: z.number(),
+  visible_to: z.array(
+    z.union([PlayerIdSchema, z.literal("WhiteCell"), z.literal("Public")]),
+  ),
+  effect: EffectSchema,
+  trigger_turn: z.optional(z.number()),
+  expiration_turn: z.optional(z.number()),
+  trigger_condition: z.optional(ConditionSchema),
+  status: z.enum(["pending", "active", "expired", "resolved"]),
+  narrative_note: z.string(),
+});
 
 export type ForceInitialization = {
   id: ForceId;
@@ -389,6 +704,16 @@ export type ForceInitialization = {
   readiness_level?: ReadinessLevel;
   proxy?: boolean;
 };
+export const ForceInitializationSchema = z.object({
+  id: ForceIdSchema,
+  owner: PlayerIdSchema,
+  force_factors: z.number(),
+  modernization_level: z.number(),
+  location_id: LocationIdSchema,
+  home_base_id: LocationIdSchema,
+  readiness_level: z.optional(ReadinessLevelSchema),
+  proxy: z.optional(z.boolean()),
+});
 
 export type Scenario = {
   title: string;
@@ -420,6 +745,39 @@ export type Scenario = {
   marker_chits: MarkerDefinition[];
   max_turns: number;
 };
+export const ScenarioSchema = z.object({
+  title: z.string(),
+  learning_objectives: z.array(z.string()),
+  security_environment: z.string(),
+  players: z.array(PlayerStateSchema),
+  map: z.object({
+    locations: z.array(LocationSchema),
+    movement_edges: z.array(MovementEdgeSchema),
+    aor_boundaries: z.array(JsonValueSchema),
+  }),
+  starting_conditions: z.object({
+    resources: z.record(PlayerIdSchema, z.number()),
+    per_turn_resources: z.record(PlayerIdSchema, z.number()),
+    influence: z.record(PlayerIdSchema, z.number()),
+    national_tech_levels: z.record(PlayerIdSchema, z.number()),
+    critical_capabilities: z.record(
+      PlayerIdSchema,
+      z.record(CapabilityIdSchema, z.number()),
+    ),
+    force_laydown: z.array(ForceInitializationSchema),
+    bases: z.array(BaseSchema),
+    proxy_forces: z.array(ProxyForceSchema),
+  }),
+  victory_conditions: z.record(PlayerIdSchema, z.string()),
+  card_decks: z.object({
+    action_investment: z.record(PlayerIdSchema, z.array(CardSchema)),
+    domestic_event: z.record(PlayerIdSchema, z.array(CardSchema)),
+    international_event: z.array(CardSchema),
+  }),
+  rules_in_effect: ScenarioRulesSchema,
+  marker_chits: z.array(MarkerDefinitionSchema),
+  max_turns: z.number(),
+});
 
 export type RollRecord = {
   id: string;
@@ -433,6 +791,18 @@ export type RollRecord = {
   purpose: string;
   visibility: Visibility;
 };
+export const RollRecordSchema = z.object({
+  id: z.string(),
+  turn: z.number(),
+  phase: PhaseIdSchema,
+  die: z.literal("D10"),
+  results: z.array(z.number()),
+  modifier: z.number(),
+  total: z.number(),
+  formula: z.string(),
+  purpose: z.string(),
+  visibility: VisibilitySchema,
+});
 
 export type EventLogItem = {
   id: string;
@@ -445,6 +815,17 @@ export type EventLogItem = {
   card_id?: CardId;
   roll_id?: string;
 };
+export const EventLogItemSchema = z.object({
+  id: z.string(),
+  turn: z.number(),
+  phase: PhaseIdSchema,
+  message: z.string(),
+  tags: z.array(RuleTagSchema),
+  visibility: VisibilitySchema,
+  player_id: z.optional(PlayerIdSchema),
+  card_id: z.optional(CardIdSchema),
+  roll_id: z.optional(z.string()),
+});
 
 export type AdjudicationRequest = {
   id: string;
@@ -459,6 +840,19 @@ export type AdjudicationRequest = {
   payload?: JsonValue;
   resolution_note?: string;
 };
+export const AdjudicationRequestSchema = z.object({
+  id: z.string(),
+  turn: z.number(),
+  phase: PhaseIdSchema,
+  reason: z.string(),
+  rule_refs: z.array(z.string()),
+  tags: z.array(RuleTagSchema),
+  status: z.enum(["pending", "resolved"]),
+  requested_by: z.optional(PlayerIdSchema),
+  card_id: z.optional(CardIdSchema),
+  payload: z.optional(JsonValueSchema),
+  resolution_note: z.optional(z.string()),
+});
 
 export type RedSignalState = {
   player_id: PlayerId;
@@ -467,12 +861,26 @@ export type RedSignalState = {
   activation_intent?: Record<CardId, "Yes" | "No" | "Undeclared">;
   completed: boolean;
 };
+export const RedSignalStateSchema = z.object({
+  player_id: PlayerIdSchema,
+  card_ids: z.array(CardIdSchema),
+  brief_summary: z.optional(z.string()),
+  activation_intent: z.optional(
+    z.record(CardIdSchema, z.enum(["Yes", "No", "Undeclared"])),
+  ),
+  completed: z.boolean(),
+});
 
 export type RedPlayState = {
   player_id: PlayerId;
   played_card_ids: CardId[];
   skipped: boolean;
 };
+export const RedPlayStateSchema = z.object({
+  player_id: PlayerIdSchema,
+  played_card_ids: z.array(CardIdSchema),
+  skipped: z.boolean(),
+});
 
 export type PendingReset = {
   id: string;
@@ -480,12 +888,23 @@ export type PendingReset = {
   outcome: ProbabilityOutcome;
   status: "pending_after_pinning" | "resolved";
 };
+export const PendingResetSchema = z.object({
+  id: z.string(),
+  force_ids: z.array(ForceIdSchema),
+  outcome: ProbabilityOutcomeSchema,
+  status: z.enum(["pending_after_pinning", "resolved"]),
+});
 
 export type CardPlayRecord = {
   card_id: CardId;
   player_id: PlayerId;
   turn: number;
 };
+export const CardPlayRecordSchema = z.object({
+  card_id: CardIdSchema,
+  player_id: PlayerIdSchema,
+  turn: z.number(),
+});
 
 export type GameState = {
   scenario_title: string;
@@ -519,8 +938,41 @@ export type GameState = {
     state_of_world: Record<number, string>;
   };
 };
+export const GameStateSchema = z.object({
+  scenario_title: z.string(),
+  turn: z.number(),
+  phase: PhaseIdSchema,
+  players: z.record(PlayerIdSchema, PlayerStateSchema),
+  forces: z.record(ForceIdSchema, ForceCounterSchema),
+  cards: z.record(CardIdSchema, CardSchema),
+  locations: z.record(LocationIdSchema, LocationSchema),
+  bases: z.record(z.string(), BaseSchema),
+  proxy_forces: z.record(z.string(), ProxyForceSchema),
+  per_turn_resources: z.record(PlayerIdSchema, z.number()),
+  rules_in_effect: ScenarioRulesSchema,
+  max_turns: z.number(),
+  active_player_id: z.optional(PlayerIdSchema),
+  blue_subphase: z.optional(z.enum(["Investments", "Actions"])),
+  red_sequence: z.array(PlayerIdSchema),
+  red_signals: z.record(PlayerIdSchema, RedSignalStateSchema),
+  red_plays: z.record(PlayerIdSchema, RedPlayStateSchema),
+  active_red_index: z.number(),
+  readiness_paid_turns: z.array(z.number()),
+  event_log: z.array(EventLogItemSchema),
+  rolls: z.array(RollRecordSchema),
+  pending_adjudications: z.array(AdjudicationRequestSchema),
+  pending_resets: z.array(PendingResetSchema),
+  card_play_history: z.array(CardPlayRecordSchema),
+  ground_truth: z.array(GroundTruthItemSchema),
+  scenario_flags: z.record(z.string(), JsonValueSchema),
+  summaries: z.object({
+    game_start: z.optional(z.string()),
+    state_of_world: z.record(z.coerce.number(), z.string()),
+  }),
+});
 
 export type RuleIssueSeverity = "error" | "adjudication";
+export const RuleIssueSeveritySchema = z.enum(["error", "adjudication"]);
 
 export type RuleIssue = {
   id: string;
@@ -529,16 +981,33 @@ export type RuleIssue = {
   rule_refs: string[];
   tags: RuleTag[];
 };
+export const RuleIssueSchema = z.object({
+  id: z.string(),
+  severity: RuleIssueSeveritySchema,
+  message: z.string(),
+  rule_refs: z.array(z.string()),
+  tags: z.array(RuleTagSchema),
+});
 
 export type RuleValue<T> =
   | { ok: true; value: T }
   | { ok: false; issue: RuleIssue };
+export const RuleValueSchema = <T extends z.ZodTypeAny>(valueSchema: T) =>
+  z.discriminatedUnion("ok", [
+    z.object({ ok: z.literal(true), value: valueSchema }),
+    z.object({ ok: z.literal(false), issue: RuleIssueSchema }),
+  ]);
 
 export type ForceCommitment = {
   force_id: ForceId;
   source: "in_theater" | "adjacent_theater" | "conus_reactive";
   out_of_area_arrival?: boolean;
 };
+export const ForceCommitmentSchema = z.object({
+  force_id: ForceIdSchema,
+  source: z.enum(["in_theater", "adjacent_theater", "conus_reactive"]),
+  out_of_area_arrival: z.optional(z.boolean()),
+});
 
 export type CombatFactorsBreakdown = {
   force_id: ForceId;
@@ -546,9 +1015,20 @@ export type CombatFactorsBreakdown = {
   final_cf: number;
   note: string;
 };
+export const CombatFactorsBreakdownSchema = z.object({
+  force_id: ForceIdSchema,
+  base_cf: z.number(),
+  final_cf: z.number(),
+  note: z.string(),
+});
 
 export type CombatFactorsResult = {
   total: number;
   breakdown: CombatFactorsBreakdown[];
   adjudications: RuleIssue[];
 };
+export const CombatFactorsResultSchema = z.object({
+  total: z.number(),
+  breakdown: z.array(CombatFactorsBreakdownSchema),
+  adjudications: z.array(RuleIssueSchema),
+});
