@@ -39,7 +39,8 @@ button:hover {
 }
 
 textarea,
-input {
+input,
+select {
   width: 100%;
   border: 1px solid #bac8c1;
   border-radius: 6px;
@@ -51,6 +52,14 @@ input {
 textarea {
   min-height: 88px;
   resize: vertical;
+}
+
+.compact-label {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+  color: #66756d;
+  font-size: 0.85rem;
 }
 
 h1,
@@ -101,6 +110,28 @@ p {
   padding: 0.35rem 0.5rem;
   background: #f7faf8;
   font-size: 0.85rem;
+}
+
+.segmented-control {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.25rem;
+  border: 1px solid #bac8c1;
+  border-radius: 6px;
+  padding: 0.25rem;
+  background: #eef3f0;
+}
+
+.segmented-control button {
+  border-color: transparent;
+  background: transparent;
+  color: #334139;
+  text-align: center;
+}
+
+.segmented-control button.selected {
+  background: #1f6f5b;
+  color: #fff;
 }
 
 .left-sidebar,
@@ -232,6 +263,36 @@ small {
 .player-section {
   padding-top: 0.5rem;
   border-top: 1px solid #d6ded9;
+}
+
+.sequence-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.sequence-row {
+  align-items: center;
+  background: #f7faf8;
+  border: 1px solid #d6ded9;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0.6rem;
+}
+
+.sequence-row div {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.sequence-row button {
+  min-width: 2.1rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.sequence-row button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .table-like {

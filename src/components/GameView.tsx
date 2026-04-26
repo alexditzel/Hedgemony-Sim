@@ -3,6 +3,7 @@ import * as L from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import {
   RandomDiceRoller,
+  advanceBlueToActions,
   advanceRedActivePlayer,
   annualResourceAllocation,
   beginBlueReadinessBill,
@@ -21,6 +22,7 @@ import {
   requestBlueFreePlayAdjudication,
   resolveCard,
   resolveWhiteCellAdjudication,
+  setActiveBluePlayer,
   signalRedCards,
   skipRemainingRedCards,
   validateState,
@@ -31,6 +33,7 @@ import {
   type PlayerId,
   type Scenario
 } from "../engine";
+import { canViewLog, canViewRoll, type ViewerId } from "./visibility";
 
 interface GameViewProps {
   scenario: Scenario;
@@ -130,13 +133,19 @@ export function GameView({ scenario }: GameViewProps) {
   const [briefText, setBriefText] = useState("");
   const [freePlayIntent, setFreePlayIntent] = useState("");
   const [whiteCellText, setWhiteCellText] = useState("");
+  const [redSequenceDraft, setRedSequenceDraft] = useState<PlayerId[]>([]);
+  const [viewer, setViewer] = useState<ViewerId>("Public");
   const [message, setMessage] = useState<UiMessage | undefined>();
   const roller = useMemo(() => new RandomDiceRoller(), []);
 
   const validationIssues = validateState(state);
   const activeRedPlayer = state.phase === "RedInvestmentsAndActions" ? state.active_player_id : undefined;
   const activePlayer = state.active_player_id ? state.players[state.active_player_id] : undefined;
-  const latestRoll = state.rolls.at(-1);
+  const latestRoll = state.rolls
+    .slice()
+    .reverse()
+    .find((roll) => canViewRoll(roll, state, viewer));
+  const visibleLog = state.event_log.filter((entry) => canViewLog(entry, viewer));
 
   function applyResult(next: GameState, errorText?: string): void {
     const errors = validateState(next).filter((issue) => issue.severity === "error");
@@ -268,8 +277,20 @@ export function GameView({ scenario }: GameViewProps) {
 
       <aside className="left-sidebar">
         <h2>Event Log</h2>
+        <label className="compact-label">
+          View as
+          <select value={viewer} onChange={(event) => setViewer(event.target.value as ViewerId)}>
+            <option value="Public">Public</option>
+            <option value="WhiteCell">White Cell</option>
+            {Object.values(state.players).map((player) => (
+              <option value={player.id} key={player.id}>
+                {player.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <div className="log-list">
-          {state.event_log
+          {visibleLog
             .slice()
             .reverse()
             .map((entry) => (
@@ -345,6 +366,18 @@ export function GameView({ scenario }: GameViewProps) {
               freePlayIntent={freePlayIntent}
               onFreePlayIntent={setFreePlayIntent}
               onPlayCard={playBlueCard}
+              onSelectPlayer={(playerId) => {
+                const result = setActiveBluePlayer(state, playerId);
+                if (!showIssues(result.issues)) {
+                  applyResult(result.state);
+                }
+              }}
+              onAdvanceToActions={() => {
+                const result = advanceBlueToActions(state);
+                if (!showIssues(result.issues)) {
+                  applyResult(result.state);
+                }
+              }}
               onInjectEvent={(cardId) => {
                 const result = injectWhiteCellEvent(state, cardId, "Injected from White Cell panel.", roller);
                 if (!showIssues(result.issues.filter((issue) => issue.severity === "error"))) {
@@ -352,11 +385,19 @@ export function GameView({ scenario }: GameViewProps) {
                 }
               }}
               onEndBlue={() => {
-                const result = beginRedInvestmentsAndActions(state);
+                const sequence = state.rules_in_effect.random_red_sequence
+                  ? undefined
+                  : redSequenceDraft.length > 0
+                    ? redSequenceDraft
+                    : getPlayersBySide(state, "Red").map((player) => player.id);
+                const result = beginRedInvestmentsAndActions(state, sequence, roller);
                 if (!showIssues(result.issues.filter((issue) => issue.severity === "error"))) {
                   applyResult(result.state);
+                  setRedSequenceDraft([]);
                 }
               }}
+              redSequenceDraft={redSequenceDraft}
+              onRedSequenceChange={setRedSequenceDraft}
             />
           )}
           {state.phase === "RedInvestmentsAndActions" && activeRedPlayer && (
@@ -605,38 +646,113 @@ function BlueActionPanel({
   freePlayIntent,
   onFreePlayIntent,
   onPlayCard,
+  onSelectPlayer,
+  onAdvanceToActions,
   onInjectEvent,
-  onEndBlue
+  onEndBlue,
+  redSequenceDraft,
+  onRedSequenceChange
 }: {
   state: GameState;
   freePlayIntent: string;
   onFreePlayIntent: (value: string) => void;
   onPlayCard: (card: Card, playerId: PlayerId) => void;
+  onSelectPlayer: (playerId: PlayerId) => void;
+  onAdvanceToActions: () => void;
   onInjectEvent: (cardId: CardId) => void;
   onEndBlue: () => void;
+  redSequenceDraft: PlayerId[];
+  onRedSequenceChange: (sequence: PlayerId[]) => void;
 }) {
   const bluePlayers = getPlayersBySide(state, "Blue");
+  const redPlayers = getPlayersBySide(state, "Red");
+  const currentRedSequence =
+    redSequenceDraft.length === redPlayers.length ? redSequenceDraft : redPlayers.map((player) => player.id);
+  const activeBluePlayer =
+    bluePlayers.find((player) => player.id === state.active_player_id) ?? bluePlayers[0];
   const events = Object.values(state.cards).filter((card) => card.type === "InternationalEvent" || card.type === "DomesticEvent");
+  const visibleCards = activeBluePlayer
+    ? getPlayerDeck(state, activeBluePlayer.id).filter((card) =>
+        state.blue_subphase === "Actions" ? card.type === "Action" : card.type === "Investment"
+      )
+    : [];
   return (
     <div className="control-stack">
-      <h2>Blue Investments and Actions</h2>
+      <h2>Blue {state.blue_subphase ?? "Investments"} Phase</h2>
+      <div className="segmented-control" aria-label="Active Blue player">
+        {bluePlayers.map((player) => (
+          <button
+            type="button"
+            key={player.id}
+            className={player.id === activeBluePlayer?.id ? "selected" : ""}
+            onClick={() => onSelectPlayer(player.id)}
+          >
+            {player.label}
+          </button>
+        ))}
+      </div>
       <label>
-        Blue free-play intent
+        {activeBluePlayer?.label ?? "Blue"} free-play intent
         <input value={freePlayIntent} onChange={(event) => onFreePlayIntent(event.target.value)} />
       </label>
-      {bluePlayers.map((player) => (
-        <section className="player-section" key={player.id}>
-          <h3>{player.label}</h3>
+      {activeBluePlayer && (
+        <section className="player-section">
+          <h3>{activeBluePlayer.label}</h3>
           <div className="action-grid">
-            {getPlayerDeck(state, player.id).map((card) => (
-              <button type="button" key={card.id} onClick={() => onPlayCard(card, player.id)}>
+            {visibleCards.map((card) => (
+              <button type="button" key={card.id} onClick={() => onPlayCard(card, activeBluePlayer.id)}>
                 <strong>{card.title}</strong>
                 <span>{card.type}</span>
               </button>
             ))}
           </div>
         </section>
-      ))}
+      )}
+      {state.blue_subphase === "Investments" && (
+        <button type="button" onClick={onAdvanceToActions}>
+          Begin Blue Actions
+        </button>
+      )}
+      {state.blue_subphase === "Actions" && !state.rules_in_effect.random_red_sequence && (
+        <section className="player-section">
+          <h3>White Cell Red Sequence</h3>
+          <div className="sequence-list">
+            {currentRedSequence.map((playerId, index) => (
+              <div key={playerId} className="sequence-row">
+                <span>
+                  {index + 1}. {state.players[playerId]?.label ?? playerId}
+                </span>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = [...currentRedSequence];
+                      [next[index - 1], next[index]] = [next[index], next[index - 1]];
+                      onRedSequenceChange(next);
+                    }}
+                    disabled={index === 0}
+                    aria-label={`Move ${state.players[playerId]?.label ?? playerId} earlier`}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = [...currentRedSequence];
+                      [next[index], next[index + 1]] = [next[index + 1], next[index]];
+                      onRedSequenceChange(next);
+                    }}
+                    disabled={index === currentRedSequence.length - 1}
+                    aria-label={`Move ${state.players[playerId]?.label ?? playerId} later`}
+                  >
+                    ↓
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       <section className="player-section">
         <h3>White Cell Event Injection</h3>
         <div className="action-grid">
@@ -648,9 +764,11 @@ function BlueActionPanel({
           ))}
         </div>
       </section>
-      <button type="button" onClick={onEndBlue}>
-        End Blue Phase
-      </button>
+      {state.blue_subphase === "Actions" && (
+        <button type="button" onClick={onEndBlue}>
+          End Blue Actions
+        </button>
+      )}
     </div>
   );
 }

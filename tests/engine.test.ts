@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import defaultScenario from "../src/data/defaultScenario.json";
+import { canViewLog, canViewRoll } from "../src/components/visibility";
 import {
   SequenceDiceRoller,
+  advanceBlueToActions,
   annualResourceAllocation,
   beginBlueReadinessBill,
   beginRedInvestmentsAndActions,
@@ -23,6 +25,7 @@ import {
   getReadinessSustainmentCost,
   getRedChoiceOptions,
   getRtBOutcome,
+  injectWhiteCellEvent,
   modernizeForces,
   payUsReadinessBill,
   playRedSignaledCard,
@@ -33,6 +36,7 @@ import {
   resolveCard,
   resolveProxyParticipation,
   resolveWhiteCellAdjudication,
+  setActiveBluePlayer,
   restoreResetRedForces,
   retireUsForces,
   selectCrtAColumn,
@@ -74,7 +78,9 @@ function startTurnThroughBlueReadiness(): GameState {
 function startRedPhase(): GameState {
   const paid = payUsReadinessBill(startTurnThroughBlueReadiness());
   expect(paid.issues).toHaveLength(0);
-  const red = beginRedInvestmentsAndActions(paid.state, ["RU", "PRC", "DPRK", "IR"]);
+  const actionPhase = advanceBlueToActions(paid.state);
+  expect(actionPhase.issues).toHaveLength(0);
+  const red = beginRedInvestmentsAndActions(actionPhase.state, ["RU", "PRC", "DPRK", "IR"]);
   expect(red.issues).toHaveLength(0);
   return red.state;
 }
@@ -176,6 +182,39 @@ describe("turn sequence and Red signaling", () => {
     const skip = skipRemainingRedCards(state, "PRC");
     expect(skip.issues[0].message).toContain("at least one Action and one Investment");
   });
+
+  it("charges a flat Red additional-card cost for each card after the first", () => {
+    const state = startRedPhase();
+    const afterOnePlayed = {
+      ...state,
+      players: {
+        ...state.players,
+        RU: { ...state.players.RU, resource_points: 15 }
+      },
+      red_plays: {
+        ...state.red_plays,
+        RU: { player_id: "RU", played_card_ids: ["RU-ACT-02"], skipped: false }
+      }
+    };
+    const secondCard = resolveCard(afterOnePlayed, { acting_player_id: "RU", card_id: "RU-INV-01" }, new SequenceDiceRoller([5]));
+    expect(secondCard.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+    expect(secondCard.state.players.RU.resource_points).toBe(11);
+
+    const afterTwoPlayed = {
+      ...state,
+      players: {
+        ...state.players,
+        RU: { ...state.players.RU, resource_points: 15 }
+      },
+      red_plays: {
+        ...state.red_plays,
+        RU: { player_id: "RU", played_card_ids: ["RU-ACT-02", "RU-ACT-01"], skipped: false }
+      }
+    };
+    const thirdCard = resolveCard(afterTwoPlayed, { acting_player_id: "RU", card_id: "RU-INV-01" }, new SequenceDiceRoller([5]));
+    expect(thirdCard.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+    expect(thirdCard.state.players.RU.resource_points).toBe(11);
+  });
 });
 
 describe("readiness, resources, and movement", () => {
@@ -193,6 +232,96 @@ describe("readiness, resources, and movement", () => {
     const paid = payUsReadinessBill(state);
     expect(paid.state.players.US.resource_points).toBe(15);
     expect(paid.state.phase).toBe("BlueInvestmentsAndActions");
+  });
+
+  it("allows NATO/EU to become the active Blue player after the U.S. readiness bill", () => {
+    const paid = payUsReadinessBill(startTurnThroughBlueReadiness());
+    expect(paid.state.active_player_id).toBe("US");
+    const switched = setActiveBluePlayer(paid.state, "NATO_EU");
+    expect(switched.issues).toHaveLength(0);
+    expect(switched.state.active_player_id).toBe("NATO_EU");
+    const played = resolveCard(
+      switched.state,
+      {
+        acting_player_id: "NATO_EU",
+        card_id: "NATO-INV-01"
+      },
+      new SequenceDiceRoller([5])
+    );
+    expect(played.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+    expect(played.state.players.NATO_EU.resource_points).toBe(8);
+    expect(played.state.players.NATO_EU.influence_points).toBe(51);
+  });
+
+  it("enforces Blue investments before Blue actions", () => {
+    const paid = payUsReadinessBill(startTurnThroughBlueReadiness()).state;
+    const earlyRedPhase = beginRedInvestmentsAndActions(paid, ["RU", "PRC", "DPRK", "IR"]);
+    expect(earlyRedPhase.issues[0].message).toContain("Blue investments must be ended");
+    expect(earlyRedPhase.state).toBe(paid);
+
+    const prematureAction = resolveCard(
+      paid,
+      {
+        acting_player_id: "US",
+        card_id: "US-ACT-01",
+        blue_commitments: [{ force_id: "US-PRC-1", source: "in_theater" }],
+        red_commitments: [{ force_id: "PRC-INDO-5-M3", source: "in_theater" }],
+        blue_players: ["US"],
+        red_players: ["PRC"]
+      },
+      new SequenceDiceRoller([9])
+    );
+    expect(prematureAction.issues[0].message).toContain("until Blue investments are complete");
+    expect(prematureAction.state).toBe(paid);
+
+    const actionPhase = advanceBlueToActions(paid).state;
+    const lateInvestment = resolveCard(actionPhase, { acting_player_id: "US", card_id: "US-INV-01" }, new SequenceDiceRoller([5]));
+    expect(lateInvestment.issues[0].message).toContain("after Blue actions have begun");
+    expect(lateInvestment.state).toBe(actionPhase);
+  });
+
+  it("requires explicit White Cell Red sequence input under default rules", () => {
+    const paid = payUsReadinessBill(startTurnThroughBlueReadiness()).state;
+    const actionPhase = advanceBlueToActions(paid).state;
+    const missingSequence = beginRedInvestmentsAndActions(actionPhase);
+    expect(missingSequence.issues[0].message).toContain("White Cell must choose");
+    expect(missingSequence.state).toBe(actionPhase);
+    expect(missingSequence.state.pending_adjudications).toHaveLength(0);
+
+    const invalidSequence = beginRedInvestmentsAndActions(actionPhase, ["RU", "RU", "PRC", "IR"]);
+    expect(invalidSequence.issues[0].message).toContain("exactly once");
+
+    const chosenSequence = beginRedInvestmentsAndActions(actionPhase, ["PRC", "RU", "IR", "DPRK"]);
+    expect(chosenSequence.issues).toHaveLength(0);
+    expect(chosenSequence.state.phase).toBe("RedInvestmentsAndActions");
+    expect(chosenSequence.state.red_sequence).toEqual(["PRC", "RU", "IR", "DPRK"]);
+    expect(chosenSequence.state.active_player_id).toBe("PRC");
+  });
+
+  it("uses D10 rolls for optional random Red sequence and requires a roller", () => {
+    const paid = payUsReadinessBill(startTurnThroughBlueReadiness()).state;
+    const actionPhase = advanceBlueToActions({
+      ...paid,
+      rules_in_effect: {
+        ...paid.rules_in_effect,
+        random_red_sequence: true,
+        random_red_sequence_order: "ascending",
+        random_red_sequence_tie_rule: "player_id"
+      }
+    }).state;
+
+    const withoutRoller = beginRedInvestmentsAndActions(actionPhase);
+    expect(withoutRoller.issues[0].message).toContain("requires a D10 roller");
+
+    const randomized = beginRedInvestmentsAndActions(actionPhase, undefined, new SequenceDiceRoller([8, 1, 5, 3]));
+    expect(randomized.issues).toHaveLength(0);
+    expect(randomized.state.red_sequence).toEqual(["PRC", "IR", "DPRK", "RU"]);
+    expect(randomized.state.rolls.slice(-4).map((roll) => roll.formula)).toEqual([
+      "D10(8) = 8",
+      "D10(1) = 1",
+      "D10(5) = 5",
+      "D10(3) = 3"
+    ]);
   });
 
   it("accounts for the 11 FF CONUS 100% readiness subtotal through scenario table extensions", () => {
@@ -300,6 +429,15 @@ describe("readiness, resources, and movement", () => {
     expect(result.state.forces["US-CONUS-4"].readiness_level).toBe(100);
     expect(result.state.players.US.resource_points).toBe(35);
   });
+
+  it("does not allocate annual resources outside the annual allocation phase", () => {
+    const state = freshState();
+    const result = annualResourceAllocation(state, new SequenceDiceRoller([8]));
+    expect(result.issues[0].message).toContain("Expected phase AnnualResourcesAllocation");
+    expect(result.budgetRoll).toBeUndefined();
+    expect(result.state).toBe(state);
+    expect(result.state.players.US.resource_points).toBe(40);
+  });
 });
 
 describe("combat resolution and card effects", () => {
@@ -317,8 +455,10 @@ describe("combat resolution and card effects", () => {
 
   it("resolves RT B cards, records the die formula, applies effects, and pins committed forces", () => {
     const paid = payUsReadinessBill(startTurnThroughBlueReadiness()).state;
+    const actionPhase = advanceBlueToActions(paid);
+    expect(actionPhase.issues).toHaveLength(0);
     const result = resolveCard(
-      paid,
+      actionPhase.state,
       {
         acting_player_id: "US",
         card_id: "US-ACT-01",
@@ -352,8 +492,18 @@ describe("combat resolution and card effects", () => {
     expect(result.roll?.modifier).toBe(-1);
     expect(result.outcome).toBe("BmG");
     expect(result.state.players.NATO_EU.influence_points).toBe(52);
-    expect(result.state.forces["US-EUCOM-1"].readiness_level).toBe(90);
-    expect(result.state.forces["NATO-EUCOM-5"].reset_required).toBe(true);
+    expect(result.state.forces["US-EUCOM-1"].readiness_level).toBe(100);
+    expect(result.state.forces["NATO-EUCOM-5"].pinned.active).toBe(true);
+    expect(result.state.forces["NATO-EUCOM-5"].reset_required).toBe(false);
+    expect(result.state.pending_resets).toContainEqual(
+      expect.objectContaining({ force_ids: ["NATO-EUCOM-5", "US-EUCOM-1", "RU-EUCOM-5-M2", "RU-EUCOM-4-M3"], outcome: "BmG" })
+    );
+    const afterSummary = recordStateOfWorldSummary(
+      { ...result.state, phase: "StateOfWorldSummary" },
+      "Pinned forces resolve reset."
+    );
+    expect(afterSummary.forces["US-EUCOM-1"].readiness_level).toBe(90);
+    expect(afterSummary.forces["NATO-EUCOM-5"].reset_required).toBe(true);
   });
 
   it("tracks private outcomes in the ground-truth log", () => {
@@ -363,12 +513,89 @@ describe("combat resolution and card effects", () => {
     expect(result.state.ground_truth.some((item) => item.visible_to.includes("DPRK") && !item.visible_to.includes("Public"))).toBe(true);
   });
 
+  it("filters private logs and rolls by viewer", () => {
+    const state = startRedPhase();
+    const result = playRedSignaledCard(state, "RU", "RU-ACT-02", new SequenceDiceRoller([5]));
+    const privateLog = result.state.event_log.find((entry) => entry.visibility === "private_to_player_and_white_cell");
+    const privateRoll = result.state.rolls.find((roll) => roll.visibility === "private_to_player_and_white_cell");
+    expect(privateLog).toBeDefined();
+    expect(privateRoll).toBeDefined();
+    expect(canViewLog(privateLog!, "Public")).toBe(false);
+    expect(canViewLog(privateLog!, "US")).toBe(false);
+    expect(canViewLog(privateLog!, "RU")).toBe(true);
+    expect(canViewLog(privateLog!, "WhiteCell")).toBe(true);
+    expect(canViewRoll(privateRoll!, result.state, "Public")).toBe(false);
+    expect(canViewRoll(privateRoll!, result.state, "US")).toBe(false);
+    expect(canViewRoll(privateRoll!, result.state, "RU")).toBe(true);
+    expect(canViewRoll(privateRoll!, result.state, "WhiteCell")).toBe(true);
+  });
+
   it("requests White Cell adjudication for Blue free play and White Cell cards", () => {
     const paid = payUsReadinessBill(startTurnThroughBlueReadiness()).state;
     const requested = requestBlueFreePlayAdjudication(paid, "US", "Build a base with partner access.");
     expect(requested.state.pending_adjudications.at(-1)?.reason).toContain("Blue free-play action");
-    const card = resolveCard(paid, { acting_player_id: "US", card_id: "US-ACT-02" }, new SequenceDiceRoller([5]));
+    const actionPhase = advanceBlueToActions(paid).state;
+    const card = resolveCard(actionPhase, { acting_player_id: "US", card_id: "US-ACT-02" }, new SequenceDiceRoller([5]));
     expect(card.adjudications.length).toBeGreaterThan(0);
+  });
+
+  it("allows zero-cost White Cell event injection during the Blue turn", () => {
+    const paid = payUsReadinessBill(startTurnThroughBlueReadiness()).state;
+    const result = injectWhiteCellEvent(paid, "INT-EVT-01", "Regression test event.", new SequenceDiceRoller([5]));
+    expect(result.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+    expect(result.state.players.US.resource_points).toBe(14);
+    expect(result.state.players.PRC.resource_points).toBe(14);
+    expect(result.state.event_log.some((entry) => entry.message.includes("White Cell injected event INT-EVT-01"))).toBe(true);
+  });
+
+  it("pauses for adjudication when a card D10 table has no matching outcome row", () => {
+    const state = startRedPhase();
+    const gapState: GameState = {
+      ...state,
+      cards: {
+        ...state.cards,
+        "DPRK-ACT-01": {
+          ...state.cards["DPRK-ACT-01"],
+          resolution: {
+            ...state.cards["DPRK-ACT-01"].resolution,
+            outcome_map: [
+              {
+                roll_min: 0,
+                roll_max: 3,
+                label: "Fail",
+                effects: [
+                  {
+                    type: "adjust_influence_points",
+                    target: "DPRK",
+                    value: -1,
+                    timing: "immediate",
+                    visibility: "public",
+                    requires_adjudication: false
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    };
+    const result = resolveCard(gapState, { acting_player_id: "DPRK", card_id: "DPRK-ACT-01" }, new SequenceDiceRoller([9]));
+    expect(result.issues[0].message).toContain("no card-defined outcome row");
+    expect(result.adjudications.length).toBeGreaterThan(0);
+    expect(result.state.players.DPRK.influence_points).toBe(5);
+  });
+
+  it("blocks Critical Capability upgrades that exceed National Tech Level", () => {
+    const paid = payUsReadinessBill(startTurnThroughBlueReadiness()).state;
+    const firstUpgrade = resolveCard(paid, { acting_player_id: "US", card_id: "US-INV-01" }, new SequenceDiceRoller([5]));
+    expect(firstUpgrade.issues.filter((issue) => issue.severity === "error")).toHaveLength(0);
+    expect(firstUpgrade.state.players.US.critical_capabilities.C4ISR).toBe(4);
+
+    const blockedUpgrade = resolveCard(firstUpgrade.state, { acting_player_id: "US", card_id: "US-INV-01" }, new SequenceDiceRoller([5]));
+    expect(blockedUpgrade.issues[0].message).toContain("exceeds National Tech Level");
+    expect(blockedUpgrade.adjudications.length).toBeGreaterThan(0);
+    expect(blockedUpgrade.state.players.US.critical_capabilities.C4ISR).toBe(4);
+    expect(validateState(blockedUpgrade.state).filter((issue) => issue.severity === "error")).toHaveLength(0);
   });
 });
 
@@ -445,7 +672,7 @@ describe("force development, proxies, reset, and annual allocation", () => {
   it("rolls annual resources with inline formula and advances to summary", () => {
     const state = { ...freshState(), phase: "AnnualResourcesAllocation" as const };
     const result = annualResourceAllocation(state, new SequenceDiceRoller([8]));
-    expect(result.budgetRoll.formula).toBe("D10(8) = 8");
+    expect(result.budgetRoll?.formula).toBe("D10(8) = 8");
     expect(result.state.players.US.resource_points).toBe(71);
     expect(result.state.players.NATO_EU.resource_points).toBe(15);
     expect(result.state.phase).toBe("StateOfWorldSummary");

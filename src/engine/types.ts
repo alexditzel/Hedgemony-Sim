@@ -416,6 +416,13 @@ export interface RedPlayState {
   skipped: boolean;
 }
 
+export interface PendingReset {
+  id: string;
+  force_ids: ForceId[];
+  outcome: ProbabilityOutcome;
+  status: "pending_after_pinning" | "resolved";
+}
+
 export interface GameState {
   scenario_title: string;
   turn: number;
@@ -430,6 +437,7 @@ export interface GameState {
   rules_in_effect: ScenarioRules;
   max_turns: number;
   active_player_id?: PlayerId;
+  blue_subphase?: "Investments" | "Actions";
   red_sequence: PlayerId[];
   red_signals: Record<PlayerId, RedSignalState>;
   red_plays: Record<PlayerId, RedPlayState>;
@@ -438,6 +446,7 @@ export interface GameState {
   event_log: EventLogItem[];
   rolls: RollRecord[];
   pending_adjudications: AdjudicationRequest[];
+  pending_resets: PendingReset[];
   ground_truth: GroundTruthItem[];
   scenario_flags: Record<string, JsonValue>;
   summaries: {

@@ -190,6 +190,10 @@ function tableIssuePayload(issue: RuleIssue): JsonValue | undefined {
   };
 }
 
+function hasAnyIssue(issues: RuleIssue[]): boolean {
+  return issues.length > 0;
+}
+
 function isRecord(value: JsonValue): value is Record<string, JsonValue> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -278,6 +282,7 @@ export function createInitialGameState(scenario: Scenario): GameState {
     rules_in_effect: scenario.rules_in_effect,
     max_turns: scenario.max_turns,
     active_player_id: undefined,
+    blue_subphase: undefined,
     red_sequence: DEFAULT_RED_SEQUENCE.filter((id) => players[id]?.side === "Red"),
     red_signals: {},
     red_plays: {},
@@ -286,6 +291,7 @@ export function createInitialGameState(scenario: Scenario): GameState {
     event_log: [],
     rolls: [],
     pending_adjudications: [],
+    pending_resets: [],
     ground_truth: [],
     scenario_flags: {},
     summaries: {
@@ -473,6 +479,27 @@ export function beginBlueReadinessBill(state: GameState): { state: GameState; is
   return { state: draft, issues };
 }
 
+export function setActiveBluePlayer(state: GameState, playerId: PlayerId): { state: GameState; issues: RuleIssue[] } {
+  const draft = cloneState(state);
+  const issues: RuleIssue[] = [];
+  const phase = phaseIssue(draft, "BlueInvestmentsAndActions");
+  if (phase) {
+    issues.push(phase);
+  }
+  const player = draft.players[playerId];
+  if (!player || player.side !== "Blue") {
+    issues.push(makeIssue(`${playerId} is not a Blue player.`, ["5.3 Blue Investments and Actions Phase"]));
+  }
+  if (issues.length > 0) {
+    return { state, issues };
+  }
+  draft.active_player_id = playerId;
+  appendLog(draft, `Active Blue player is now ${player.label}.`, ["DETERMINISTIC"], "public", {
+    player_id: playerId
+  });
+  return { state: draft, issues };
+}
+
 function isConus(state: GameState, locationId: LocationId): boolean {
   const location = state.locations[locationId];
   return locationId === "CONUS" || location?.parent_location_id === "CONUS" || location?.aor_id === "CONUS";
@@ -525,6 +552,12 @@ function spendResources(
 ): RuleIssue | undefined {
   const player = state.players[playerId];
   if (!player) {
+    if (amount === 0) {
+      appendLog(state, `${playerId} resolved zero-cost controller action for ${reason}.`, ["DETERMINISTIC"], "public", {
+        player_id: playerId
+      });
+      return undefined;
+    }
     return makeIssue(`Unknown player ${playerId}.`, ["Resources"]);
   }
   if (amount < 0) {
@@ -567,8 +600,24 @@ export function payUsReadinessBill(state: GameState): { state: GameState; bill: 
   draft.readiness_paid_turns.push(draft.turn);
   draft.phase = "BlueInvestmentsAndActions";
   draft.active_player_id = "US";
+  draft.blue_subphase = "Investments";
   appendLog(draft, `U.S. readiness bill paid: ${bill.total} RP.`, ["DETERMINISTIC"], "public", { player_id: "US" });
   return { state: draft, bill, issues };
+}
+
+export function advanceBlueToActions(state: GameState): { state: GameState; issues: RuleIssue[] } {
+  const draft = cloneState(state);
+  const issues: RuleIssue[] = [];
+  const phase = phaseIssue(draft, "BlueInvestmentsAndActions");
+  if (phase) {
+    issues.push(phase);
+  }
+  if (issues.length > 0) {
+    return { state, issues };
+  }
+  draft.blue_subphase = "Actions";
+  appendLog(draft, "Blue investments complete. Blue actions may now be resolved.", ["DETERMINISTIC"], "public");
+  return { state: draft, issues };
 }
 
 function cardBaseCost(card: Card): RuleValue<number> {
@@ -613,7 +662,7 @@ function redAdditionalCardCost(state: GameState, playerId: PlayerId, card: Card)
   if (alreadyPlayed < pace.additional_cost_starts_after_card_number) {
     return 0;
   }
-  return (alreadyPlayed - pace.additional_cost_starts_after_card_number + 1) * pace.additional_cost_per_card;
+  return pace.additional_cost_per_card;
 }
 
 function validateCardPhase(state: GameState, card: Card): RuleIssue | undefined {
@@ -622,6 +671,21 @@ function validateCardPhase(state: GameState, card: Card): RuleIssue | undefined 
   }
   if (!card.play_constraints.phase_restrictions.includes(state.phase)) {
     return makeIssue(`${card.id} cannot be played during ${state.phase}.`, ["6 Cards"]);
+  }
+  const owner = card.owner ? state.players[card.owner] : undefined;
+  if (state.phase === "BlueInvestmentsAndActions" && owner?.side === "Blue") {
+    if (card.type === "Investment" && state.blue_subphase !== "Investments") {
+      return makeIssue(
+        `${card.id} cannot be played after Blue actions have begun.`,
+        ["5.3 Blue Investments and Actions Phase"]
+      );
+    }
+    if (card.type === "Action" && state.blue_subphase !== "Actions") {
+      return makeIssue(
+        `${card.id} cannot be played until Blue investments are complete.`,
+        ["5.3 Blue Investments and Actions Phase"]
+      );
+    }
   }
   return undefined;
 }
@@ -708,24 +772,67 @@ function applySingleEffect(state: GameState, effect: Effect, owner?: PlayerId): 
       break;
     case "set_national_tech_level":
       if (player) {
-        player.national_tech_level = numberFrom(effect.value, player.national_tech_level);
+        const nextLevel = numberFrom(effect.value, player.national_tech_level);
+        const forceAboveCap = Object.values(state.forces).find(
+          (force) => force.owner === player.id && force.modernization_level > nextLevel
+        );
+        const capabilityAboveCap = Object.entries(player.critical_capabilities).find(([, level]) => level > nextLevel);
+        if (forceAboveCap || capabilityAboveCap) {
+          return makeIssue(
+            `${player.id} National Tech Level ${nextLevel} would be below existing force or Critical Capability Mod Levels.`,
+            ["14 National Tech and Critical Capability Upgrades"],
+            ["WHITE_CELL_ADJUDICATION"],
+            "adjudication"
+          );
+        }
+        player.national_tech_level = nextLevel;
       }
       break;
     case "adjust_national_tech_level":
       if (player) {
-        player.national_tech_level += numberFrom(effect.value);
+        const nextLevel = player.national_tech_level + numberFrom(effect.value);
+        const forceAboveCap = Object.values(state.forces).find(
+          (force) => force.owner === player.id && force.modernization_level > nextLevel
+        );
+        const capabilityAboveCap = Object.entries(player.critical_capabilities).find(([, level]) => level > nextLevel);
+        if (forceAboveCap || capabilityAboveCap) {
+          return makeIssue(
+            `${player.id} National Tech Level ${nextLevel} would be below existing force or Critical Capability Mod Levels.`,
+            ["14 National Tech and Critical Capability Upgrades"],
+            ["WHITE_CELL_ADJUDICATION"],
+            "adjudication"
+          );
+        }
+        player.national_tech_level = nextLevel;
       }
       break;
     case "set_critical_capability_mod_level":
       if (player && isRecord(effect.value)) {
-        player.critical_capabilities[stringFrom(effect.value.capability)] = numberFrom(effect.value.level);
+        const level = numberFrom(effect.value.level);
+        if (level > player.national_tech_level) {
+          return makeIssue(
+            `${player.id} Critical Capability Mod Level ${level} exceeds National Tech Level ${player.national_tech_level}.`,
+            ["14 National Tech and Critical Capability Upgrades"],
+            ["WHITE_CELL_ADJUDICATION"],
+            "adjudication"
+          );
+        }
+        player.critical_capabilities[stringFrom(effect.value.capability)] = level;
       }
       break;
     case "adjust_critical_capability_mod_level":
       if (player && isRecord(effect.value)) {
         const capability = stringFrom(effect.value.capability);
-        player.critical_capabilities[capability] =
-          (player.critical_capabilities[capability] ?? 0) + numberFrom(effect.value.amount);
+        const nextLevel = (player.critical_capabilities[capability] ?? 0) + numberFrom(effect.value.amount);
+        if (nextLevel > player.national_tech_level) {
+          return makeIssue(
+            `${player.id} ${capability} Mod Level ${nextLevel} exceeds National Tech Level ${player.national_tech_level}.`,
+            ["14 National Tech and Critical Capability Upgrades"],
+            ["WHITE_CELL_ADJUDICATION"],
+            "adjudication"
+          );
+        }
+        player.critical_capabilities[capability] = nextLevel;
       }
       break;
     case "move_forces":
@@ -1107,7 +1214,7 @@ function resolveCardD10(
   card: Card,
   args: ResolveCardArgs,
   roller: DiceRoller
-): { outcome?: ProbabilityOutcome | "Success" | "Fail"; roll?: RollRecord } {
+): { outcome?: ProbabilityOutcome | "Success" | "Fail"; roll?: RollRecord; issues: RuleIssue[] } {
   const modifier = card.resolution.modifiers.reduce((sum, entry) => sum + (entry.value ?? 0), 0) + (args.modifier ?? 0);
   const roll = rollD10Record(roller, {
     id: nextId(draft, "roll"),
@@ -1120,12 +1227,23 @@ function resolveCardD10(
   draft.rolls.push(roll);
   const rows = matchingOutcomeRows(card, "SQ", roll.total);
   const outcome = rows[0]?.outcome ?? rows[0]?.label;
+  const issues: RuleIssue[] = [];
+  if (!outcome) {
+    const issue = makeIssue(
+      `${card.id} has no card-defined outcome row for modified D10 result ${roll.total}.`,
+      ["6.3 Resolution Methods"],
+      ["CARD_DEFINED", "WHITE_CELL_ADJUDICATION"],
+      "adjudication"
+    );
+    issues.push(issue);
+    addAdjudication(draft, issue.message, issue.rule_refs, { card_id: card.id, roll_total: roll.total }, args.acting_player_id, card.id);
+  }
   appendLog(draft, `${card.id} rolled ${roll.formula}${outcome ? ` => ${outcome}` : ""}.`, ["CARD_DEFINED"], visibilityForCard(card), {
     player_id: args.acting_player_id,
     card_id: card.id,
     roll_id: roll.id
   });
-  return { outcome: outcome as ProbabilityOutcome | "Success" | "Fail" | undefined, roll };
+  return { outcome: outcome as ProbabilityOutcome | "Success" | "Fail" | undefined, roll, issues };
 }
 
 function applyCardOutcome(
@@ -1193,6 +1311,13 @@ export function resolveCard(state: GameState, args: ResolveCardArgs, roller: Dic
   if (issues.some((issue) => issue.severity === "error")) {
     return { state, issues, adjudications: [] };
   }
+  if (issues.some((issue) => issue.severity === "adjudication")) {
+    return {
+      state: draft,
+      issues,
+      adjudications: draft.pending_adjudications.filter((entry) => entry.status === "pending")
+    };
+  }
 
   let outcome: ProbabilityOutcome | "Success" | "Fail" | undefined;
   let roll: RollRecord | undefined;
@@ -1205,6 +1330,7 @@ export function resolveCard(state: GameState, args: ResolveCardArgs, roller: Dic
     });
   } else if (method === "card_d10_table") {
     const resolved = resolveCardD10(draft, card, args, roller);
+    issues.push(...resolved.issues);
     outcome = resolved.outcome;
     roll = resolved.roll;
   } else if (method === "crt_a_then_card_outcome") {
@@ -1253,8 +1379,17 @@ export function resolveCard(state: GameState, args: ResolveCardArgs, roller: Dic
     return { state: draft, issues, adjudications: [request] };
   }
 
-  if (!issues.some((issue) => issue.severity === "error")) {
+  if (!hasAnyIssue(issues)) {
     issues.push(...applyCardOutcome(draft, card, args.acting_player_id, outcome, roll?.total));
+    if (hasAnyIssue(issues)) {
+      return {
+        state: draft,
+        outcome,
+        roll,
+        issues,
+        adjudications: draft.pending_adjudications.filter((entry) => entry.status === "pending")
+      };
+    }
     if (card.resolution.pinning) {
       for (const commitment of [...(args.blue_commitments ?? []), ...(args.red_commitments ?? [])]) {
         const force = draft.forces[commitment.force_id];
@@ -1268,12 +1403,27 @@ export function resolveCard(state: GameState, args: ResolveCardArgs, roller: Dic
       }
     }
     if (card.resolution.reset_rules_apply && outcome && outcome !== "Success" && outcome !== "Fail") {
-      const reset = applyResetRules(draft, [...(args.blue_commitments ?? []), ...(args.red_commitments ?? [])].map((entry) => entry.force_id), outcome);
-      draft.forces = reset.state.forces;
-      draft.players = reset.state.players;
-      draft.event_log = reset.state.event_log;
-      draft.pending_adjudications = reset.state.pending_adjudications;
-      issues.push(...reset.issues);
+      const forceIds = [...(args.blue_commitments ?? []), ...(args.red_commitments ?? [])].map((entry) => entry.force_id);
+      if (card.resolution.pinning) {
+        draft.pending_resets.push({
+          id: nextId(draft, "reset"),
+          force_ids: forceIds,
+          outcome,
+          status: "pending_after_pinning"
+        });
+        appendLog(draft, `${card.id} reset rules scheduled after pinning is removed.`, ["CARD_DEFINED"], visibilityForCard(card), {
+          player_id: args.acting_player_id,
+          card_id: card.id
+        });
+      } else {
+        const reset = applyResetRules(draft, forceIds, outcome);
+        draft.forces = reset.state.forces;
+        draft.players = reset.state.players;
+        draft.event_log = reset.state.event_log;
+        draft.pending_adjudications = reset.state.pending_adjudications;
+        draft.pending_resets = reset.state.pending_resets;
+        issues.push(...reset.issues);
+      }
     }
   }
   appendLog(draft, `${args.acting_player_id} played ${card.id}: ${card.title}.`, ["CARD_DEFINED"], visibilityForCard(card), {
@@ -1373,9 +1523,40 @@ export function beginRedInvestmentsAndActions(
     issues.push(phase);
     return { state, issues };
   }
+  if (draft.blue_subphase !== "Actions") {
+    issues.push(
+      makeIssue(
+        "Blue investments must be ended with the action sub-phase before the Blue phase can end.",
+        ["5.3 Blue Investments and Actions Phase"]
+      )
+    );
+    return { state, issues };
+  }
   if (sequence) {
+    const redPlayers = getPlayersBySide(draft, "Red").map((player) => player.id);
+    const uniqueSequence = new Set(sequence);
+    const missing = redPlayers.filter((playerId) => !uniqueSequence.has(playerId));
+    const unknown = sequence.filter((playerId) => !redPlayers.includes(playerId));
+    if (uniqueSequence.size !== sequence.length || missing.length > 0 || unknown.length > 0) {
+      issues.push(
+        makeIssue(
+          "Red player sequence must include each Red player exactly once.",
+          ["5.4 Red Investments and Actions Phase", "17.4 Random Red Player Sequence"]
+        )
+      );
+      return { state, issues };
+    }
     draft.red_sequence = sequence;
-  } else if (draft.rules_in_effect.random_red_sequence && roller) {
+  } else if (draft.rules_in_effect.random_red_sequence) {
+    if (!roller) {
+      issues.push(
+        makeIssue(
+          "Random Red player sequence requires a D10 roller.",
+          ["17.4 Random Red Player Sequence"]
+        )
+      );
+      return { state, issues };
+    }
     const rolls = getPlayersBySide(draft, "Red").map((player) => {
       const roll = rollD10Record(roller, {
         id: nextId(draft, "roll"),
@@ -1400,10 +1581,16 @@ export function beginRedInvestmentsAndActions(
       )
       .map((entry) => entry.playerId);
   } else {
-    addAdjudication(draft, "White Cell chooses Red player sequence under default rules.", ["5.4 Red Investments and Actions Phase"]);
-    draft.red_sequence = getPlayersBySide(draft, "Red").map((player) => player.id);
+    issues.push(
+      makeIssue(
+        "White Cell must choose the Red player sequence under default rules.",
+        ["5.4 Red Investments and Actions Phase"]
+      )
+    );
+    return { state, issues };
   }
   draft.phase = "RedInvestmentsAndActions";
+  draft.blue_subphase = undefined;
   draft.active_red_index = 0;
   draft.active_player_id = draft.red_sequence[0];
   appendLog(draft, `Red Investments and Actions sequence: ${draft.red_sequence.join(", ")}.`, ["WHITE_CELL_ADJUDICATION"], "public");
@@ -1811,12 +1998,13 @@ export function developProxyForce(
   return { state: draft, delivered_ffs: deliveredFfs, delivered_mod_level: deliveredMod, issues: [] };
 }
 
-export function annualResourceAllocation(state: GameState, roller: DiceRoller): { state: GameState; issues: RuleIssue[]; budgetRoll: RollRecord } {
+export function annualResourceAllocation(state: GameState, roller: DiceRoller): { state: GameState; issues: RuleIssue[]; budgetRoll?: RollRecord } {
   const draft = cloneState(state);
   const issues: RuleIssue[] = [];
   const phase = phaseIssue(draft, "AnnualResourcesAllocation");
   if (phase) {
     issues.push(phase);
+    return { state, issues };
   }
   const budgetRoll = rollD10Record(roller, {
     id: nextId(draft, "roll"),
@@ -1858,6 +2046,21 @@ export function recordStateOfWorldSummary(state: GameState, summary: string): Ga
       force.reset_required = false;
     }
   }
+  for (const pendingReset of draft.pending_resets.filter((entry) => entry.status === "pending_after_pinning")) {
+    const stillPinned = pendingReset.force_ids.some((forceId) => draft.forces[forceId]?.pinned.active);
+    if (!stillPinned) {
+      const reset = applyResetRules(draft, pendingReset.force_ids, pendingReset.outcome);
+      draft.forces = reset.state.forces;
+      draft.players = reset.state.players;
+      draft.event_log = reset.state.event_log;
+      draft.pending_adjudications = reset.state.pending_adjudications;
+      draft.pending_resets = reset.state.pending_resets;
+      const updated = draft.pending_resets.find((entry) => entry.id === pendingReset.id);
+      if (updated) {
+        updated.status = "resolved";
+      }
+    }
+  }
   for (const item of draft.ground_truth) {
     if (item.status === "pending" && item.trigger_turn !== undefined && item.trigger_turn <= draft.turn + 1) {
       item.status = "active";
@@ -1873,6 +2076,7 @@ export function recordStateOfWorldSummary(state: GameState, summary: string): Ga
     draft.turn += 1;
     draft.phase = "RedSignaling";
     draft.active_player_id = undefined;
+    draft.blue_subphase = undefined;
     draft.red_signals = {};
     draft.red_plays = {};
     draft.active_red_index = 0;
