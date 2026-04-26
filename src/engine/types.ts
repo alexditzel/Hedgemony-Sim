@@ -154,7 +154,7 @@ export type Location = {
   parent_location_id: LocationId | null;
   country_owner: PlayerId | null;
   home_for: PlayerId[] | null;
-  coordinates: [number, number] | null;
+  coordinates: {lat:number;lng:number} | null;
 };
 export const LocationSchema = z.object({
   id: LocationIdSchema,
@@ -163,7 +163,7 @@ export const LocationSchema = z.object({
   parent_location_id: z.nullable(LocationIdSchema),
   country_owner: z.nullable(PlayerIdSchema),
   home_for: z.nullable(z.array(PlayerIdSchema)),
-  coordinates: z.nullable(z.array(z.number()).length(2)),
+  coordinates: z.nullable(z.object({ lat: z.number(), lng: z.number() })),
 });
 
 export type MovementEdge = {
