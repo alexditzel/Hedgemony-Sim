@@ -143,9 +143,9 @@ describe("scenario loading and validation", () => {
     expect(state.players.PRC.influence_points).toBe(40);
     expect(state.forces["US-CONUS-10"].force_factors).toBe(10);
     expect(state.cards["RU-ACT-01"].title).toBe("Limited Incursion");
-    expect(state.locations.INDOPACOM_PRC.coordinates).toEqual([
-      35.8617, 104.1954,
-    ]);
+    expect(state.locations.INDOPACOM_PRC.coordinates).toEqual(
+      { lat: 35.8617, lng: 104.1954 }
+    );
     expect(
       validateState(state).filter((issue) => issue.severity === "error"),
     ).toHaveLength(0);
@@ -159,19 +159,19 @@ describe("scenario loading and validation", () => {
         { owner: "US", locationId: "INDOPACOM_PRC" },
         state.locations.INDOPACOM_PRC,
       ),
-    ).toEqual([21.3069, -157.8583]);
+    ).toEqual({ lat: 21.3069, lng: -157.8583 });
     expect(
       resolveMapCoordinates(
         { owner: "US", locationId: "INDOPACOM_DPRK" },
         state.locations.INDOPACOM_DPRK,
       ),
-    ).toEqual([36.9622, 127.0311]);
+    ).toEqual({ lat: 36.9622, lng: 127.0311 });
     expect(
       resolveMapCoordinates(
         { owner: "PRC", locationId: "INDOPACOM_PRC" },
         state.locations.INDOPACOM_PRC,
       ),
-    ).toEqual([35.8617, 104.1954]);
+    ).toEqual({ lat: 35.8617, lng: 104.1954 });
   });
 
   it("records required summaries and advances the turn loop", () => {
@@ -740,7 +740,7 @@ describe("readiness, resources, and movement", () => {
           home_base_id: "CONUS",
           readiness_level: 100,
           pinned: { active: false, remaining_turns: null, area_of_interest_id: null },
-          reset_required: false, reset_available_turn: null, 
+          reset_required: false, reset_available_turn: null,
           procured_turn: 1,
           proxy: false,
         },
@@ -776,7 +776,7 @@ describe("readiness, resources, and movement", () => {
           home_base_id: "CONUS",
           readiness_level: 100,
           pinned: { active: false, remaining_turns: null, area_of_interest_id: null },
-          reset_required: false, reset_available_turn: null, 
+          reset_required: false, reset_available_turn: null,
           procured_turn: 1,
           proxy: false,
         },
@@ -1029,7 +1029,7 @@ describe("combat resolution and card effects", () => {
               {
                 outcome: null, roll_min: 0,
                 roll_max: 3,
-                label: "Fail", narrative: null, 
+                label: "Fail", narrative: null,
                 effects: [
                   {
                     type: "adjust_influence_points",

@@ -70,30 +70,36 @@ The simulation will be played for ${prompt.max_turns} turns.
 
 `.trim();
 
-    // const designResponse = await openai.responses.parse({
-    //     model: high_model,
-    //     reasoning: { effort: reasoning_effort },
-    //     input: [
-    //         {
-    //             role: "system",
-    //             content:
-    //                 "You are an expert wargame designer. Design a scenario outline based on the user's prompt. To make the scenario interesting, make sure to first design a few different major arcs that the simulation could follow. To make sure that each player has important roles, use a points system that allocates number of cards and importance of cards to different players. To make sure cards are balanced and demonstrate interesting trade-offs for players to consider, describe a points budget for how much a card supports or harms the player who plays it, and how much it supports or harms other players.",
-    //         },
-    //         {
-    //             role: "user",
-    //             content: printedPrompt,
-    //         },
-    //     ],
-    //     text: {
-    //         format: zodTextFormat(ScenarioDesignSchema, "scenario_design"),
-    //     },
-    // });
+    const design = await ((async () => {
+        if (process.env.CACHE === "false") {
+            const designResponse = await openai.responses.parse({
+                model: high_model,
+                reasoning: { effort: reasoning_effort },
+                input: [
+                    {
+                        role: "system",
+                        content:
+                            "You are an expert wargame designer. Design a scenario outline based on the user's prompt. To make the scenario interesting, make sure to first design a few different major arcs that the simulation could follow. To make sure that each player has important roles, use a points system that allocates number of cards and importance of cards to different players. To make sure cards are balanced and demonstrate interesting trade-offs for players to consider, describe a points budget for how much a card supports or harms the player who plays it, and how much it supports or harms other players.",
+                    },
+                    {
+                        role: "user",
+                        content: printedPrompt,
+                    },
+                ],
+                text: {
+                    format: zodTextFormat(ScenarioDesignSchema, "scenario_design"),
+                },
+            });
 
-    // const design = designResponse.output_parsed!;
+            const design = designResponse.output_parsed!;
 
-    // await fs.writeFile("design.json", JSON.stringify(design, null, 4), { encoding: "utf-8" })
-
-    const design = JSON.parse(await fs.readFile("design.json", { encoding: "utf-8" })) as ScenarioDesign
+            await fs.writeFile("design.json", JSON.stringify(design, null, 4), { encoding: "utf-8" })
+            return design
+        } else {
+            const design = JSON.parse(await fs.readFile("design.json", { encoding: "utf-8" })) as ScenarioDesign
+            return design
+        }
+    }))()
 
     const scenarioResponse = await openai.responses.parse({
         model: high_model,

@@ -579,7 +579,7 @@ export function GameView({ scenario }: GameViewProps) {
 						<PrimaryStage
 							state={state}
 							bluePlayers={bluePlayers}
-							activePlayerId={state.active_player_id}
+							activePlayerId={state.active_player_id ?? undefined}
 							freePlayIntent={freePlayIntent}
 							pendingFreePlay={pendingFreePlay}
 							onSelectBlue={onSelectActiveBlue}

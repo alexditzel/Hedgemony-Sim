@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import type { GameState, PlayerId } from "../engine";
 import { sideToTone } from "./factions";
-import { offsetCoordinates, resolveMapCoordinates } from "./mapCoordinates";
+import { resolveMapCoordinates } from "./mapCoordinates";
 import { buildFfMarkerIcon, buildPopupHtml, type MarkerSide } from "./MapMarker";
 
 interface TheaterMapProps {

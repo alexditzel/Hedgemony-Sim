@@ -134,7 +134,7 @@ export function CardModal({ card, state, open, onClose, footer }: CardModalProps
                 const label = row.label ?? outcomeLabel(row.outcome);
                 const rollDetails = outcomeRollDetails(card, row);
                 const hasExplicitRange = row.roll_min !== undefined && row.roll_max !== undefined;
-                const rollLabel = hasExplicitRange ? rollRangeLabel(row.roll_min, row.roll_max) : rollDetails.length > 0 ? "Table" : "Fixed";
+                const rollLabel = hasExplicitRange ? rollRangeLabel(row.roll_min ?? undefined, row.roll_max ?? undefined) : rollDetails.length > 0 ? "Table" : "Fixed";
                 return (
                   <div key={idx} className="outcome-item">
                     <div className="outcome-item__roll" aria-label={`D10 roll ${rollLabel}`}>
